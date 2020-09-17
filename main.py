@@ -2,6 +2,7 @@ import serial
 import time
 import argparse
 import json
+import re
 from pprint import pprint
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
@@ -21,18 +22,32 @@ ARGS = parser.parse_args()
 
 
 def decode_line(line):
-    if line[:3] == "!r{":
+    if line[:3] == "!r_":
+        elems = re.findall("_([a-z])\[(.+?)\]", line)
+        req_dict = {}
+        for type, val in elems:
+            if type in req_dict:
+                print("Double key in request: '{}'".format(type))
+                return False
+            else:
+                req_dict[type] = val
+        pprint(req_dict)
+        for key in ["p", "b"]:
+            if key not in req_dict:
+                print("Missig key in request: '{}'".format(key))
+                return False
         try:
-            json_line = json.loads(line[2:])
-            return json_line
+            json_body = json.loads(req_dict["b"])
+            req_dict["b"] = json_body
+            return req_dict
         except ValueError:
             return False
     return False
 
 
-def read_serial():
+def read_serial(timeout=5):
     print("Reading from serial port...")
-    start_time = time.time()
+    timeout_time = time.time() + timeout
     while True:
         try:
             ser_bytes = ser.readline().decode("utf-8")
@@ -42,9 +57,15 @@ def read_serial():
         except (FileNotFoundError, serial.serialutil.SerialException):
             print("Lost connection to serial port")
             return False
+        if time.time() > timeout_time:
+            print("Connection timed out")
+            return False
 
 
 if __name__ == '__main__':
+
+    print(decode_line("!r_p[yolokopter]_b[{}]_"))
+
     if ARGS.port:
         serial_port = ARGS.port
     else:

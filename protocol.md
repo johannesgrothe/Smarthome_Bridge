@@ -1,4 +1,4 @@
 # Smarthome ESP32 Serial Protocol
 
 ### Frame Structure
-`!r{<JSON>}\r\n`
+`!r_p[<path: string>]_b[<body: json>]_\r\n`
