@@ -3,6 +3,9 @@ import time
 import argparse
 import json
 import re
+import socket
+import random
+import os
 from pprint import pprint
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
@@ -32,7 +35,7 @@ def decode_line(line):
                 return False
             else:
                 req_dict[type] = val
-        pprint(req_dict)
+        # pprint(req_dict)
         for key in ["p", "b"]:
             if key not in req_dict:
                 print("Missig key in request: '{}'".format(key))
@@ -40,6 +43,10 @@ def decode_line(line):
         try:
             json_body = json.loads(req_dict["b"])
             req_dict["b"] = json_body
+
+            req_dict["path"] = req_dict["p"]
+            req_dict["body"] = req_dict["b"]
+
             return req_dict
         except ValueError:
             return False
@@ -63,7 +70,7 @@ def send_serial(path, body):
 
 
 def read_serial(timeout=0, monitor_mode=False):
-    print("Reading from serial port...")
+    # print("Reading from serial port...")
     timeout_time = time.time() + timeout
     while True:
         try:
@@ -82,36 +89,41 @@ def read_serial(timeout=0, monitor_mode=False):
             print("Lost connection to serial port")
             return False
         if (timeout > 0) and (time.time() > timeout_time):
-            print("Connection timed out")
+            # print("Connection timed out")
             return False
+
+
+def do_broadcast():
+    client_names = []
+    session_id = random.randint(0, 1000000)
+    req = {}
+    req["session_id"] = session_id
+    send_serial("smarthome/broadcast/req", req)
+    timeout_time = time.time() + 6
+    while time.time() < timeout_time:
+        remaining_time = timeout_time - time.time()
+        req = read_serial(2 if remaining_time > 2 else remaining_time)
+        if req and req["path"] == "smarthome/broadcast/res":
+            if "chip_id" in req["body"] and "session_id" in req["body"] and req["body"]["session_id"] == session_id:
+                client_names.append(req["body"]["chip_id"])
+    return client_names
 
 
 def connect_to_client():
     client_id = None
-    session_id = None
-    client_ack = False
-    print("Put your client in 'Serial Only'-Mode and click restart.")
-    while client_id is None:
-        in_req = read_serial(10)
-        if in_req and in_req["p"] == "debug/register":
-            buf_body = in_req["b"]
-            if "chip_id" in buf_body and "session_id" in buf_body:
-                client_id = buf_body["chip_id"]
-                session_id = buf_body["session_id"]
 
-    buf_req = {}
-    buf_req["pc_id"] = "blubmacbook"
-    buf_req["session_id"] = session_id
-    send_serial("debug/register", buf_req)
+    print("make sure your chip is in 'serial only' mode")
+    client_list = do_broadcast()
 
-    while not client_ack:
-        in_req = read_serial(10)
-        if in_req and in_req["p"] == "debug/register":
-            buf_body = in_req["b"]
-            if "ack" in buf_body and buf_body["ack"]:
-                client_ack = True
+    print(client_list)
 
-    print("Client '{}' connected.".format(client_id))
+    if len(client_list) == 0:
+        print("No client answered to broadcast")
+    elif len(client_list) > 1:
+        print("Multiple clients answered to broadcast (wtf)")
+    else:
+        client_id = client_list[0]
+        print("Connected to '{}'".format(client_id))
 
 
 if __name__ == '__main__':
@@ -130,7 +142,7 @@ if __name__ == '__main__':
 
     serial_active = False
     try:
-        ser = serial.Serial(port=serial_port, baudrate=serial_baudrate)
+        ser = serial.Serial(port=serial_port, baudrate=serial_baudrate, timeout=1)
         ser.flushInput()
         serial_active = True
     except (FileNotFoundError, serial.serialutil.SerialException) as e:
