@@ -6,12 +6,26 @@ import re
 import socket
 import random
 import os
+import sys
 from pprint import pprint
 
+NETWORK_MODES = ["serial", "mqtt"]
+CONFIG_ATTIBUTES = ["id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
+
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
+
+# network mode
+parser.add_argument("--network_mode", help="may either be 'serial' or 'mqtt'")
+
+#serial settings
 parser.add_argument('--port', help='serial port to connect to.')
 parser.add_argument('--baudrate', help='baudrate for the serial connection.')
+
+# config file
 parser.add_argument('--config_file', help='path to the config that should be uploaded.')
+
+# individual data
+parser.add_argument('--wifi_id', help='id to be uploaded.')
 parser.add_argument('--wifi_ssid', help='ssid to be uploaded.')
 parser.add_argument('--wifi_pw', help='password to be uploaded.')
 parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.')
@@ -19,10 +33,23 @@ parser.add_argument('--mqtt_port', help='port to be uploaded.')
 parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.')
 parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.')
 
-parser.add_argument('--network_only', action='store_true', help='needs a config file. uploads only the network config.')
-parser.add_argument('--id_only', action='store_true', help='needs a config file. uploads only the id.')
-parser.add_argument('--monitor_mode', action='store_true', help='only uses the script as a read-only serial monitor')
+parser.add_argument('--network_only',
+                    action='store_true',
+                    help='needs a config file. uploads only the network config.')
+parser.add_argument('--id_only',
+                    action='store_true',
+                    help='needs a config file. uploads only the id.')
+parser.add_argument('--monitor_mode',
+                    action='store_true',
+                    help='only uses the script as a read-only serial monitor')
+parser.add_argument('--arg_attributes_only',
+                    action='store_true',
+                    help='so not load any config and just upload attributes set as script ')
 ARGS = parser.parse_args()
+
+
+def gen_req_id():
+    return random.randint(0, 1000000)
 
 
 def decode_line(line):
@@ -65,17 +92,17 @@ def send_serial(path, body):
         print("Path has illegal type")
         return False
     req_line = "!r_p[{}]_b[{}]_\n".format(path, str_body)
-    print("Sending '{}'".format(req_line[:-1]))
+    # print("Sending '{}'".format(req_line[:-1]))
     ser.write(req_line.encode())
 
 
 def read_serial(timeout=0, monitor_mode=False):
-    # print("Reading from serial port...")
     timeout_time = time.time() + timeout
     while True:
         try:
             ser_bytes = ser.readline().decode()
-            # print("   -> {}".format(ser_bytes[:-1]))
+            # if ser_bytes.startswith("!"):
+            #     print("   -> {}".format(ser_bytes[:-1]))
             if monitor_mode:
                 print(ser_bytes[:-1])
             else:
@@ -93,9 +120,27 @@ def read_serial(timeout=0, monitor_mode=False):
             return False
 
 
+def send_request(path, body):
+    if "session_id" not in body:
+        print("Cannot send request: body is missing id")
+        return False
+    req_id = body["session_id"]
+    send_serial(path, body)
+    timeout_time = time.time() + 6
+    while time.time() < timeout_time:
+        remaining_time = timeout_time - time.time()
+        req = read_serial(2 if remaining_time > 2 else remaining_time)
+        if req and "session_id" in req["body"] and req["body"]["session_id"] == req_id:
+            if "ack" in req["body"]:
+                return req["body"]["ack"]
+            print("Received answer to request not containing 'ack'")
+            return False
+    return False
+
+
 def do_broadcast():
     client_names = []
-    session_id = random.randint(0, 1000000)
+    session_id = gen_req_id()
     req = {}
     req["session_id"] = session_id
     send_serial("smarthome/broadcast/req", req)
@@ -109,13 +154,84 @@ def do_broadcast():
     return client_names
 
 
+def config_args_existing():
+    args_dict = vars(ARGS)
+    for attr_name in CONFIG_ATTIBUTES:
+        if attr_name in args_dict and args_dict[attr_name] is not None:
+            return True
+    return False
+
+
+def add_args_to_config(config):
+    args_dict = vars(ARGS)
+    for attr_name in CONFIG_ATTIBUTES:
+        if attr_name in args_dict and args_dict[attr_name] is not None:
+            if config is None:
+                config = {}
+                config["name"] = "<args>"
+                config["desciption"] = ""
+                config["data"] = {}
+            config["data"][attr_name] = args_dict[attr_name]
+    return config
+
+
+def select_option(input_list, category=None):
+    if category is None:
+        print("Please select:")
+    else:
+        print("Please select a {}:".format(category))
+    for i in range(len(input_list)):
+        print("    {}: {}".format(i, input_list[i]))
+    var = None
+    while var is None:
+        var = input("Please select an option by entering its number:\n")
+        try:
+            var = int(var)
+        except TypeError:
+            var = None
+        if var < 0 or var >= len(input_list):
+            print("Illegal input, try again.")
+            var = None
+    return var
+
+
+def load_config_file(f_name):
+    try:
+        with open(os.path.join("configs", f_name)) as json_file:
+            cfg_json = json.load(json_file)
+            if "name" not in cfg_json:
+                cfg_json["name"] = f_name
+            if "description" not in cfg_json:
+                cfg_json["description"] = ""
+            return cfg_json
+    except IOError:
+        return None
+
+
+def select_config():
+    config_files = [f_name for f_name in os.listdir("configs") if os.path.isfile(os.path.join("configs", f_name)) and f_name.endswith(".json")]
+    valid_configs = []
+    config_names = []
+    for f_name in config_files:
+        config_json = load_config_file(f_name)
+        if json is not None:
+            valid_configs.append(config_json)
+            config_names.append(config_json["name"])
+
+    if len(config_names) == 0:
+        return None
+    if len(config_names) == 1:
+        return valid_configs[0]
+
+    cfg_i = select_option(config_names, "config")
+    return valid_configs[cfg_i]
+
+
 def connect_to_client():
     client_id = None
 
-    print("make sure your chip is in 'serial only' mode")
+    print("Please make sure your chip can receive serial requests")
     client_list = do_broadcast()
-
-    print(client_list)
 
     if len(client_list) == 0:
         print("No client answered to broadcast")
@@ -124,36 +240,113 @@ def connect_to_client():
     else:
         client_id = client_list[0]
         print("Connected to '{}'".format(client_id))
+    return client_id
+
+
+def load_config():
+    out_cfg = None
+    if not ARGS.arg_attributes_only:
+        if ARGS.config_file:
+            out_cfg = load_config_file()
+        else:
+            out_cfg = select_config()
+
+    out_cfg = add_args_to_config(out_cfg)
+
+    # Remove unknown attributes
+    for attr in out_cfg["data"]:
+        if attr not in CONFIG_ATTIBUTES:
+            print("Unknown attribute in config: '{}'".format(attr))
+            out_cfg["data"].pop("attr")
+
+    return out_cfg
 
 
 if __name__ == '__main__':
 
-    # print(decode_line("!r_p[yolokopter]_b[{}]_"))
-
-    if ARGS.port:
-        serial_port = ARGS.port
-    else:
-        serial_port = '/dev/cu.SLAB_USBtoUART'
-
-    if ARGS.baudrate:
-        serial_baudrate = ARGS.baudrate
-    else:
-        serial_baudrate = 115200
-
-    serial_active = False
-    try:
-        ser = serial.Serial(port=serial_port, baudrate=serial_baudrate, timeout=1)
-        ser.flushInput()
-        serial_active = True
-    except (FileNotFoundError, serial.serialutil.SerialException) as e:
-        print("Unable to connect to serial port '{}'".format(serial_port))
-
-    if serial_active:
-        if ARGS.monitor_mode:
-            read_serial(0, True)
+    network_mode = None
+    if ARGS.network_mode:
+        if ARGS.network_mode == "serial":
+            network_mode = 0
+        elif ARGS.network_mode == "mqtt":
+            network_mode = 1
         else:
-            connect_to_client()
+            print("Gave illegal network mode '{}'".format(ARGS.network_mode == "mqtt"))
+            network_mode = select_option(NETWORK_MODES, "network mode")
+    else:
+        network_mode = select_option(NETWORK_MODES, "network mode")
 
-    #     read_buffer = read_serial()
-    #     if (read_buffer):
-    #         pprint(read_buffer)
+    print()
+
+    if network_mode == 0: # SERIAL MODE
+        if ARGS.port:
+            serial_port = ARGS.port
+        else:
+            serial_port = '/dev/cu.SLAB_USBtoUART'
+
+        if ARGS.baudrate:
+            serial_baudrate = ARGS.baudrate
+        else:
+            serial_baudrate = 115200
+
+        serial_active = False
+        try:
+            ser = serial.Serial(port=serial_port, baudrate=serial_baudrate, timeout=1)
+            ser.flushInput()
+            serial_active = True
+        except (FileNotFoundError, serial.serialutil.SerialException) as e:
+            print("Unable to connect to serial port '{}'".format(serial_port))
+
+        if serial_active:
+            if ARGS.monitor_mode:
+                read_serial(0, True)
+                sys.exit(0)
+        else:
+            sys.exit(1)
+
+    else:
+        print("MQTT is currently not supported")
+        sys.exit(1)
+
+    CLIENT_NAME = connect_to_client()
+    print()
+    CONFIG_FILE = load_config()
+    print()
+
+    if CONFIG_FILE is None:
+        print("No config could be loaded")
+        sys.exit(1)
+    else:
+        print("Config '{}' was loaded".format(CONFIG_FILE["name"]))
+    print()
+
+    if "id" in CONFIG_FILE["data"] and not ARGS.network_only:
+        # flash id
+        req_dict = {}
+        req_dict["receiver"] = CLIENT_NAME
+        req_dict["value"] = CONFIG_FILE["data"]["id"]
+        req_dict["session_id"] = gen_req_id()
+        success = send_request("smarthome/config/write/id", req_dict)
+        if success:
+            print("[✓] Flashing '{}' was successful".format("id"))
+            CLIENT_NAME = CONFIG_FILE["data"]["id"]
+        else:
+            print("[×] Flashing '{}' failed".format("id"))
+
+    if not ARGS.id_only:
+        # flash wifi
+        for attr in ["wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]:
+            if attr in CONFIG_FILE["data"]:
+                req_dict = {}
+                req_dict["receiver"] = CLIENT_NAME
+                req_dict["value"] = CONFIG_FILE["data"][attr]
+                req_dict["session_id"] = gen_req_id()
+                success = send_request("smarthome/config/write/{}".format(attr), req_dict)
+                if success:
+                    print("[✓] Flashing '{}' was successful".format(attr))
+                else:
+                    print("[×] Flashing '{}' failed".format(attr))
+
+    if not ARGS.id_only and not ARGS.network_only:
+        # upload gadgets
+        pass
