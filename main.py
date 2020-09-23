@@ -7,17 +7,18 @@ import socket
 import random
 import os
 import sys
+from typing import Union, Optional
 from pprint import pprint
 
 NETWORK_MODES = ["serial", "mqtt"]
-CONFIG_ATTIBUTES = ["id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
+CONFIG_ATTRIBUTES = ["id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
 
 # network mode
 parser.add_argument("--network_mode", help="may either be 'serial' or 'mqtt'")
 
-#serial settings
+# serial settings
 parser.add_argument('--port', help='serial port to connect to.')
 parser.add_argument('--baudrate', help='baudrate for the serial connection.')
 
@@ -48,25 +49,29 @@ parser.add_argument('--arg_attributes_only',
 ARGS = parser.parse_args()
 
 
-def gen_req_id():
+def gen_req_id() -> int:
+    """Generates a random Request ID"""
+
     return random.randint(0, 1000000)
 
 
-def decode_line(line):
+def decode_line(line) -> Optional[dict]:
+    """Decodes a line and extracts a request if there is any"""
+
     if line[:3] == "!r_":
         elems = re.findall("_([a-z])\[(.+?)\]", line)
         req_dict = {}
         for type, val in elems:
             if type in req_dict:
                 print("Double key in request: '{}'".format(type))
-                return False
+                return None
             else:
                 req_dict[type] = val
         # pprint(req_dict)
         for key in ["p", "b"]:
             if key not in req_dict:
                 print("Missig key in request: '{}'".format(key))
-                return False
+                return None
         try:
             json_body = json.loads(req_dict["b"])
             req_dict["b"] = json_body
@@ -76,11 +81,13 @@ def decode_line(line):
 
             return req_dict
         except ValueError:
-            return False
-    return False
+            return None
+    return None
 
 
-def send_serial(path, body):
+def send_serial(path: str, body: Union[dict, str]) -> bool:
+    """Sends a request on the serial port"""
+
     if isinstance(body, dict):
         str_body = json.dumps(body)
     elif isinstance(body, str):
@@ -94,9 +101,12 @@ def send_serial(path, body):
     req_line = "!r_p[{}]_b[{}]_\n".format(path, str_body)
     # print("Sending '{}'".format(req_line[:-1]))
     ser.write(req_line.encode())
+    return True
 
 
-def read_serial(timeout=0, monitor_mode=False):
+def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Union[bool, dict]:
+    """Tries to read a line from the serial port"""
+
     timeout_time = time.time() + timeout
     while True:
         try:
@@ -120,7 +130,9 @@ def read_serial(timeout=0, monitor_mode=False):
             return False
 
 
-def send_request(path, body):
+def send_request(path: str, body: dict) -> bool:
+    """Sends a request on the serial port and waits for the answer"""
+
     if "session_id" not in body:
         print("Cannot send request: body is missing id")
         return False
@@ -138,7 +150,9 @@ def send_request(path, body):
     return False
 
 
-def do_broadcast():
+def do_broadcast() -> [str]:
+    """Sends a broadcast and waits for clients to answer"""
+
     client_names = []
     session_id = gen_req_id()
     req = {}
@@ -154,17 +168,21 @@ def do_broadcast():
     return client_names
 
 
-def config_args_existing():
+def config_args_existing() -> bool:
+    """checks whether valid configs exist or not"""
+
     args_dict = vars(ARGS)
-    for attr_name in CONFIG_ATTIBUTES:
+    for attr_name in CONFIG_ATTRIBUTES:
         if attr_name in args_dict and args_dict[attr_name] is not None:
             return True
     return False
 
 
-def add_args_to_config(config):
+def add_args_to_config(config: dict) -> dict:
+    """Reads pre-set attributes from the ARGS into the config"""
+
     args_dict = vars(ARGS)
-    for attr_name in CONFIG_ATTIBUTES:
+    for attr_name in CONFIG_ATTRIBUTES:
         if attr_name in args_dict and args_dict[attr_name] is not None:
             if config is None:
                 config = {}
@@ -175,7 +193,9 @@ def add_args_to_config(config):
     return config
 
 
-def select_option(input_list, category=None):
+def select_option(input_list: [str], category: str = None) -> int:
+    """Presents every elem from the list and lets the user select one"""
+
     if category is None:
         print("Please select:")
     else:
@@ -195,7 +215,9 @@ def select_option(input_list, category=None):
     return var
 
 
-def load_config_file(f_name):
+def load_config_file(f_name: str) -> Optional[dict]:
+    """Loads a config from the disk if possible"""
+
     try:
         with open(os.path.join("configs", f_name)) as json_file:
             cfg_json = json.load(json_file)
@@ -208,8 +230,11 @@ def load_config_file(f_name):
         return None
 
 
-def select_config():
-    config_files = [f_name for f_name in os.listdir("configs") if os.path.isfile(os.path.join("configs", f_name)) and f_name.endswith(".json")]
+def select_config() -> Optional[dict]:
+    """Scans for valid configs and lets the user select ont if needed and possible"""
+
+    config_files = [f_name for f_name in os.listdir("configs") if
+                    os.path.isfile(os.path.join("configs", f_name)) and f_name.endswith(".json")]
     valid_configs = []
     config_names = []
     for f_name in config_files:
@@ -227,7 +252,9 @@ def select_config():
     return valid_configs[cfg_i]
 
 
-def connect_to_client():
+def connect_to_client() -> Optional[dict]:
+    """Scans for clients and lets the user select one if needed and possible"""
+
     client_id = None
 
     print("Please make sure your chip can receive serial requests")
@@ -243,11 +270,13 @@ def connect_to_client():
     return client_id
 
 
-def load_config():
+def load_config() -> Optional[dict]:
+    """Loads a selected config and inserts possible ARGS parameters"""
+
     out_cfg = None
     if not ARGS.arg_attributes_only:
         if ARGS.config_file:
-            out_cfg = load_config_file()
+            out_cfg = load_config_file(ARGS.config_file)
         else:
             out_cfg = select_config()
 
@@ -255,7 +284,7 @@ def load_config():
 
     # Remove unknown attributes
     for attr in out_cfg["data"]:
-        if attr not in CONFIG_ATTIBUTES:
+        if attr not in CONFIG_ATTRIBUTES:
             print("Unknown attribute in config: '{}'".format(attr))
             out_cfg["data"].pop("attr")
 
@@ -278,7 +307,7 @@ if __name__ == '__main__':
 
     print()
 
-    if network_mode == 0: # SERIAL MODE
+    if network_mode == 0:  # SERIAL MODE
         if ARGS.port:
             serial_port = ARGS.port
         else:
