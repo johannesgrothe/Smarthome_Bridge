@@ -349,32 +349,18 @@ if __name__ == '__main__':
         print("Config '{}' was loaded".format(CONFIG_FILE["name"]))
     print()
 
-    if "id" in CONFIG_FILE["data"] and not ARGS.network_only:
-        # flash id
-        req_dict = {}
-        req_dict["receiver"] = CLIENT_NAME
-        req_dict["value"] = CONFIG_FILE["data"]["id"]
-        req_dict["session_id"] = gen_req_id()
-        success = send_request("smarthome/config/write/id", req_dict)
-        if success:
-            print("[✓] Flashing '{}' was successful".format("id"))
-            CLIENT_NAME = CONFIG_FILE["data"]["id"]
-        else:
-            print("[×] Flashing '{}' failed".format("id"))
-
-    if not ARGS.id_only:
-        # flash wifi
-        for attr in ["wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]:
-            if attr in CONFIG_FILE["data"]:
-                req_dict = {}
-                req_dict["receiver"] = CLIENT_NAME
-                req_dict["value"] = CONFIG_FILE["data"][attr]
-                req_dict["session_id"] = gen_req_id()
-                success = send_request("smarthome/config/write/{}".format(attr), req_dict)
-                if success:
-                    print("[✓] Flashing '{}' was successful".format(attr))
-                else:
-                    print("[×] Flashing '{}' failed".format(attr))
+    for attr in CONFIG_ATTRIBUTES:
+        if attr in CONFIG_FILE["data"]:
+            attr_data = CONFIG_FILE["data"][attr]
+            req_dict = {"receiver": CLIENT_NAME, "param": attr, "value": attr_data,
+                        "session_id": gen_req_id()}
+            success = send_request("smarthome/config/write", req_dict)
+            if success:
+                print("[✓] Flashing '{}' was successful".format(attr))
+                if attr == "id":
+                    CLIENT_NAME = attr_data
+            else:
+                print("[×] Flashing '{}' failed".format(attr))
 
     if not ARGS.id_only and not ARGS.network_only:
         # upload gadgets
