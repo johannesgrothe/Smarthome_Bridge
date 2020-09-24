@@ -164,7 +164,10 @@ def do_broadcast() -> [str]:
         req = read_serial(2 if remaining_time > 2 else remaining_time)
         if req and req["path"] == "smarthome/broadcast/res":
             if "chip_id" in req["body"] and "session_id" in req["body"] and req["body"]["session_id"] == session_id:
-                client_names.append(req["body"]["chip_id"])
+                if network_mode == 0:
+                    return [req["body"]["chip_id"]]
+                else:
+                    client_names.append(req["body"]["chip_id"])
     return client_names
 
 
@@ -338,7 +341,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     CLIENT_NAME = connect_to_client()
-    print()
     CONFIG_FILE = load_config()
     print()
 

@@ -124,9 +124,23 @@ The username used for the mqtt broker the chip should connect to
 
 The password used for the mqtt broker the chip should connect to
 
+##### Read
+Reading the password is not supported.
+
 ##### Write
 
-| Sender | Receiver | Path                     | Payload                                                                                              |
-|:------ |:--------:| ------------------------:| ----------------------------------------------------------------------------------------------------:|
-| Master | Chip     | `smarthome/config/write` | `{"receiver": "<chip id>", "param": "mqtt_pw", "value": "<the new pw>", "session_id": <session_id>}` |
-| Chip   | Master   | `smarthome/config/write` | `{"ack": true, "session_id": <session_id>}`                                                          |
+###### Frame Info
+
+| Sender | Receiver | Path                     |
+|:------ |:--------:| ------------------------:|
+| Master | Chip     | `smarthome/config/write` | 
+
+###### Payload
+```json
+{
+    "receiver": "<chip id>",
+    "param": "mqtt_user",
+    "value": "<the new username>",
+    "session_id": <session_id>
+}
+```

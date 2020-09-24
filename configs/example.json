@@ -2,10 +2,12 @@
   "name": "ExampleConfig",
   "description": "Example config for testing and as reference",
   "data": {
-    "id": "YoloChip55",
-    "wifi_ssid": "testwifi22",
-    "wifi_pw": "testpw11",
+    "id": "YoloChip11",
+    "wifi_ssid": "testwifi",
+    "wifi_pw": "testpw",
     "mqtt_ip": "192.168.178.111",
-    "mqtt_port": 1883
+    "mqtt_port": 1883,
+    "mqtt_user": null,
+    "mqtt_pw": null
   }
 }
