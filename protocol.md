@@ -1,22 +1,36 @@
 # Smarthome ESP32 Communication Specification
 
-### Frame Structure
+### Serial Communication Frame Structure
 
 `!r_p[<path: string>]_b[<body: json>]_\r\n`
 
-### Initialization
+### Body Structure
 
+```json
+{
+  "sender": "<sender id>",
+  "receiver": "<receiver id>",
+  "session_id": <session_id>,
+  "payload": {}
+}
+```
+
+### Initialization
+~~~~~~~~
 ---
+
 #### Broadcast
 
 The broadcast is used to identify every chip in the network
 
 ###### Request Frame Info
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/broadcast/req` | 
+
+| Sender | Receiver | Path                      |
+|:------ |:--------:| -------------------------:|
+| Master | Chip     | `smarthome/broadcast/req` |
 
 ###### Request Payload
+
 ```json
 {
   "session_id": <session_id>
@@ -24,11 +38,13 @@ The broadcast is used to identify every chip in the network
 ```
 
 ###### Response Frame Info
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/broadcast/res` | 
+
+| Sender | Receiver | Path                      |
+|:------ |:--------:| -------------------------:|
+| Master | Chip     | `smarthome/broadcast/res` |
 
 ###### Response Payload
+
 ```json
 {
   "chip_id": "<chip_id>",
@@ -37,16 +53,19 @@ The broadcast is used to identify every chip in the network
 ```
 
 ---
+
 #### Reset config
 
 The request is used to reset the whole eeprom of the receiving chip
 
 ###### Frame Info
+
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/reset` | 
+| Master | Chip     | `smarthome/config/reset` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -55,18 +74,22 @@ The request is used to reset the whole eeprom of the receiving chip
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
   "session_id": <session_id>
 }
 ```
+
 ---
+
 #### Chip ID
 
 The chip ID can have a length between 1 and 20
 
 ##### Read
+
 Reading the ID makes no sense since you need the ID to direct the request anyway.
 Read all IDs on the bus by sending a broadcast.
 
@@ -76,9 +99,10 @@ Read all IDs on the bus by sending a broadcast.
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -89,13 +113,16 @@ Read all IDs on the bus by sending a broadcast.
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
   "session_id": <session_id>
 }
 ```
+
 ---
+
 #### Wifi SSID
 
 The SSID of the Wifi network the chip should connect to
@@ -104,11 +131,12 @@ The SSID of the Wifi network the chip should connect to
 
 ###### Frame Info
 
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/read` | 
+| Sender | Receiver | Path                    |
+|:------ |:--------:| -----------------------:|
+| Master | Chip     | `smarthome/config/read` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -118,6 +146,7 @@ The SSID of the Wifi network the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "value": "<wifi ssid>",
@@ -131,9 +160,10 @@ The SSID of the Wifi network the chip should connect to
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -144,18 +174,22 @@ The SSID of the Wifi network the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
   "session_id": <session_id>
 }
 ```
+
 ---
+
 #### Wifi PW
 
 The password of the Wifi network the chip should connect to
 
 ##### Read
+
 Reading the password is not supported.
 
 ##### Write
@@ -164,9 +198,10 @@ Reading the password is not supported.
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -177,6 +212,7 @@ Reading the password is not supported.
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
@@ -185,6 +221,7 @@ Reading the password is not supported.
 ```
 
 ---
+
 #### MQTT IP
 
 The IP of the mqtt broker the chip should connect to
@@ -193,11 +230,12 @@ The IP of the mqtt broker the chip should connect to
 
 ###### Frame Info
 
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/read` | 
+| Sender | Receiver | Path                    |
+|:------ |:--------:| -----------------------:|
+| Master | Chip     | `smarthome/config/read` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -207,6 +245,7 @@ The IP of the mqtt broker the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "value": "<mqtt ip>",
@@ -220,9 +259,10 @@ The IP of the mqtt broker the chip should connect to
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -233,6 +273,7 @@ The IP of the mqtt broker the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
@@ -241,6 +282,7 @@ The IP of the mqtt broker the chip should connect to
 ```
 
 ---
+
 #### MQTT Port
 
 The port of the mqtt broker the chip should connect to
@@ -249,11 +291,12 @@ The port of the mqtt broker the chip should connect to
 
 ###### Frame Info
 
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/read` | 
+| Sender | Receiver | Path                    |
+|:------ |:--------:| -----------------------:|
+| Master | Chip     | `smarthome/config/read` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -263,6 +306,7 @@ The port of the mqtt broker the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "value": "<mqtt port>",
@@ -276,9 +320,10 @@ The port of the mqtt broker the chip should connect to
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -289,6 +334,7 @@ The port of the mqtt broker the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
@@ -297,6 +343,7 @@ The port of the mqtt broker the chip should connect to
 ```
 
 ---
+
 #### MQTT Username
 
 The username used for the mqtt broker the chip should connect to
@@ -305,11 +352,12 @@ The username used for the mqtt broker the chip should connect to
 
 ###### Frame Info
 
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/read` | 
+| Sender | Receiver | Path                    |
+|:------ |:--------:| -----------------------:|
+| Master | Chip     | `smarthome/config/read` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -319,6 +367,7 @@ The username used for the mqtt broker the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "value": "<mqtt username>",
@@ -332,9 +381,10 @@ The username used for the mqtt broker the chip should connect to
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -345,6 +395,7 @@ The username used for the mqtt broker the chip should connect to
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
@@ -353,11 +404,13 @@ The username used for the mqtt broker the chip should connect to
 ```
 
 ---
+
 #### MQTT Password
 
 The password used for the mqtt broker the chip should connect to
 
 ##### Read
+
 Reading the password is not supported.
 
 ##### Write
@@ -366,9 +419,10 @@ Reading the password is not supported.
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` | 
+| Master | Chip     | `smarthome/config/write` |
 
 ###### Request Payload
+
 ```json
 {
   "receiver": "<chip id>",
@@ -379,6 +433,7 @@ Reading the password is not supported.
 ```
 
 ###### Response Payload
+
 ```json
 {
   "ack": true,
