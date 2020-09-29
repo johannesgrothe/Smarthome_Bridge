@@ -15,13 +15,15 @@
 }
 ```
 
+None of the keys are optional, but the `receiver` and `payload` can be `null` for broadcasts.
+
 ### Initialization
-~~~~~~~~
+
 ---
 
 #### Broadcast
 
-The broadcast is used to identify every chip in the network
+The broadcast is used to identify every chip in the network. The Request 
 
 ###### Request Frame Info
 
@@ -32,24 +34,19 @@ The broadcast is used to identify every chip in the network
 ###### Request Payload
 
 ```json
-{
-  "session_id": <session_id>
-}
+null
 ```
 
 ###### Response Frame Info
 
 | Sender | Receiver | Path                      |
 |:------ |:--------:| -------------------------:|
-| Master | Chip     | `smarthome/broadcast/res` |
+| Chip   | Master   | `smarthome/broadcast/res` |
 
 ###### Response Payload
 
 ```json
-{
-  "chip_id": "<chip_id>",
-  "session_id": <session_id>
-}
+null
 ```
 
 ---
@@ -67,18 +64,14 @@ The request is used to reset the whole eeprom of the receiving chip
 ###### Request Payload
 
 ```json
-{
-  "receiver": "<chip id>",
-  "session_id": <session_id>
-}
+null
 ```
 
 ###### Response Payload
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -105,10 +98,8 @@ Read all IDs on the bus by sending a broadcast.
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "id",
-  "value": "<the new id>",
-  "session_id": <session_id>
+  "value": "<the new id>"
 }
 ```
 
@@ -116,8 +107,7 @@ Read all IDs on the bus by sending a broadcast.
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -139,9 +129,7 @@ The SSID of the Wifi network the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
-  "param": "wifi_ssid",
-  "session_id": <session_id>
+  "param": "wifi_ssid"
 }
 ```
 
@@ -149,8 +137,7 @@ The SSID of the Wifi network the chip should connect to
 
 ```json
 {
-  "value": "<wifi ssid>",
-  "session_id": <session_id>
+  "value": "<wifi ssid>"
 }
 ```
 
@@ -166,10 +153,8 @@ The SSID of the Wifi network the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "wifi_ssid",
-  "value": "<the new ssid>",
-  "session_id": <session_id>
+  "value": "<the new ssid>"
 }
 ```
 
@@ -177,8 +162,7 @@ The SSID of the Wifi network the chip should connect to
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -204,10 +188,8 @@ Reading the password is not supported.
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "wifi_pw",
-  "value": "<the new password>",
-  "session_id": <session_id>
+  "value": "<the new password>"
 }
 ```
 
@@ -215,8 +197,7 @@ Reading the password is not supported.
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -238,9 +219,7 @@ The IP of the mqtt broker the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
-  "param": "mqtt_ip",
-  "session_id": <session_id>
+  "param": "mqtt_ip"
 }
 ```
 
@@ -248,8 +227,7 @@ The IP of the mqtt broker the chip should connect to
 
 ```json
 {
-  "value": "<mqtt ip>",
-  "session_id": <session_id>
+  "value": "<mqtt ip>"
 }
 ```
 
@@ -265,10 +243,8 @@ The IP of the mqtt broker the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "mqtt_ip",
-  "value": "<the new ip>",
-  "session_id": <session_id>
+  "value": "<the new ip>"
 }
 ```
 
@@ -276,8 +252,7 @@ The IP of the mqtt broker the chip should connect to
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -299,9 +274,7 @@ The port of the mqtt broker the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
-  "param": "mqtt_port",
-  "session_id": <session_id>
+  "param": "mqtt_port"
 }
 ```
 
@@ -309,8 +282,7 @@ The port of the mqtt broker the chip should connect to
 
 ```json
 {
-  "value": "<mqtt port>",
-  "session_id": <session_id>
+  "value": "<mqtt port>"
 }
 ```
 
@@ -326,10 +298,8 @@ The port of the mqtt broker the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "mqtt_port",
-  "value": "<the new port>",
-  "session_id": <session_id>
+  "value": "<the new port>"
 }
 ```
 
@@ -337,8 +307,7 @@ The port of the mqtt broker the chip should connect to
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -360,9 +329,7 @@ The username used for the mqtt broker the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
-  "param": "mqtt_user",
-  "session_id": <session_id>
+  "param": "mqtt_user"
 }
 ```
 
@@ -370,8 +337,7 @@ The username used for the mqtt broker the chip should connect to
 
 ```json
 {
-  "value": "<mqtt username>",
-  "session_id": <session_id>
+  "value": "<mqtt username>"
 }
 ```
 
@@ -387,10 +353,8 @@ The username used for the mqtt broker the chip should connect to
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "mqtt_user",
-  "value": "<the new username>",
-  "session_id": <session_id>
+  "value": "<the new username>"
 }
 ```
 
@@ -398,8 +362,7 @@ The username used for the mqtt broker the chip should connect to
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
 
@@ -425,10 +388,8 @@ Reading the password is not supported.
 
 ```json
 {
-  "receiver": "<chip id>",
   "param": "mqtt_pw",
-  "value": "<the new password>",
-  "session_id": <session_id>
+  "value": "<the new password>"
 }
 ```
 
@@ -436,7 +397,6 @@ Reading the password is not supported.
 
 ```json
 {
-  "ack": true,
-  "session_id": <session_id>
+  "ack": true
 }
 ```
