@@ -7,6 +7,7 @@ import socket
 import random
 import os
 import sys
+from request import Request
 from typing import Union, Optional
 from pprint import pprint
 
@@ -55,7 +56,13 @@ def gen_req_id() -> int:
     return random.randint(0, 1000000)
 
 
-def decode_line(line) -> Optional[dict]:
+def get_sender() -> str:
+    """Returns the name used as sender (local hostname)"""
+
+    return socket.gethostname()
+
+
+def decode_line(line) -> Optional[Request]:
     """Decodes a line and extracts a request if there is any"""
 
     if line[:3] == "!r_":
@@ -67,44 +74,35 @@ def decode_line(line) -> Optional[dict]:
                 return None
             else:
                 req_dict[type] = val
-        # pprint(req_dict)
         for key in ["p", "b"]:
             if key not in req_dict:
                 print("Missig key in request: '{}'".format(key))
                 return None
         try:
             json_body = json.loads(req_dict["b"])
-            req_dict["b"] = json_body
 
-            req_dict["path"] = req_dict["p"]
-            req_dict["body"] = req_dict["b"]
+            out_req = Request(path=req_dict["p"],
+                              session_id=json_body["session_id"],
+                              sender=json_body["sender"],
+                              receiver=json_body["receiver"],
+                              payload=json_body["payload"])
 
-            return req_dict
+            return out_req
         except ValueError:
             return None
     return None
 
 
-def send_serial(path: str, body: Union[dict, str]) -> bool:
+def send_serial(req: Request) -> bool:
     """Sends a request on the serial port"""
 
-    if isinstance(body, dict):
-        str_body = json.dumps(body)
-    elif isinstance(body, str):
-        str_body = body
-    else:
-        print("Body has illegal type")
-        return False
-    if not isinstance(path, str):
-        print("Path has illegal type")
-        return False
-    req_line = "!r_p[{}]_b[{}]_\n".format(path, str_body)
+    req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(), str(req.get_body()).replace("'", '"').replace("None", "null"))
     # print("Sending '{}'".format(req_line[:-1]))
     ser.write(req_line.encode())
     return True
 
 
-def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Union[bool, dict]:
+def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Optional[Request]:
     """Tries to read a line from the serial port"""
 
     timeout_time = time.time() + timeout
@@ -118,56 +116,53 @@ def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Union[bool, dic
             else:
                 if ser_bytes.startswith("Backtrace: 0x"):
                     print("Client crashed with {}".format(ser_bytes[:-1]))
-                    return False
+                    return None
                 buf_req = decode_line(ser_bytes)
                 if buf_req:
                     return buf_req
         except (FileNotFoundError, serial.serialutil.SerialException):
             print("Lost connection to serial port")
-            return False
+            return None
         if (timeout > 0) and (time.time() > timeout_time):
-            # print("Connection timed out")
-            return False
+            return None
 
 
-def send_request(path: str, body: dict) -> bool:
+def send_request(req: Request) -> (bool, Optional[Request]):
     """Sends a request on the serial port and waits for the answer"""
 
-    if "session_id" not in body:
-        print("Cannot send request: body is missing id")
-        return False
-    req_id = body["session_id"]
-    send_serial(path, body)
+    send_serial(req)
     timeout_time = time.time() + 6
     while time.time() < timeout_time:
         remaining_time = timeout_time - time.time()
-        req = read_serial(2 if remaining_time > 2 else remaining_time)
-        if req and "session_id" in req["body"] and req["body"]["session_id"] == req_id:
-            if "ack" in req["body"]:
-                return req["body"]["ack"]
-            print("Received answer to request not containing 'ack'")
-            return False
-    return False
+        res = read_serial(2 if remaining_time > 2 else remaining_time)
+        if res and res.get_session_id() == req.get_session_id():
+            res_ack = res.get_ack()
+            if res_ack is not None:
+                return res_ack, res
+            return False, res
+    return False, None
 
 
-def do_broadcast() -> [str]:
+def scan_for_clients() -> [str]:
     """Sends a broadcast and waits for clients to answer"""
 
     client_names = []
     session_id = gen_req_id()
-    req = {}
-    req["session_id"] = session_id
-    send_serial("smarthome/broadcast/req", req)
+    req = Request("smarthome/broadcast/req",
+                  session_id,
+                  get_sender(),
+                  None,
+                  {})
+    send_serial(req)
     timeout_time = time.time() + 6
     while time.time() < timeout_time:
         remaining_time = timeout_time - time.time()
         req = read_serial(2 if remaining_time > 2 else remaining_time)
-        if req and req["path"] == "smarthome/broadcast/res":
-            if "chip_id" in req["body"] and "session_id" in req["body"] and req["body"]["session_id"] == session_id:
-                if network_mode == 0:
-                    return [req["body"]["chip_id"]]
-                else:
-                    client_names.append(req["body"]["chip_id"])
+        if req and req.get_path() == "smarthome/broadcast/res" and req.get_session_id() == session_id:
+            if network_mode == 0:
+                return [req.get_sender()]
+            else:
+                client_names.append(req.get_sender())
     return client_names
 
 
@@ -188,10 +183,7 @@ def add_args_to_config(config: dict) -> dict:
     for attr_name in CONFIG_ATTRIBUTES:
         if attr_name in args_dict and args_dict[attr_name] is not None:
             if config is None:
-                config = {}
-                config["name"] = "<args>"
-                config["desciption"] = ""
-                config["data"] = {}
+                config = {"name": "<args>", "desciption": "", "data": {}}
             config["data"][attr_name] = args_dict[attr_name]
     return config
 
@@ -261,7 +253,7 @@ def connect_to_client() -> Optional[dict]:
     client_id = None
 
     print("Please make sure your chip can receive serial requests")
-    client_list = do_broadcast()
+    client_list = scan_for_clients()
 
     if len(client_list) == 0:
         print("No client answered to broadcast")
@@ -292,6 +284,31 @@ def load_config() -> Optional[dict]:
             out_cfg["data"].pop("attr")
 
     return out_cfg
+
+
+def read_client_config() -> dict:
+    """Reads and returns all possible attributes from the client"""
+
+    out_settings = {}
+
+    for attr in ["wifi_ssid", "mqtt_ip", "mqtt_port", "mqtt_user"]:
+
+        payload_dict = {"param": attr}
+
+        out_req = Request(path="smarthome/config/read",
+                          session_id=gen_req_id(),
+                          sender=get_sender(),
+                          receiver=CLIENT_NAME,
+                          payload=payload_dict)
+
+        success, res = send_request(out_req)
+        if res is not None:
+            # print("[✓] Reading '{}' was successful".format(attr))
+            out_settings[attr] = res.get_payload()["value"]
+        else:
+            # print("[×] Reading '{}' failed".format(attr))
+            out_settings[attr] = None
+    return out_settings
 
 
 if __name__ == '__main__':
@@ -341,6 +358,14 @@ if __name__ == '__main__':
         sys.exit(1)
 
     CLIENT_NAME = connect_to_client()
+    print()
+
+    CLIENT_SETTINGS = read_client_config()
+
+    print("Client Config:")
+    for attr in CLIENT_SETTINGS:
+        print("   '{}': '{}'".format(attr, CLIENT_SETTINGS[attr]))
+
     CONFIG_FILE = load_config()
     print()
 
@@ -354,15 +379,28 @@ if __name__ == '__main__':
     for attr in CONFIG_ATTRIBUTES:
         if attr in CONFIG_FILE["data"]:
             attr_data = CONFIG_FILE["data"][attr]
-            req_dict = {"receiver": CLIENT_NAME, "param": attr, "value": attr_data,
-                        "session_id": gen_req_id()}
-            success = send_request("smarthome/config/write", req_dict)
+            payload_dict = {"param": attr, "value": attr_data}
+
+            out_req = Request(path="smarthome/config/write",
+                              session_id=gen_req_id(),
+                              sender=get_sender(),
+                              receiver=CLIENT_NAME,
+                              payload=payload_dict)
+
+            success, res = send_request(out_req)
             if success:
                 print("[✓] Flashing '{}' was successful".format(attr))
                 if attr == "id":
                     CLIENT_NAME = attr_data
             else:
                 print("[×] Flashing '{}' failed".format(attr))
+
+    print()
+    CLIENT_SETTINGS = read_client_config()
+
+    print("Client Config:")
+    for attr in CLIENT_SETTINGS:
+        print("   '{}': '{}'".format(attr, CLIENT_SETTINGS[attr]))
 
     if not ARGS.id_only and not ARGS.network_only:
         # upload gadgets
