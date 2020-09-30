@@ -12,12 +12,12 @@ from typing import Union, Optional
 from pprint import pprint
 
 NETWORK_MODES = ["serial", "mqtt"]
-CONFIG_ATTRIBUTES = ["id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
+CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
 
 # network mode
-parser.add_argument("--network_mode", help="may either be 'serial' or 'mqtt'")
+parser.add_argument("--network", help="may either be 'serial' or 'mqtt'")
 
 # serial settings
 parser.add_argument('--port', help='serial port to connect to.')
@@ -183,7 +183,7 @@ def add_args_to_config(config: dict) -> dict:
     for attr_name in CONFIG_ATTRIBUTES:
         if attr_name in args_dict and args_dict[attr_name] is not None:
             if config is None:
-                config = {"name": "<args>", "desciption": "", "data": {}}
+                config = {"name": "<args>", "description": "", "data": {}}
             config["data"][attr_name] = args_dict[attr_name]
     return config
 
@@ -278,10 +278,13 @@ def load_config() -> Optional[dict]:
     out_cfg = add_args_to_config(out_cfg)
 
     # Remove unknown attributes
+    illegal_attributes = []
     for attr in out_cfg["data"]:
         if attr not in CONFIG_ATTRIBUTES:
             print("Unknown attribute in config: '{}'".format(attr))
-            out_cfg["data"].pop("attr")
+            illegal_attributes.append(attr)
+    for attr in illegal_attributes:
+        out_cfg["data"].pop(attr)
 
     return out_cfg
 
@@ -291,7 +294,7 @@ def read_client_config() -> dict:
 
     out_settings = {}
 
-    for attr in ["wifi_ssid", "mqtt_ip", "mqtt_port", "mqtt_user"]:
+    for attr in ["irrecv_pin", "irsend_pin", "radio_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "wifi_ssid", "mqtt_ip", "mqtt_port", "mqtt_user"]:
 
         payload_dict = {"param": attr}
 
@@ -314,13 +317,13 @@ def read_client_config() -> dict:
 if __name__ == '__main__':
 
     network_mode = None
-    if ARGS.network_mode:
-        if ARGS.network_mode == "serial":
+    if ARGS.network:
+        if ARGS.network == "serial":
             network_mode = 0
-        elif ARGS.network_mode == "mqtt":
+        elif ARGS.network == "mqtt":
             network_mode = 1
         else:
-            print("Gave illegal network mode '{}'".format(ARGS.network_mode == "mqtt"))
+            print("Gave illegal network mode '{}'".format(ARGS.network == "mqtt"))
             network_mode = select_option(NETWORK_MODES, "network mode")
     else:
         network_mode = select_option(NETWORK_MODES, "network mode")

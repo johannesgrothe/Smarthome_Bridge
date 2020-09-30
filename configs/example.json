@@ -2,12 +2,19 @@
   "name": "ExampleConfig",
   "description": "Example config for testing and as reference",
   "data": {
-    "id": "YoloChip11",
+    "id": "YoloChip14",
     "wifi_ssid": "testwifi",
     "wifi_pw": "testpw",
     "mqtt_ip": "192.168.178.111",
     "mqtt_port": 1883,
     "mqtt_user": null,
-    "mqtt_pw": null
+    "mqtt_pw": null,
+    "irrecv_pin": 4,
+    "irsend_pin": 5,
+    "radio_pin": 0,
+    "network_mode": 1,
+    "gadget_remote": 0,
+    "code_remote": 1,
+    "event_remote": 1
   }
 }
