@@ -67,6 +67,13 @@ class Request:
             return self.__payload["ack"]
         return None
 
+    def get_status_msg(self) -> Optional[str]:
+        """Returns the 'status_msg' if there is one in the payload and 'None' otherwise"""
+
+        if "status_msg" in self.__payload:
+            return self.__payload["status_msg"]
+        return None
+
     def get_response(self, ack: bool = None, payload: dict = None, path: str = None):  # -> Request:
         """Generates a response """
 

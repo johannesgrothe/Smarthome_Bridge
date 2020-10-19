@@ -8,13 +8,19 @@ import random
 import os
 import sys
 from request import Request
+from gadgetlib import GadgetIdentifier, str_to_gadget_ident
 from typing import Union, Optional
 from pprint import pprint
 
 NETWORK_MODES = ["serial", "mqtt"]
-CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
+CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_recv_pin", "radio_send_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
+PRIVATE_ATTRIBUTES = ["wifi_pw", "mqtt_pw"]
+PUBLIC_ATTRIBUTES = [x for x in CONFIG_ATTRIBUTES if x not in PRIVATE_ATTRIBUTES]
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
+
+# debug
+parser.add_argument('--show_sending', action='store_true', help='prints the sent requests to the console')
 
 # network mode
 parser.add_argument("--network", help="may either be 'serial' or 'mqtt'")
@@ -34,6 +40,19 @@ parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.')
 parser.add_argument('--mqtt_port', help='port to be uploaded.')
 parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.')
 parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.')
+
+parser.add_argument('--erase_eeprom',
+                    action='store_true',
+                    help='erases the eeprom and overwrites it')
+parser.add_argument('--reset_eeprom',
+                    action='store_true',
+                    help='resets the complete config of the chip')
+parser.add_argument('--reset_config',
+                    action='store_true',
+                    help='resets the system config but keeps the gadgets')
+parser.add_argument('--reset_gadgets',
+                    action='store_true',
+                    help='resets the gadgets but keeps the system config')
 
 parser.add_argument('--network_only',
                     action='store_true',
@@ -97,7 +116,8 @@ def send_serial(req: Request) -> bool:
     """Sends a request on the serial port"""
 
     req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(), str(req.get_body()).replace("'", '"').replace("None", "null"))
-    # print("Sending '{}'".format(req_line[:-1]))
+    if ARGS.show_sending:
+        print("Sending '{}'".format(req_line[:-1]))
     ser.write(req_line.encode())
     return True
 
@@ -110,7 +130,7 @@ def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Optional[Reques
         try:
             ser_bytes = ser.readline().decode()
             # if ser_bytes.startswith("!"):
-            #     print("   -> {}".format(ser_bytes[:-1]))
+            # print("   -> {}".format(ser_bytes[:-1]))
             if monitor_mode:
                 print(ser_bytes[:-1])
             else:
@@ -127,7 +147,7 @@ def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Optional[Reques
             return None
 
 
-def send_request(req: Request) -> (bool, Optional[Request]):
+def send_request(req: Request) -> (Optional[bool], Optional[Request]):
     """Sends a request on the serial port and waits for the answer"""
 
     send_serial(req)
@@ -137,10 +157,9 @@ def send_request(req: Request) -> (bool, Optional[Request]):
         res = read_serial(2 if remaining_time > 2 else remaining_time)
         if res and res.get_session_id() == req.get_session_id():
             res_ack = res.get_ack()
-            if res_ack is not None:
-                return res_ack, res
-            return False, res
-    return False, None
+            res_status_msg = res.get_status_msg()
+            return res_ack, res_status_msg, res
+    return None, None
 
 
 def scan_for_clients() -> [str]:
@@ -247,7 +266,7 @@ def select_config() -> Optional[dict]:
     return valid_configs[cfg_i]
 
 
-def connect_to_client() -> Optional[dict]:
+def connect_to_client() -> Optional[str]:
     """Scans for clients and lets the user select one if needed and possible"""
 
     client_id = None
@@ -281,10 +300,23 @@ def load_config() -> Optional[dict]:
     illegal_attributes = []
     for attr in out_cfg["data"]:
         if attr not in CONFIG_ATTRIBUTES:
-            print("Unknown attribute in config: '{}'".format(attr))
+            print("[!] Unknown attribute in config: '{}'".format(attr))
             illegal_attributes.append(attr)
     for attr in illegal_attributes:
         out_cfg["data"].pop(attr)
+
+    # Translate the types for the gadgets from string to GadgetIdentifier
+    if "gadgets" in out_cfg:
+        for gadget_data in out_cfg["gadgets"]:
+            if "name" not in gadget_data or "type" not in gadget_data:
+                print("[×] Illegal gadget config: missing 'name' or 'type'")
+                return None
+            if isinstance(gadget_data["type"], str):
+                buf_type = str_to_gadget_ident(gadget_data["type"])
+                if buf_type == GadgetIdentifier.err_type:
+                    print("[×] Illegal gadget config: unknown type '{}'".format(type))
+                    return None
+                gadget_data["type"] = buf_type.value
 
     return out_cfg
 
@@ -294,7 +326,8 @@ def read_client_config() -> dict:
 
     out_settings = {}
 
-    for attr in ["irrecv_pin", "irsend_pin", "radio_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "wifi_ssid", "mqtt_ip", "mqtt_port", "mqtt_user"]:
+    # for attr in [x for x in PUBLIC_ATTRIBUTES if x != "id"]:
+    for attr in PUBLIC_ATTRIBUTES:
 
         payload_dict = {"param": attr}
 
@@ -304,14 +337,60 @@ def read_client_config() -> dict:
                           receiver=CLIENT_NAME,
                           payload=payload_dict)
 
-        success, res = send_request(out_req)
-        if res is not None:
+        success, status, res = send_request(out_req)
+        if res is not None and success is not False:
             # print("[✓] Reading '{}' was successful".format(attr))
             out_settings[attr] = res.get_payload()["value"]
         else:
             # print("[×] Reading '{}' failed".format(attr))
             out_settings[attr] = None
     return out_settings
+
+
+def reset_config(client_name: str, reset_option: str) -> bool:
+    """resets the config of a client. select behaviour using 'reset option'"""
+
+    payload = {"reset_option": reset_option}
+
+    out_request = Request(path="smarthome/config/reset",
+                          session_id=gen_req_id(),
+                          sender=get_sender(),
+                          receiver=client_name,
+                          payload=payload)
+
+    suc, status_msg, result = send_request(out_request)
+    return suc
+
+
+def reboot_client(client_name: str) -> bool:
+    """Reboots the client to make changes take effect"""
+
+    payload = {"subject": "reboot"}
+
+    out_request = Request(path="smarthome/sys",
+                          session_id=gen_req_id(),
+                          sender=get_sender(),
+                          receiver=client_name,
+                          payload=payload)
+
+    suc, status_msg, result = send_request(out_request)
+    return suc is True
+
+
+def upload_gadget(client_name: str, gadget: dict) -> (bool, Optional[str]):
+    """uploads a gadget to a client"""
+
+    if "type" not in gadget or "name" not in gadget:
+        return False
+
+    out_request = Request(path="smarthome/gadget/add",
+                          session_id=gen_req_id(),
+                          sender=get_sender(),
+                          receiver=client_name,
+                          payload=gadget)
+
+    suc, status_message, result = send_request(out_request)
+    return suc is True, status_message
 
 
 if __name__ == '__main__':
@@ -361,13 +440,36 @@ if __name__ == '__main__':
         sys.exit(1)
 
     CLIENT_NAME = connect_to_client()
+
+    if not CLIENT_NAME:
+        print("Could not establish a connection to a client")
+        sys.exit(1)
+
     print()
 
-    CLIENT_SETTINGS = read_client_config()
+    if ARGS.erase_eeprom:
+        if reset_config(CLIENT_NAME, "erase"):
+            print("[✓] Erasing eeprom was successful")
+        else:
+            print("[×] Erasing eeprom failed")
 
-    print("Client Config:")
-    for attr in CLIENT_SETTINGS:
-        print("   '{}': '{}'".format(attr, CLIENT_SETTINGS[attr]))
+    if ARGS.reset_eeprom:
+        if reset_config(CLIENT_NAME, "complete"):
+            print("[✓] Resetting the complete config was successful")
+        else:
+            print("[×] Resetting the complete config failed")
+
+    if ARGS.reset_config:
+        if reset_config(CLIENT_NAME, "config"):
+            print("[✓] Resetting the system config was successful")
+        else:
+            print("[×] Resetting the system config failed")
+
+    if ARGS.reset_gadgets:
+        if reset_config(CLIENT_NAME, "gadgets"):
+            print("[✓] Resetting the gadgets was successful")
+        else:
+            print("[×] Resetting the gadgets failed")
 
     CONFIG_FILE = load_config()
     print()
@@ -390,7 +492,7 @@ if __name__ == '__main__':
                               receiver=CLIENT_NAME,
                               payload=payload_dict)
 
-            success, res = send_request(out_req)
+            success, status_msg, res = send_request(out_req)
             if success:
                 print("[✓] Flashing '{}' was successful".format(attr))
                 if attr == "id":
@@ -399,12 +501,32 @@ if __name__ == '__main__':
                 print("[×] Flashing '{}' failed".format(attr))
 
     print()
-    CLIENT_SETTINGS = read_client_config()
-
-    print("Client Config:")
-    for attr in CLIENT_SETTINGS:
-        print("   '{}': '{}'".format(attr, CLIENT_SETTINGS[attr]))
+    # CLIENT_SETTINGS = read_client_config()
+    #
+    # print("Client Config:")
+    # for attr in CLIENT_SETTINGS:
+    #     print("   '{}': '{}'".format(attr, CLIENT_SETTINGS[attr]))
 
     if not ARGS.id_only and not ARGS.network_only:
         # upload gadgets
-        pass
+        if "gadgets" in CONFIG_FILE and CONFIG_FILE["gadgets"]:
+            for gadget in CONFIG_FILE["gadgets"]:
+                if "type" in gadget and "name" in gadget:
+                    success, status = upload_gadget(CLIENT_NAME, gadget)
+                    if success:
+                        print("[✓] Uploading '{}' was successful".format(gadget["name"]))
+                    else:
+                        print("[×] Uploading '{}' failed: {}".format(gadget["name"], status))
+                else:
+                    print("[×] Cannot upload gadget without type or name")
+
+        else:
+            print("[i] No gadgets needed to be flashed")
+
+    print()
+
+    # reboot the client to apply all the changes
+    if reboot_client(CLIENT_NAME):
+        print("[✓] Rebooting client was successful")
+    else:
+        print("[×] Rebooting failed, please reboot manually if necessary")

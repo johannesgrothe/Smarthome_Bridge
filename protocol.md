@@ -1,10 +1,10 @@
 # Smarthome ESP32 Communication Specification
 
-### Serial Communication Frame Structure
+## Serial Communication Frame Structure
 
 `!r_p[<path: string>]_b[<body: json>]_\r\n`
 
-### Body Structure
+## Body Structure
 
 ```json
 {
@@ -17,33 +17,31 @@
 
 None of the keys are optional, but the `receiver` and `payload` can be `null` for broadcasts.
 
-### Initialization
+## Special Messages
 
----
+### Broadcast
 
-#### Broadcast
+The broadcast is used to identify every chip in the network. 
 
-The broadcast is used to identify every chip in the network. The Request 
-
-###### Request Frame Info
+##### Request Frame Info
 
 | Sender | Receiver | Path                      |
 |:------ |:--------:| -------------------------:|
 | Master | Chip     | `smarthome/broadcast/req` |
 
-###### Request Payload
+##### Request Payload
 
 ```json
 null
 ```
 
-###### Response Frame Info
+##### Response Frame Info
 
 | Sender | Receiver | Path                      |
 |:------ |:--------:| -------------------------:|
 | Chip   | Master   | `smarthome/broadcast/res` |
 
-###### Response Payload
+##### Response Payload
 
 ```json
 null
@@ -51,23 +49,32 @@ null
 
 ---
 
-#### Reset config
+### Reset config
 
-The request is used to reset the whole eeprom of the receiving chip
+The request is used to reset the whole eeprom of the receiving chip.
 
-###### Frame Info
+##### Frame Info
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
 | Master | Chip     | `smarthome/config/reset` |
 
-###### Request Payload
+##### Request Payload
 
 ```json
-null
+{
+  "reset_option": <reset_option>
+}
 ```
 
-###### Response Payload
+Supported reset options:
+
+- erase
+- complete
+- config
+- gadgets
+
+##### Response Payload
 
 ```json
 {
@@ -77,33 +84,64 @@ null
 
 ---
 
-#### Chip ID
+### Reboot Chip
 
-The chip ID can have a length between 1 and 20
+The request is used to reboot the chip.
 
-##### Read
+##### Frame Info
 
-Reading the ID makes no sense since you need the ID to direct the request anyway.
-Read all IDs on the bus by sending a broadcast.
+| Sender | Receiver | Path            |
+|:------ |:--------:| ---------------:|
+| Master | Chip     | `smarthome/sys` |
 
-##### Write
+##### Request Payload
 
-###### Frame Info
+```json
+{
+  "subject": "reboot"
+}
+```
+
+##### Response Payload
+
+```json
+{
+  "ack": true
+}
+```
+
+---
+
+## Write Settings
+
+### Possible Params to Write
+
+| Param Name | Value Datatype |
+|:---------- |:--------------:|
+| id         | int            |
+| wifi_ssid  | string         |
+| wifi_pw    | string         |
+| mqtt_ip    | string         |
+| mqtt_port  | string         |
+| mqtt_user  | string         |
+| mqtt_pw    | string         |
+
+##### Frame Info
 
 | Sender | Receiver | Path                     |
 |:------ |:--------:| ------------------------:|
 | Master | Chip     | `smarthome/config/write` |
 
-###### Request Payload
+##### Request Payload
 
 ```json
 {
-  "param": "id",
-  "value": "<the new id>"
+  "param": "<param_name>",
+  "value": "<param_value>"
 }
 ```
 
-###### Response Payload
+##### Response Payload
 
 ```json
 {
@@ -113,290 +151,84 @@ Read all IDs on the bus by sending a broadcast.
 
 ---
 
-#### Wifi SSID
+## Read Settings
 
-The SSID of the Wifi network the chip should connect to
+### Possible Params to Read
 
-##### Read
+| Param Name | Value Datatype |
+|:---------- |:--------------:|
+| wifi_ssid  | string         |
+| mqtt_ip    | string         |
+| mqtt_port  | string         |
+| mqtt_user  | string         |
 
-###### Frame Info
+##### Frame Info
 
 | Sender | Receiver | Path                    |
 |:------ |:--------:| -----------------------:|
 | Master | Chip     | `smarthome/config/read` |
 
-###### Request Payload
+##### Request Payload
 
 ```json
 {
-  "param": "wifi_ssid"
+  "param": "<param_name>"
 }
 ```
 
-###### Response Payload
+##### Response Payload
 
 ```json
 {
-  "value": "<wifi ssid>"
+  "value": "<param_value>"
 }
 ```
 
-##### Write
+### Gadgets
 
-###### Frame Info
+Gadgets are the implementation of all kind of smarthome hardware. Gadgets are uploaded one at a time, checking if their name and ports are unique.
 
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` |
+#### Read
 
-###### Request Payload
+tdb
+
+#### Write
+
+##### Frame Info
+
+| Sender | Receiver | Path                   |
+|:------ |:--------:| ----------------------:|
+| Master | Chip     | `smarthome/gadget/add` |
+
+##### Request Payload
+
+The request payload is just the complete gadget config as json.
 
 ```json
-{
-  "param": "wifi_ssid",
-  "value": "<the new ssid>"
-}
+    {
+      "type": "<gadget_type>",
+      "name": "<gadget_name>",
+      "ports": {
+        "port0": 2,
+        "port1": 3,
+        ...
+        "port4": 3
+      },
+      "config": {},
+      "codes": {},
+      "remotes": {
+        "gadget": 1,
+        "code": 1,
+        "event": 1
+      }
+    }
 ```
 
-###### Response Payload
+##### Response Payload
 
 ```json
 {
-  "ack": true
-}
-```
-
----
-
-#### Wifi PW
-
-The password of the Wifi network the chip should connect to
-
-##### Read
-
-Reading the password is not supported.
-
-##### Write
-
-###### Frame Info
-
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` |
-
-###### Request Payload
-
-```json
-{
-  "param": "wifi_pw",
-  "value": "<the new password>"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "ack": true
-}
-```
-
----
-
-#### MQTT IP
-
-The IP of the mqtt broker the chip should connect to
-
-##### Read
-
-###### Frame Info
-
-| Sender | Receiver | Path                    |
-|:------ |:--------:| -----------------------:|
-| Master | Chip     | `smarthome/config/read` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_ip"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "value": "<mqtt ip>"
-}
-```
-
-##### Write
-
-###### Frame Info
-
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_ip",
-  "value": "<the new ip>"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "ack": true
-}
-```
-
----
-
-#### MQTT Port
-
-The port of the mqtt broker the chip should connect to
-
-##### Read
-
-###### Frame Info
-
-| Sender | Receiver | Path                    |
-|:------ |:--------:| -----------------------:|
-| Master | Chip     | `smarthome/config/read` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_port"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "value": "<mqtt port>"
-}
-```
-
-##### Write
-
-###### Frame Info
-
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_port",
-  "value": "<the new port>"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "ack": true
-}
-```
-
----
-
-#### MQTT Username
-
-The username used for the mqtt broker the chip should connect to
-
-##### Read
-
-###### Frame Info
-
-| Sender | Receiver | Path                    |
-|:------ |:--------:| -----------------------:|
-| Master | Chip     | `smarthome/config/read` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_user"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "value": "<mqtt username>"
-}
-```
-
-##### Write
-
-###### Frame Info
-
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_user",
-  "value": "<the new username>"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "ack": true
-}
-```
-
----
-
-#### MQTT Password
-
-The password used for the mqtt broker the chip should connect to
-
-##### Read
-
-Reading the password is not supported.
-
-##### Write
-
-###### Frame Info
-
-| Sender | Receiver | Path                     |
-|:------ |:--------:| ------------------------:|
-| Master | Chip     | `smarthome/config/write` |
-
-###### Request Payload
-
-```json
-{
-  "param": "mqtt_pw",
-  "value": "<the new password>"
-}
-```
-
-###### Response Payload
-
-```json
-{
-  "ack": true
+  "ack": true,
+  "status_msg": "a string explaning what failed if a failure occurred"
 }
 ```
