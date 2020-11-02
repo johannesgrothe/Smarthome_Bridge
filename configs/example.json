@@ -13,8 +13,8 @@
     "irsend_pin": 5,
     "radio_recv_pin": 6,
     "radio_send_pin": 7,
-    "network_mode": 1,
-    "gadget_remote": 0,
+    "network_mode": 2,
+    "gadget_remote": 1,
     "code_remote": 1,
     "event_remote": 1
   },
@@ -26,8 +26,13 @@
         "port0": 2,
         "port1": 3
       },
-      "config": {},
-      "codes": {},
+      "config": {
+        "length":  15
+      },
+      "codes": {
+        "turnOn": [1],
+        "turnOff": [2, 3]
+      },
       "remotes": {
         "gadget": 1,
         "code": 1,
@@ -36,7 +41,7 @@
     },
     {
       "type": "fan_westinghouse_ir",
-      "name": "blubgadget",
+      "name": "yolokoptergadget",
       "remotes": {
         "gadget": 1,
         "code": 0
@@ -44,14 +49,14 @@
     },
     {
       "type": 3,
-      "name": "blubgadget",
+      "name": "blubgadget2",
       "ports": {
         "port4": 2
       }
     },
     {
       "type": 3,
-      "name": "blubgadget",
+      "name": "blubgadget3",
       "ports": {
         "port4": 24
       }

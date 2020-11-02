@@ -8,7 +8,7 @@ import random
 import os
 import sys
 from request import Request
-from gadgetlib import GadgetIdentifier, str_to_gadget_ident
+from gadgetlib import GadgetIdentifier, str_to_gadget_ident, GadgetMethod, str_to_gadget_method
 from typing import Union, Optional
 from pprint import pprint
 
@@ -130,7 +130,7 @@ def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Optional[Reques
         try:
             ser_bytes = ser.readline().decode()
             # if ser_bytes.startswith("!"):
-            # print("   -> {}".format(ser_bytes[:-1]))
+            print("   -> {}".format(ser_bytes[:-1]))
             if monitor_mode:
                 print(ser_bytes[:-1])
             else:
@@ -158,8 +158,10 @@ def send_request(req: Request) -> (Optional[bool], Optional[Request]):
         if res and res.get_session_id() == req.get_session_id():
             res_ack = res.get_ack()
             res_status_msg = res.get_status_msg()
+            if res_status_msg is None:
+                res_status_msg = "no status message received"
             return res_ack, res_status_msg, res
-    return None, None
+    return None, "no response received", None
 
 
 def scan_for_clients() -> [str]:
@@ -308,6 +310,8 @@ def load_config() -> Optional[dict]:
     # Translate the types for the gadgets from string to GadgetIdentifier
     if "gadgets" in out_cfg:
         for gadget_data in out_cfg["gadgets"]:
+
+            # Check for name and type
             if "name" not in gadget_data or "type" not in gadget_data:
                 print("[×] Illegal gadget config: missing 'name' or 'type'")
                 return None
@@ -317,6 +321,16 @@ def load_config() -> Optional[dict]:
                     print("[×] Illegal gadget config: unknown type '{}'".format(type))
                     return None
                 gadget_data["type"] = buf_type.value
+
+            # Translate method names to indexes
+            new_codes = {}
+            if "codes" in gadget_data:
+                for method in gadget_data["codes"]:
+                    method_code = str_to_gadget_method(method).value
+                    if method_code:
+                        new_codes[method_code] = gadget_data["codes"][method]
+                    else:
+                        print("[!] Illegal gadget method: '{}'".format(method))
 
     return out_cfg
 

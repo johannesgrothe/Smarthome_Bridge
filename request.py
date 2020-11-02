@@ -75,7 +75,7 @@ class Request:
         return None
 
     def get_response(self, ack: bool = None, payload: dict = None, path: str = None):  # -> Request:
-        """Generates a response """
+        """Generates a response"""
 
         if not path:
             new_path = self.__path
