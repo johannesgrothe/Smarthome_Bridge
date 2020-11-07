@@ -2,15 +2,18 @@ import serial
 import time
 import argparse
 import json
-import re
 import socket
 import random
 import os
 import sys
 from request import Request
 from gadgetlib import GadgetIdentifier, str_to_gadget_ident, GadgetMethod, str_to_gadget_method
-from typing import Union, Optional
+from typing import Optional
 from pprint import pprint
+
+from network_connector import NetworkConnector
+from serial_connector import SerialConnector
+from mqtt_connector import MQTTConnector
 
 NETWORK_MODES = ["serial", "mqtt"]
 CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_recv_pin", "radio_send_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
@@ -26,8 +29,12 @@ parser.add_argument('--show_sending', action='store_true', help='prints the sent
 parser.add_argument("--network", help="may either be 'serial' or 'mqtt'")
 
 # serial settings
-parser.add_argument('--port', help='serial port to connect to.')
-parser.add_argument('--baudrate', help='baudrate for the serial connection.')
+parser.add_argument('--serial_port', help='serial port to connect to.')
+parser.add_argument('--serial_baudrate', help='baudrate for the serial connection.')
+
+# # mqtt settings
+# parser.add_argument('--mqtt_port', help='port of the mqtt server.')
+# parser.add_argument('--mqtt_ip', help='ip of the mqtt server.')
 
 # config file
 parser.add_argument('--config_file', help='path to the config that should be uploaded.')
@@ -81,109 +88,22 @@ def get_sender() -> str:
     return socket.gethostname()
 
 
-def decode_line(line) -> Optional[Request]:
-    """Decodes a line and extracts a request if there is any"""
-
-    if line[:3] == "!r_":
-        elems = re.findall("_([a-z])\[(.+?)\]", line)
-        req_dict = {}
-        for type, val in elems:
-            if type in req_dict:
-                print("Double key in request: '{}'".format(type))
-                return None
-            else:
-                req_dict[type] = val
-        for key in ["p", "b"]:
-            if key not in req_dict:
-                print("Missig key in request: '{}'".format(key))
-                return None
-        try:
-            json_body = json.loads(req_dict["b"])
-
-            out_req = Request(path=req_dict["p"],
-                              session_id=json_body["session_id"],
-                              sender=json_body["sender"],
-                              receiver=json_body["receiver"],
-                              payload=json_body["payload"])
-
-            return out_req
-        except ValueError:
-            return None
-    return None
-
-
-def send_serial(req: Request) -> bool:
-    """Sends a request on the serial port"""
-
-    req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(), str(req.get_body()).replace("'", '"').replace("None", "null"))
-    if ARGS.show_sending:
-        print("Sending '{}'".format(req_line[:-1]))
-    ser.write(req_line.encode())
-    return True
-
-
-def read_serial(timeout: int = 0, monitor_mode: bool = False) -> Optional[Request]:
-    """Tries to read a line from the serial port"""
-
-    timeout_time = time.time() + timeout
-    while True:
-        try:
-            ser_bytes = ser.readline().decode()
-            # if ser_bytes.startswith("!"):
-            print("   -> {}".format(ser_bytes[:-1]))
-            if monitor_mode:
-                print(ser_bytes[:-1])
-            else:
-                if ser_bytes.startswith("Backtrace: 0x"):
-                    print("Client crashed with {}".format(ser_bytes[:-1]))
-                    return None
-                buf_req = decode_line(ser_bytes)
-                if buf_req:
-                    return buf_req
-        except (FileNotFoundError, serial.serialutil.SerialException):
-            print("Lost connection to serial port")
-            return None
-        if (timeout > 0) and (time.time() > timeout_time):
-            return None
-
-
-def send_request(req: Request) -> (Optional[bool], Optional[Request]):
-    """Sends a request on the serial port and waits for the answer"""
-
-    send_serial(req)
-    timeout_time = time.time() + 6
-    while time.time() < timeout_time:
-        remaining_time = timeout_time - time.time()
-        res = read_serial(2 if remaining_time > 2 else remaining_time)
-        if res and res.get_session_id() == req.get_session_id():
-            res_ack = res.get_ack()
-            res_status_msg = res.get_status_msg()
-            if res_status_msg is None:
-                res_status_msg = "no status message received"
-            return res_ack, res_status_msg, res
-    return None, "no response received", None
-
-
 def scan_for_clients() -> [str]:
-    """Sends a broadcast and waits for clients to answer"""
+    """Sends a broadcast and waits for clients to answer\
+     Needs a global NetworkConnector named 'network_gadget'"""
 
     client_names = []
-    session_id = gen_req_id()
     req = Request("smarthome/broadcast/req",
-                  session_id,
+                  gen_req_id(),
                   get_sender(),
                   None,
                   {})
-    send_serial(req)
-    timeout_time = time.time() + 6
-    while time.time() < timeout_time:
-        remaining_time = timeout_time - time.time()
-        req = read_serial(2 if remaining_time > 2 else remaining_time)
-        if req and req.get_path() == "smarthome/broadcast/res" and req.get_session_id() == session_id:
-            if network_mode == 0:
-                return [req.get_sender()]
-            else:
-                client_names.append(req.get_sender())
+
+    responses = network_gadget.send_broadcast(req)
+
+    for broadcast_res in responses:
+        client_names.append(broadcast_res.get_sender())
+
     return client_names
 
 
@@ -269,7 +189,8 @@ def select_config() -> Optional[dict]:
 
 
 def connect_to_client() -> Optional[str]:
-    """Scans for clients and lets the user select one if needed and possible"""
+    """Scans for clients and lets the user select one if needed and possible.\
+     Needs a global NetworkConnector named 'network_gadget'"""
 
     client_id = None
 
@@ -279,7 +200,7 @@ def connect_to_client() -> Optional[str]:
     if len(client_list) == 0:
         print("No client answered to broadcast")
     elif len(client_list) > 1:
-        print("Multiple clients answered to broadcast (wtf)")
+        client_id = select_option(client_list, "client to connect to")
     else:
         client_id = client_list[0]
         print("Connected to '{}'".format(client_id))
@@ -336,7 +257,8 @@ def load_config() -> Optional[dict]:
 
 
 def read_client_config() -> dict:
-    """Reads and returns all possible attributes from the client"""
+    """Reads and returns all possible attributes from the client.\
+     Needs a global NetworkConnector named 'network_gadget'"""
 
     out_settings = {}
 
@@ -351,7 +273,7 @@ def read_client_config() -> dict:
                           receiver=CLIENT_NAME,
                           payload=payload_dict)
 
-        success, status, res = send_request(out_req)
+        success, status, res = network_gadget.send_request(out_req)
         if res is not None and success is not False:
             # print("[✓] Reading '{}' was successful".format(attr))
             out_settings[attr] = res.get_payload()["value"]
@@ -362,7 +284,8 @@ def read_client_config() -> dict:
 
 
 def reset_config(client_name: str, reset_option: str) -> bool:
-    """resets the config of a client. select behaviour using 'reset option'"""
+    """Resets the config of a client. Select behaviour using 'reset option'.\
+     Needs a global NetworkConnector named 'network_gadget'"""
 
     payload = {"reset_option": reset_option}
 
@@ -372,12 +295,13 @@ def reset_config(client_name: str, reset_option: str) -> bool:
                           receiver=client_name,
                           payload=payload)
 
-    suc, status_msg, result = send_request(out_request)
+    suc, status_msg, result = network_gadget.send_request(out_request)
     return suc
 
 
 def reboot_client(client_name: str) -> bool:
-    """Reboots the client to make changes take effect"""
+    """Reboots the client to make changes take effect.\
+     Needs a global NetworkConnector named 'network_gadget'"""
 
     payload = {"subject": "reboot"}
 
@@ -387,12 +311,13 @@ def reboot_client(client_name: str) -> bool:
                           receiver=client_name,
                           payload=payload)
 
-    suc, status_msg, result = send_request(out_request)
+    suc, status_msg, result = network_gadget.send_request(out_request)
     return suc is True
 
 
 def upload_gadget(client_name: str, gadget: dict) -> (bool, Optional[str]):
-    """uploads a gadget to a client"""
+    """uploads a gadget to a client.\
+     Needs a global NetworkConnector named 'network_gadget'"""
 
     if "type" not in gadget or "name" not in gadget:
         return False
@@ -403,11 +328,13 @@ def upload_gadget(client_name: str, gadget: dict) -> (bool, Optional[str]):
                           receiver=client_name,
                           payload=gadget)
 
-    suc, status_message, result = send_request(out_request)
+    suc, status_message, result = network_gadget.send_request(out_request)
     return suc is True, status_message
 
 
 if __name__ == '__main__':
+
+    network_gadget = None
 
     network_mode = None
     if ARGS.network:
@@ -416,7 +343,7 @@ if __name__ == '__main__':
         elif ARGS.network == "mqtt":
             network_mode = 1
         else:
-            print("Gave illegal network mode '{}'".format(ARGS.network == "mqtt"))
+            print("Gave illegal network mode '{}'".format(ARGS.network))
             network_mode = select_option(NETWORK_MODES, "network mode")
     else:
         network_mode = select_option(NETWORK_MODES, "network mode")
@@ -424,34 +351,44 @@ if __name__ == '__main__':
     print()
 
     if network_mode == 0:  # SERIAL MODE
-        if ARGS.port:
-            serial_port = ARGS.port
+        if ARGS.serial_port:
+            serial_port = ARGS.serial_port
         else:
             serial_port = '/dev/cu.SLAB_USBtoUART'
 
-        if ARGS.baudrate:
-            serial_baudrate = ARGS.baudrate
+        if ARGS.serial_baudrate:
+            serial_baudrate = ARGS.serial_baudrate
         else:
             serial_baudrate = 115200
 
-        serial_active = False
         try:
-            ser = serial.Serial(port=serial_port, baudrate=serial_baudrate, timeout=1)
-            ser.flushInput()
-            serial_active = True
+            network_gadget = SerialConnector(get_sender(), serial_port, serial_baudrate)
         except (FileNotFoundError, serial.serialutil.SerialException) as e:
             print("Unable to connect to serial port '{}'".format(serial_port))
-
-        if serial_active:
-            if ARGS.monitor_mode:
-                read_serial(0, True)
-                sys.exit(0)
-        else:
             sys.exit(1)
 
+        if ARGS.monitor_mode:
+            if network_gadget is not None:
+                network_gadget.read_serial(0, True)
+                sys.exit(0)
+
     else:
-        print("MQTT is currently not supported")
-        sys.exit(1)
+        if ARGS.mqtt_port:
+            mqtt_port = ARGS.mqtt_port
+        else:
+            mqtt_port = 1883
+
+        if ARGS.baudrate:
+            mqtt_ip = ARGS.mqtt_ip
+        else:
+            print("MQTT needs an IP to connect to")
+            sys.exit(1)
+
+        try:
+            network_gadget = MQTTConnector(get_sender(), mqtt_ip, mqtt_port)
+        except (FileNotFoundError, serial.serialutil.SerialException) as e:
+            print("Unable to connect to mqtt server '{}:{}'".format(mqtt_ip, mqtt_port))
+            sys.exit(1)
 
     CLIENT_NAME = connect_to_client()
 
@@ -506,7 +443,7 @@ if __name__ == '__main__':
                               receiver=CLIENT_NAME,
                               payload=payload_dict)
 
-            success, status_msg, res = send_request(out_req)
+            success, status_msg, res = network_gadget.send_request(out_req)
             if success:
                 print("[✓] Flashing '{}' was successful".format(attr))
                 if attr == "id":
@@ -515,11 +452,6 @@ if __name__ == '__main__':
                 print("[×] Flashing '{}' failed".format(attr))
 
     print()
-    # CLIENT_SETTINGS = read_client_config()
-    #
-    # print("Client Config:")
-    # for attr in CLIENT_SETTINGS:
-    #     print("   '{}': '{}'".format(attr, CLIENT_SETTINGS[attr]))
 
     if not ARGS.id_only and not ARGS.network_only:
         # upload gadgets
