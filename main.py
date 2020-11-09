@@ -369,20 +369,24 @@ if __name__ == '__main__':
 
         if ARGS.monitor_mode:
             if network_gadget is not None:
-                network_gadget.read_serial(0, True)
+                network_gadget.monitor()
                 sys.exit(0)
 
     else:
         if ARGS.mqtt_port:
-            mqtt_port = ARGS.mqtt_port
+            mqtt_port = int(ARGS.mqtt_port)
         else:
-            mqtt_port = 1883
+            var = input("Please enter MQTT PORT:\n")
+            try:
+                mqtt_port = int(var)
+            except ValueError:
+                print("Illegal Port")
+                sys.exit(1)
 
-        if ARGS.baudrate:
+        if ARGS.mqtt_ip:
             mqtt_ip = ARGS.mqtt_ip
         else:
-            print("MQTT needs an IP to connect to")
-            sys.exit(1)
+            mqtt_ip = input("Please enter MQTT IP:\n")
 
         try:
             network_gadget = MQTTConnector(get_sender(), mqtt_ip, mqtt_port)

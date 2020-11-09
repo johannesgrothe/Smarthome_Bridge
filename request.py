@@ -95,3 +95,7 @@ class Request:
                        sender=self.__receiver,
                        receiver=self.__sender,
                        payload=new_payload)
+
+    def to_string(self) -> str:
+        """Converts the request to a string"""
+        return "<'{}': {}>".format(self.get_path(), self.get_body())

@@ -23,23 +23,8 @@ class SerialConnector(NetworkConnector):
     def __del__(self):
         pass
 
-    def send_request(self, req: Request) -> (Optional[bool], Optional[Request]):
-        """Sends a request on the serial port and waits for the answer"""
-
-        self.send_serial(req)
-        timeout_time = time.time() + 6
-        while time.time() < timeout_time:
-            remaining_time = timeout_time - time.time()
-            res = self.read_serial(2 if remaining_time > 2 else remaining_time)
-            if res and res.get_session_id() == req.get_session_id():
-                res_ack = res.get_ack()
-                res_status_msg = res.get_status_msg()
-                if res_status_msg is None:
-                    res_status_msg = "no status message received"
-                return res_ack, res_status_msg, res
-        return None, "no response received", None
-
-    def decode_line(self, line) -> Optional[Request]:
+    @staticmethod
+    def __decode_line(line) -> Optional[Request]:
         """Decodes a line and extracts a request if there is any"""
 
         if line[:3] == "!r_":
@@ -69,16 +54,18 @@ class SerialConnector(NetworkConnector):
                 return None
         return None
 
-    def send_serial(self, req: Request) -> bool:
+    def __send_serial(self, req: Request) -> bool:
         """Sends a request on the serial port"""
 
+        json_str = json.dumps(req.get_body())
+
         req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
-                                              str(req.get_body()).replace("'", '"').replace("None", "null"))
+                                              json_str)
         # print("Sending '{}'".format(req_line[:-1]))
         self.__client.write(req_line.encode())
         return True
 
-    def read_serial(self, timeout: int = 0, monitor_mode: bool = False) -> Optional[Request]:
+    def __read_serial(self, timeout: int = 0, monitor_mode: bool = False) -> Optional[Request]:
         """Tries to read a line from the serial port"""
 
         timeout_time = time.time() + timeout
@@ -93,7 +80,7 @@ class SerialConnector(NetworkConnector):
                     if ser_bytes.startswith("Backtrace: 0x"):
                         print("Client crashed with {}".format(ser_bytes[:-1]))
                         return None
-                    read_buf_req = self.decode_line(ser_bytes)
+                    read_buf_req = self.__decode_line(ser_bytes)
                     if read_buf_req:
                         return read_buf_req
             except (FileNotFoundError, serial.serialutil.SerialException):
@@ -102,24 +89,51 @@ class SerialConnector(NetworkConnector):
             if (timeout > 0) and (time.time() > timeout_time):
                 return None
 
-    def send_broadcast(self, req: Request, timeout: int = 5, responses_awaited: int = 0) -> [Request]:
+    def send_broadcast(self, req: Request, timeout: int = 6, responses_awaited: int = 0) -> [Request]:
         """Sends a broadcast and waits for answers"""
         responses: [Request] = []
 
-        self.send_serial(req)
+        self.__send_serial(req)
         timeout_time = time.time() + timeout
         while time.time() < timeout_time:
             remaining_time = timeout_time - time.time()
-            incoming_req = self.read_serial(2 if remaining_time > 2 else remaining_time)
+            incoming_req = self.__read_serial(2 if remaining_time > 2 else remaining_time)
             if incoming_req and incoming_req.get_path() == "smarthome/broadcast/res" and incoming_req.get_session_id() == req.get_session_id():
                 responses.append(incoming_req)
                 if 0 < responses_awaited <= len(responses):
                     return responses
         return responses
 
+    def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
+        """Sends a request on the serial port and waits for the answer"""
+
+        self.__send_serial(req)
+        timeout_time = time.time() + 6
+        while time.time() < timeout_time:
+            remaining_time = timeout_time - time.time()
+            res = self.__read_serial(2 if remaining_time > 2 else remaining_time)
+            if res and res.get_session_id() == req.get_session_id():
+                res_ack = res.get_ack()
+                res_status_msg = res.get_status_msg()
+                if res_status_msg is None:
+                    res_status_msg = "no status message received"
+                return res_ack, res_status_msg, res
+        return None, "no response received", None
+
+    def monitor(self):
+        self.__read_serial(0, True)
+
 
 if __name__ == '__main__':
-    mqtt_gadget = SerialConnector("TesTeR", "192.168.178.111", 1883)
+    import sys
+
+    port = '/dev/cu.SLAB_USBtoUART'
+    baudrate = 115200
+    try:
+        network_gadget = SerialConnector("TesTeR", port, baudrate)
+    except OSError as e:
+        print("Cannot connect to '{}'".format(port))
+        sys.exit(1)
 
     buf_req = Request("smarthome/debug",
                       125543,
@@ -127,4 +141,4 @@ if __name__ == '__main__':
                       "you",
                       {"yolo": "blub"})
 
-    mqtt_gadget.send_request(buf_req)
+    network_gadget.send_request(buf_req)
