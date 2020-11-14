@@ -8,9 +8,9 @@
 
 ```json
 {
-  "sender": "<sender id>",
-  "receiver": "<receiver id>",
-  "session_id": <session_id>,
+  "sender": string,
+  "receiver": string,
+  "session_id": uint,
   "payload": {}
 }
 ```
@@ -63,22 +63,23 @@ The request is used to reset the whole eeprom of the receiving chip.
 
 ```json
 {
-  "reset_option": <reset_option>
+  "reset_option": string
 }
 ```
 
 Supported reset options:
 
-- erase
-- complete
-- config
-- gadgets
+- "erase"
+- "complete"
+- "config"
+- "gadgets"
 
 ##### Response Payload
 
 ```json
 {
-  "ack": true
+  "ack": bool,
+  <optional> "status_msg": string
 }
 ```
 
@@ -106,7 +107,8 @@ The request is used to reboot the chip.
 
 ```json
 {
-  "ack": true
+  "ack": bool,
+  <optional> "status_msg": string
 }
 ```
 
@@ -136,8 +138,8 @@ The request is used to reboot the chip.
 
 ```json
 {
-  "param": "<param_name>",
-  "value": "<param_value>"
+  "param": string,
+  "value": <value datatype>
 }
 ```
 
@@ -145,7 +147,8 @@ The request is used to reboot the chip.
 
 ```json
 {
-  "ack": true
+  "ack": bool,
+  <optional> "status_msg": string
 }
 ```
 
@@ -172,7 +175,7 @@ The request is used to reboot the chip.
 
 ```json
 {
-  "param": "<param_name>"
+  "param": string
 }
 ```
 
@@ -180,7 +183,7 @@ The request is used to reboot the chip.
 
 ```json
 {
-  "value": "<param_value>"
+  "value": <value datatype>
 }
 ```
 
@@ -206,20 +209,20 @@ The request payload is just the complete gadget config as json.
 
 ```json
     {
-      "type": "<gadget_type>",
-      "name": "<gadget_name>",
+      "type": string,
+      "name": string,
       "ports": {
-        "port0": 2,
-        "port1": 3,
+        "port0": uint,
+        "port1": uint,
         ...
-        "port4": 3
+        "port4": uint
       },
       "config": {},
       "codes": {},
       "remotes": {
-        "gadget": 1,
-        "code": 1,
-        "event": 1
+        "gadget": uint,
+        "code": uint,
+        "event": uint
       }
     }
 ```
@@ -228,7 +231,65 @@ The request payload is just the complete gadget config as json.
 
 ```json
 {
-  "ack": true,
-  "status_msg": "a string explaning what failed if a failure occurred"
+  "ack": bool,
+  <optional> "status_msg": string
 }
 ```
+
+## Remotes
+
+Remotes are used store and sync information about the whole system.
+
+### Gadget Remote
+
+The gadget remote stores the status of all gadgets and provides the information to external clients like apple home or a own webinterface/app
+
+#### Update status on the remote
+
+##### Frame Info
+
+| Sender | Receiver | Path                              |
+|:------ |:--------:| ---------------------------------:|
+| Master | Chip     | `smarthome/remotes/gadget/update` |
+
+##### Request Payload
+
+The request payload is just the complete gadget config as json.
+
+```json
+{
+  "name": string,
+  "type": uint,
+  "characteristic": uint,
+  "value": int
+}
+```
+
+##### Response Payload
+
+No response is sent.
+
+#### Update status on the chip
+
+##### Frame Info
+
+| Sender | Receiver | Path                              |
+|:------ |:--------:| ---------------------------------:|
+| Master | Chip     | `smarthome/remotes/gadget/update` |
+
+##### Request Payload
+
+The request payload is just the complete gadget config as json.
+
+```json
+{
+  "name": string,
+  "type": uint,
+  "characteristic": uint,
+  "value": int
+}
+```
+
+##### Response Payload
+
+No response is sent.
