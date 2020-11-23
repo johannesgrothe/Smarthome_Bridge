@@ -1,9 +1,8 @@
 import enum
 
 
-class GadgetIdentifier(enum.Enum):
+class GadgetIdentifier(enum.IntEnum):
     """A number identifier for every gadget type"""
-
     err_type = 0
     lamp_neopixel_basic = 1
     lamp_basic = 2
@@ -13,6 +12,28 @@ class GadgetIdentifier(enum.Enum):
     sh_wallswitch_basic = 6
     sh_sensor_motion_hr501 = 7
     sh_sensor_temperature_dht = 8
+
+
+class CharacteristicIdentifier(enum.IntEnum):
+    """A Number for every characterisitc"""
+    err_type = 0,
+    turnOn = 1
+    turnOff = 2
+    toggleStatus = 3
+    brightnessUp = 4
+    brightnessDown = 5
+    volumeUp = 6
+    volumeDown = 7
+    mute = 8
+    unmute = 9
+    toggleMute = 10
+    mode0 = 11
+    mode1 = 12
+    mode2 = 13
+    mode3 = 14
+    mode4 = 15
+    modeUp = 16
+    modeDown = 17
 
 
 def str_to_gadget_ident(g_str: str) -> GadgetIdentifier:

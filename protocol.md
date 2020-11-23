@@ -244,6 +244,42 @@ Remotes are used store and sync information about the whole system.
 
 The gadget remote stores the status of all gadgets and provides the information to external clients like apple home or a own webinterface/app
 
+#### Register gadget on the remote
+
+##### Frame Info
+
+| Sender | Receiver | Path                                |
+|:------ |:--------:| -----------------------------------:|
+| Master | Chip     | `smarthome/remotes/gadget/register` |
+
+##### Request Payload
+
+The request payload is just the complete gadget config as json.
+
+```json
+{
+  "gadget_name": string,
+  "gadget_type": uint,
+  "characteristics": {
+      "3": {
+        "min": int,
+        "max": int,
+        "step": uint
+      },
+    ...
+  
+}
+```
+
+##### Response Payload
+
+```json
+{
+  "ack": bool,
+  <optional> "status_msg": string
+}
+```
+
 #### Update status on the remote
 
 ##### Frame Info

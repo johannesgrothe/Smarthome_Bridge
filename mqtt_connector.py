@@ -17,12 +17,22 @@ class MQTTConnector(NetworkConnector):
     __ip: str
     __port: int
 
-    def __init__(self, own_name: str, ip: str, port: int):
+    __mqtt_username: Optional[str]
+    __mqtt_password: Optional[str]
+
+    __mqtt_callback_function = None
+    __mqtt_callback_thread = None
+
+    def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str], mqtt_pw: Optional[str]):
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name)
-        self.__ip = ip
-        self.__port = port
+        self.__ip = mqtt_ip
+        self.__port = mqtt_port
+        self.__mqtt_username = mqtt_user
+        self.__mqtt_password = mqtt_pw
 
+        if self.__mqtt_username and self.__mqtt_password:
+            self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         self.__client.connect(self.__ip, self.__port, 60)
         self.__client.loop_start()
         self.__client.on_message = self.__on_message
@@ -35,6 +45,7 @@ class MQTTConnector(NetworkConnector):
     @staticmethod
     def __on_message(client, userdata, message):
         global mqtt_res_queue
+        global mqtt_callback
 
         topic = message.topic
 
@@ -50,17 +61,27 @@ class MQTTConnector(NetworkConnector):
             print("Couldn't decode json: '{}'".format(json_str))
             return
 
+        if not ("session_id" in body and "sender" in body and "receiver" in body and "payload" in body):
+            print("Missing key(s) in request")
+            return
+
         try:
             inc_req = Request(topic,
                               body["session_id"],
                               body["sender"],
                               body["receiver"],
                               body["payload"])
-            # print("Received: {}".format(inc_req.to_string()))
+            print("Received: {}".format(inc_req.to_string()))
+
             mqtt_res_queue.put(inc_req)
 
         except ValueError:
-            print("Missing elements in json")
+            print("Error creating Request")
+
+    def get_request(self) -> Optional[bool]:
+        if not mqtt_res_queue.empty():
+            return mqtt_res_queue.get()
+        return None
 
     def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
         global mqtt_res_queue
