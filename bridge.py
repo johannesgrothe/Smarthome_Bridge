@@ -1,5 +1,4 @@
 import api
-import webinterface
 import argparse
 import json
 import socket
@@ -43,10 +42,8 @@ class MainBridge:
     # API
     __api_port: int
 
-    # Webinterface
-    __webinterface_port: int
-
     __network_gadget: MQTTConnector
+    __mqtt_callback_thread: Thread
     __received_requests: int
 
     # Gadgets:
@@ -161,16 +158,6 @@ class MainBridge:
         """Launches the REST API"""
         print("Launching API")
         api.run_api(bridge, self.__api_port)
-
-    # Webinterface settings
-    def set_webinterface_port(self, port: int):
-        """Sets the port for the webinterface"""
-        self.__webinterface_port = port
-
-    def run_webinterface(self):
-        """Launches the webinterface"""
-        print("Launching Webinterface")
-        # webinterface.run_webinterface(bridge, self.__webinterface_port)
 
 
 class BridgeMQTTThread(Thread):

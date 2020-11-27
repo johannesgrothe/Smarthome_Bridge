@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, request
+from flask import Flask, redirect, url_for, request, jsonify
 from bridge import MainBridge
 from typing import Optional
 
@@ -12,7 +12,10 @@ def run_api(bridge: MainBridge, port: int):
 
     @app.route('/')
     def root():
-        return "<html><body><center><h1>API</h1><h2>{}</h2></body></html>".format(bridge.get_bridge_name())
+        res_text = "<html><body><center><h1>API</h1><h2>{}</h2></body></html>".format(bridge.get_bridge_name())
+        response = jsonify(res_text)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
     @app.route('/gadgets/all', methods=['GET'])
     def get_all_gadgets():
@@ -24,7 +27,10 @@ def run_api(bridge: MainBridge, port: int):
             out_gadget_list.append(json_gadget)
 
         buf_res = {"gadgets": out_gadget_list, "gadget_count": len(gadget_list)}
-        return buf_res
+
+        response = jsonify(buf_res)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
     # @app.route('/gadgets/all', methods=['POST', 'GET'])
     # def login():

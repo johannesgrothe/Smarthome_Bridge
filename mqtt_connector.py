@@ -20,9 +20,6 @@ class MQTTConnector(NetworkConnector):
     __mqtt_username: Optional[str]
     __mqtt_password: Optional[str]
 
-    __mqtt_callback_function = None
-    __mqtt_callback_thread = None
-
     def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str], mqtt_pw: Optional[str]):
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name)
@@ -36,7 +33,6 @@ class MQTTConnector(NetworkConnector):
         self.__client.connect(self.__ip, self.__port, 60)
         self.__client.loop_start()
         self.__client.on_message = self.__on_message
-        self.__res_queue = Queue()
         self.__client.subscribe("smarthome/#")
 
     def __del__(self):
@@ -45,7 +41,6 @@ class MQTTConnector(NetworkConnector):
     @staticmethod
     def __on_message(client, userdata, message):
         global mqtt_res_queue
-        global mqtt_callback
 
         topic = message.topic
 
@@ -79,6 +74,7 @@ class MQTTConnector(NetworkConnector):
             print("Error creating Request")
 
     def get_request(self) -> Optional[bool]:
+        """Returns a request if there is one"""
         if not mqtt_res_queue.empty():
             return mqtt_res_queue.get()
         return None
@@ -87,17 +83,18 @@ class MQTTConnector(NetworkConnector):
         global mqtt_res_queue
 
         self.__client.publish(req.get_path(), str(req.get_body()))
-        timeout_time = time.time() + timeout
-        while time.time() < timeout_time:
-            if not mqtt_res_queue.empty():
-                res: Request = mqtt_res_queue.get()
-                # print("Got from Queue: {}".format(res.to_string()))
-                if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
-                    res_ack = res.get_ack()
-                    res_status_msg = res.get_status_msg()
-                    if res_status_msg is None:
-                        res_status_msg = "no status message received"
-                    return res_ack, res_status_msg, res
+        if timeout > 0:
+            timeout_time = time.time() + timeout
+            while time.time() < timeout_time:
+                if not mqtt_res_queue.empty():
+                    res: Request = mqtt_res_queue.get()
+                    # print("Got from Queue: {}".format(res.to_string()))
+                    if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
+                        res_ack = res.get_ack()
+                        res_status_msg = res.get_status_msg()
+                        if res_status_msg is None:
+                            res_status_msg = "no status message received"
+                        return res_ack, res_status_msg, res
         return None, "no response received", None
 
     def send_broadcast(self, req: Request, timeout: int = 6) -> [Request]:

@@ -71,6 +71,12 @@ class Gadget:
     def get_type(self) -> GadgetIdentifier:
         return self.__type
 
+    def get_characteristic_types(self) -> [CharacteristicIdentifier]:
+        buf_list: [CharacteristicIdentifier] = []
+        for characteristic in self.__characteristics:
+            buf_list.append(characteristic.get_type())
+        return buf_list
+
     def get_json_representation(self) -> dict:
         buf_json = {"type": int(self.__type), "name": self.__name, "characteristics": []}
         for characteristic in self.__characteristics:
