@@ -1,11 +1,11 @@
 from flask import Flask, redirect, url_for, request, jsonify
-from bridge import MainBridge
+# from bridge import MainBridge
 from typing import Optional
 
 # https://pythonbasics.org/flask-http-methods/
 
 
-def run_api(bridge: MainBridge, port: int):
+def run_api(bridge, port: int):
     """Methods that launches the rest api to read, write and update gadgets via HTTP"""
 
     app = Flask(__name__)

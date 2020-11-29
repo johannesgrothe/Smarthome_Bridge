@@ -4,12 +4,31 @@ from typing import Optional
 from bridge import MainBridge
 from request import Request
 from gadgetlib import GadgetIdentifier
-from gadget import Characteristic, Gadget
+from gadget import Characteristic, Gadget, CharacteristicIdentifier
 from queue import Queue
 from threading import Thread
 
 # Global queue for mqtt results
 mqtt_res_queue = Queue()
+
+
+def gadget_type_to_string(identifier: GadgetIdentifier) -> Optional[str]:
+    switcher = {
+        1: "Lightbulb",
+        2: "Fan",
+        3: "Doorbell"
+    }
+    return switcher.get(identifier, None)
+
+def characteristic_type_to_string(identifier: CharacteristicIdentifier) -> Optional[str]:
+    switcher = {
+        1: "On",
+        2: "rotationSpeed",
+        3: "brightness",
+        4: "hue",
+        5: "saturation"
+    }
+    return switcher.get(identifier, None)
 
 
 class HomeKitRequest:
@@ -31,7 +50,8 @@ class HomeConnector:
     def register_gadget(self, gadget: Gadget):
         pass
 
-    def update_characteristic(self):
+    def update_characteristic(self, name: str, g_type: GadgetIdentifier,
+                              characteristic: CharacteristicIdentifier, value: int):
         pass
 
 
@@ -69,15 +89,6 @@ class HomeKitConnector(HomeConnector):
         self.__client.disconnect()
 
     @staticmethod
-    def gadget_type_to_string(identifier: GadgetIdentifier) -> Optional[str]:
-        switcher = {
-            1: "Lightbulb",
-            2: "Fan",
-            3: "Doorbell"
-        }
-        return switcher.get(identifier, None)
-
-    @staticmethod
     def __on_message(client, userdata, message):
         global mqtt_res_queue
 
@@ -95,16 +106,26 @@ class HomeKitConnector(HomeConnector):
         mqtt_res_queue.put(buf_req)
 
     def register_gadget(self, gadget: Gadget):
-        buf_payload = {"name": "flex_lamp", "service_name": "light", "service": "Switch"}
+        gadget_service = gadget_type_to_string(gadget.get_type())
+        reg_str = {"name": gadget.get_name(), "service_name": gadget_service, "service": gadget_service}
         topic = "homebridge/to/add"
-        buf_req = HomeKitRequest(topic, buf_payload)
+        buf_req = HomeKitRequest(topic, reg_str)
         self.__send_request(buf_req)
 
     def __send_request(self, req: HomeKitRequest):
         self.__client.publish(req.topic, json.dumps(req.message))
 
-    def update_characteristic(self):
-        pass
+    def update_characteristic(self, name: str, g_type: GadgetIdentifier,
+                              characteristic: CharacteristicIdentifier, value: int):
+        gadget_service = gadget_type_to_string(g_type)
+        reg_str = {"name": name,
+                   "service_name": gadget_service,
+                   "service": gadget_service,
+                   "characteristic": characteristic_type_to_string(characteristic),
+                  "value": value}
+        topic = "homebridge/to/set"
+        buf_req = HomeKitRequest(topic, reg_str)
+        self.__send_request(buf_req)
 
     def handle_request(self, req: HomeKitRequest):
         pass
@@ -130,12 +151,14 @@ class HomeKitMQTTThread(Thread):
 if __name__ == '__main__':
     import sys
 
-    ip = "192.168.178.111"
-    port = 1883
-    try:
-        test_hb_connector = HomeKitConnector("test", "192.168.178.111", 1883, None, None)
-    except OSError as e:
-        print("Cannot connect to '{}:{}'".format(ip, port))
-        sys.exit(1)
+    print(gadget_type_to_string(GadgetIdentifier(1)))
 
-    test_hb_connector.register_gadget(Gadget("testgadget", GadgetIdentifier(1)))
+    # ip = "192.168.178.111"
+    # port = 1883
+    # try:
+    #     test_hb_connector = HomeKitConnector("test", "192.168.178.111", 1883, None, None)
+    # except OSError as e:
+    #     print("Cannot connect to '{}:{}'".format(ip, port))
+    #     sys.exit(1)
+    #
+    # test_hb_connector.register_gadget(Gadget("testgadget", GadgetIdentifier(1)))

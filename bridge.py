@@ -1,14 +1,15 @@
-import api
 import argparse
 import json
 import socket
 import random
 import sys
 from threading import Thread
+import threading
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
+import api
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
 parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.')
@@ -49,6 +50,9 @@ class MainBridge:
     # Gadgets:
     __gadgets: [Gadget]
 
+    # thread lock
+    __lock = None
+
     def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int,
                  mqtt_username: Optional[str], mqtt_pw: Optional[str]):
         print("Setting up Bridge...")
@@ -74,11 +78,14 @@ class MainBridge:
         self.__mqtt_callback_thread = BridgeMQTTThread(parent=self,
                                                        connector=self.__network_gadget)
         self.__mqtt_callback_thread.start()
+
+        self.__lock = threading.Lock()
         print("Ok.")
 
     def get_bridge_name(self) -> str:
         """Sets the name for the bridge"""
-        return self.__bridge_name
+        with self.__lock:
+            return self.__bridge_name
 
     def handle_request(self, req: Request):
         """Receives a request from the watcher Thread and handles it"""
@@ -124,30 +131,35 @@ class MainBridge:
     # Characteristics
     def update_characteristic(self, gadget_name: str, characteristic_name: str, value: int) -> bool:
         """Updates a single characteristic of the selected gadget"""
-        for buf_gadget in self.__gadgets:
-            if buf_gadget.get_name() == gadget_name:
-                return buf_gadget.update_characteristic(characteristic_name, value)
-        return False
+        with self.__lock:
+            for buf_gadget in self.__gadgets:
+                if buf_gadget.get_name() == gadget_name:
+                    return buf_gadget.update_characteristic(characteristic_name, value)
+            return False
 
     # Gadgets
     def get_gadget(self, gadget_name: str) -> Optional[Gadget]:
         """Returns the data for the selected gadget"""
-        for buf_gadget in self.__gadgets:
-            if buf_gadget.get_name() == gadget_name:
-                return buf_gadget
-        return None
+        with self.__lock:
+            for buf_gadget in self.__gadgets:
+                if buf_gadget.get_name() == gadget_name:
+                    return buf_gadget
+            return None
 
     def get_all_gadgets(self):
         """Returns the data for all gadgets"""
-        return self.__gadgets
+        with self.__lock:
+            return self.__gadgets
 
     def add_gadget(self, gadget: Gadget) -> bool:
-        if self.get_gadget(gadget.get_name()):
-            print("Gadget with this name is already present")
-            return False
-        print("Adding new gadget '{}'".format(gadget.get_name()))
-        self.__gadgets.append(gadget)
-        return True
+        """Adds a gadget to the bridge"""
+        with self.__lock:
+            if self.get_gadget(gadget.get_name()):
+                print("Gadget with this name is already present")
+                return False
+            print("Adding new gadget '{}'".format(gadget.get_name()))
+            self.__gadgets.append(gadget)
+            return True
 
     # API settings
     def set_api_port(self, port: int):
