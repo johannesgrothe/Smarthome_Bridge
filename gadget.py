@@ -28,6 +28,9 @@ class Characteristic:
     def get_type(self) -> CharacteristicIdentifier:
         return self.__type
 
+    def get_options(self) -> (int, int, int):
+        return self.__min, self.__max, self.__step
+
     def get_json_representation(self) -> dict:
         return {"type": int(self.__type), "min": self.__min, "max": self.__max, "step": self.__step,
                 "value": self.__val}
@@ -43,9 +46,9 @@ class Gadget:
         self.__name = name
         self.__type = g_type
 
-    def __get_characteristic(self, name: str) -> Optional[Characteristic]:
+    def __get_characteristic(self, c_type: CharacteristicIdentifier) -> Optional[Characteristic]:
         for characteristic in self.__characteristics:
-            if characteristic.get_name() == name:
+            if characteristic.get_type() == c_type:
                 return characteristic
         return None
 
@@ -53,17 +56,23 @@ class Gadget:
         buf_characteristic = Characteristic(c_type, min_val, max_val, step)
         self.__characteristics.append(buf_characteristic)
 
-    def update_characteristic(self, name: str, value: int) -> bool:
-        buf_characteristic = self.__get_characteristic(name)
+    def update_characteristic(self, c_type: CharacteristicIdentifier, value: int) -> bool:
+        buf_characteristic = self.__get_characteristic(c_type)
         if buf_characteristic is None:
             return False
         return buf_characteristic.set_val(value)
 
-    def get_characteristic_value(self, name: str):
-        buf_characteristic = self.__get_characteristic(name)
+    def get_characteristic_value(self, c_type: CharacteristicIdentifier):
+        buf_characteristic = self.__get_characteristic(c_type)
         if buf_characteristic is None:
             return False
         return buf_characteristic.get_val()
+
+    def get_characteristic_options(self, c_type: CharacteristicIdentifier) -> (int, int, int):
+        buf_characteristic = self.__get_characteristic(c_type)
+        if buf_characteristic is None:
+            return None, None, None
+        return buf_characteristic.get_options()
 
     def get_name(self) -> str:
         return self.__name

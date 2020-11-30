@@ -20,13 +20,14 @@ def gadget_type_to_string(identifier: GadgetIdentifier) -> Optional[str]:
     }
     return switcher.get(identifier, None)
 
+
 def characteristic_type_to_string(identifier: CharacteristicIdentifier) -> Optional[str]:
     switcher = {
         1: "On",
         2: "rotationSpeed",
-        3: "brightness",
-        4: "hue",
-        5: "saturation"
+        3: "Brightness",
+        4: "Hue",
+        5: "Saturation"
     }
     return switcher.get(identifier, None)
 
@@ -106,10 +107,29 @@ class HomeKitConnector(HomeConnector):
         mqtt_res_queue.put(buf_req)
 
     def register_gadget(self, gadget: Gadget):
+        """Registers a gadget on the homebridge remote"""
+
+        # {"name": "flex_lamp", "service_name": "flex_lamp", "service": "Lightbulb",
+        #  "Brightness": {"minValue": 0, "maxValue": 100, "minStep": 1},
+        #  "Hue": {"minValue": 0, "maxValue": 360, "minStep": 1},
+        #  "Saturation": {"minValue": 0, "maxValue": 100, "minStep": 1}}
+
         gadget_service = gadget_type_to_string(gadget.get_type())
-        reg_str = {"name": gadget.get_name(), "service_name": gadget_service, "service": gadget_service}
+        reg_dict = {"name": gadget.get_name(), "service_name": gadget_service, "service": gadget_service}
         topic = "homebridge/to/add"
-        buf_req = HomeKitRequest(topic, reg_str)
+
+        for characterisitc in gadget.get_characteristic_types():
+            charac_str = characteristic_type_to_string(characterisitc)
+            if charac_str:
+                min_v, max_v, step_v = gadget.get_characteristic_options(characterisitc)
+                if min_v is not None:
+                    reg_dict[charac_str] = {"minValue": min_v, "minVal": max_v, "maxStep": step_v}
+        buf_req = HomeKitRequest(topic, reg_dict)
+        self.__send_request(buf_req)
+
+    def remove_gadget(self, name: str):
+        """Removes a gadget from the homebridge remote"""
+        buf_req = HomeKitRequest("homebridge/to/remove", {"name": name})
         self.__send_request(buf_req)
 
     def __send_request(self, req: HomeKitRequest):
@@ -138,7 +158,7 @@ class HomeKitMQTTThread(Thread):
         super().__init__()
         print("Starting HomeKitConnector MQTT Thread")
         self.__parent_object = parent
-        self.__mqtt_connector = queue
+        self.__mqtt_connector = Queue
 
     def run(self):
         global mqtt_res_queue
