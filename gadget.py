@@ -1,6 +1,6 @@
 """Module to contain the gadget class"""
 from typing import Union, Optional
-from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
+from gadgetlib import GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
 
 
 class Characteristic:
@@ -16,11 +16,13 @@ class Characteristic:
         self.__step = step
         self.__type = c_type
 
-    def set_val(self, value: int) -> bool:
+    def set_val(self, value: int) -> CharacteristicUpdateStatus:
         if value > self.__max or value < self.__min:
-            return False
+            return CharacteristicUpdateStatus.update_failed
+        if self.__val == value:
+            return CharacteristicUpdateStatus.no_update_needed
         self.__val = value
-        return True
+        return CharacteristicUpdateStatus.update_successful
 
     def get_val(self) -> int:
         return self.__val
@@ -40,8 +42,9 @@ class Gadget:
     __characteristics: [Characteristic]
     __name: str
     __type: GadgetIdentifier
+    __host_client: str
 
-    def __init__(self, name: str, g_type: GadgetIdentifier):
+    def __init__(self, name: str, g_type: GadgetIdentifier, host_client: str):
         self.__characteristics = []
         self.__name = name
         self.__type = g_type
@@ -56,10 +59,10 @@ class Gadget:
         buf_characteristic = Characteristic(c_type, min_val, max_val, step)
         self.__characteristics.append(buf_characteristic)
 
-    def update_characteristic(self, c_type: CharacteristicIdentifier, value: int) -> bool:
+    def update_characteristic(self, c_type: CharacteristicIdentifier, value: int) -> CharacteristicUpdateStatus:
         buf_characteristic = self.__get_characteristic(c_type)
         if buf_characteristic is None:
-            return False
+            return CharacteristicUpdateStatus.unknown_characteristic
         return buf_characteristic.set_val(value)
 
     def get_characteristic_value(self, c_type: CharacteristicIdentifier):
@@ -73,6 +76,9 @@ class Gadget:
         if buf_characteristic is None:
             return None, None, None
         return buf_characteristic.get_options()
+
+    def get_host_client(self):
+        return self.__host_client
 
     def get_name(self) -> str:
         return self.__name

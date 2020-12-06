@@ -1,4 +1,5 @@
 import json
+import time
 import paho.mqtt.client as mqtt
 from typing import Optional
 from bridge import MainBridge
@@ -6,7 +7,7 @@ from request import Request
 from gadgetlib import GadgetIdentifier
 from gadget import Characteristic, Gadget, CharacteristicIdentifier
 from queue import Queue
-from threading import Thread
+from threading import Thread, Lock
 
 # Global queue for mqtt results
 mqtt_res_queue = Queue()
@@ -22,6 +23,7 @@ def gadget_type_to_string(identifier: GadgetIdentifier) -> Optional[str]:
 
 
 def characteristic_type_to_string(identifier: CharacteristicIdentifier) -> Optional[str]:
+    """Takes a characteristic identifer and returns the fitting string. Returns None if nothing matches."""
     switcher = {
         1: "On",
         2: "rotationSpeed",
@@ -30,6 +32,18 @@ def characteristic_type_to_string(identifier: CharacteristicIdentifier) -> Optio
         5: "Saturation"
     }
     return switcher.get(identifier, None)
+
+
+def characteristic_str_to_type(characteristic: str) -> CharacteristicIdentifier:
+    """Takes a string and returns the fitting characteristic identifier. Returns None if nothing matches."""
+    switcher = {
+        "On": CharacteristicIdentifier(1),
+        "rotationSpeed": CharacteristicIdentifier(2),
+        "Brightness": CharacteristicIdentifier(3),
+        "Hue": CharacteristicIdentifier(4),
+        "Saturation": CharacteristicIdentifier(5)
+    }
+    return switcher.get(characteristic, None)
 
 
 class HomeKitRequest:
@@ -55,6 +69,10 @@ class HomeConnector:
                               characteristic: CharacteristicIdentifier, value: int):
         pass
 
+    def __update_characterisitc_on_bridge(self, name: str, g_type: GadgetIdentifier,
+                                          characteristic: CharacteristicIdentifier, value: int):
+        self.__bridge.update_characteristic_from_client(name, characteristic, value)
+
 
 class HomeKitConnector(HomeConnector):
 
@@ -66,6 +84,10 @@ class HomeKitConnector(HomeConnector):
     __mqtt_password: Optional[str]
 
     __mqtt_callback_thread: Thread
+
+    # thread lock
+    __lock: Lock
+    __status_responses: Queue
 
     def __init__(self, bridge: MainBridge, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str], mqtt_pw: Optional[str]):
         super().__init__(bridge)
@@ -85,6 +107,8 @@ class HomeKitConnector(HomeConnector):
 
         self.__mqtt_callback_thread = HomeKitMQTTThread(parent=self)
         self.__mqtt_callback_thread.start()
+
+        self.__lock = Lock()
 
     def __del__(self):
         self.__client.disconnect()
@@ -136,7 +160,7 @@ class HomeKitConnector(HomeConnector):
         self.__client.publish(req.topic, json.dumps(req.message))
 
     def update_characteristic(self, name: str, g_type: GadgetIdentifier,
-                              characteristic: CharacteristicIdentifier, value: int):
+                              characteristic: CharacteristicIdentifier, value: int) -> bool:
         gadget_service = gadget_type_to_string(g_type)
         reg_str = {"name": name,
                    "service_name": gadget_service,
@@ -145,11 +169,34 @@ class HomeKitConnector(HomeConnector):
                   "value": value}
         topic = "homebridge/to/set"
         buf_req = HomeKitRequest(topic, reg_str)
-        self.__send_request(buf_req)
+        with self.__lock:
+            self.__send_request(buf_req)
+            start_time = time.time()
+            while time.time() < start_time + 5:
+                if not self.__status_responses.empty():
+                    resp: HomeKitRequest = self.__status_responses.get()
+                    if resp.message["ack"]:
+                        print("Updating Characterisitc was successful")
+                        return True
+                    else:
+                        print("failed to update characteristic")
+                        return False
+        return False
 
     def handle_request(self, req: HomeKitRequest):
-        pass
+        # Just store request in the response queue for waiting processes to access
+        if req.topic == "homebridge/from/response" and "ack" in req.message:
+            self.__status_responses.put(req)
+            return
 
+        # Check handle characeristic updates
+        if req.topic == "homebridge/from/set":
+            # {"name": "flex_lamp", "service_name": "flex_lamp", "service_type": "Lightbulb",
+            #  "characteristic": "Brightness", "value": 47}
+            if not ("name" in req.message and "characteristic" in req.message and "value" in req.message):
+                print("Received broken characteristic update request")
+                return
+            self.__update_characterisitc_on_bridge(req.message["name"], )
 
 class HomeKitMQTTThread(Thread):
     __parent_object: HomeKitConnector

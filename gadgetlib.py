@@ -36,6 +36,15 @@ class CharacteristicIdentifier(enum.IntEnum):
     modeDown = 17
 
 
+class CharacteristicUpdateStatus(enum.IntEnum):
+    """The return type for the characteristic update"""
+    general_error = 0,
+    unknown_characteristic = 1,
+    update_failed = 2,
+    no_update_needed = 3,
+    update_successful = 4
+
+
 def str_to_gadget_ident(g_str: str) -> GadgetIdentifier:
     """Translates a string identifier to a number identifier"""
 

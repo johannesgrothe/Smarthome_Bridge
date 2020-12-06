@@ -5,7 +5,8 @@ import random
 import sys
 from threading import Thread
 import threading
-from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier
+from smarthomeclient import SmarthomeClient
+from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
 from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
@@ -50,6 +51,12 @@ class MainBridge:
     # Gadgets:
     __gadgets: [Gadget]
 
+    # Clients
+    __clients: [SmarthomeClient]
+
+    # Connectors
+    __connectors = []
+
     # thread lock
     __lock = None
 
@@ -68,7 +75,10 @@ class MainBridge:
         # API
         self.__api_port = 5000
 
+        self.__clients = []
         self.__gadgets = []
+        self.__connectors = []
+
         print("Setting up Network...")
         self.__network_gadget = MQTTConnector(self.__bridge_name,
                                               self.__mqtt_ip,
@@ -97,6 +107,9 @@ class MainBridge:
 
         req_pl: dict = req.get_payload()
 
+        # Check if the request was sent by any known client and report activity
+
+
         if req.get_path() == "smarthome/remotes/gadget/register":
 
             if not ("gadget_name" in req_pl and "gadget_type" in req_pl and "characteristics" in req_pl):
@@ -110,7 +123,8 @@ class MainBridge:
                 return
 
             buf_gadget = Gadget(name=req_pl["gadget_name"],
-                                g_type=gadget_ident)
+                                g_type=gadget_ident,
+                                host_client=req.get_sender())
 
             for ch_name in req_pl["characteristics"]:
                 buf_characteristic = req_pl["characteristics"][ch_name]
@@ -128,14 +142,85 @@ class MainBridge:
 
             _ = self.add_gadget(buf_gadget)
 
+    # Clients
+    def __get_client(self, name: str) -> Optional[SmarthomeClient]:
+        for client in self.__clients:
+            if client.get_name() == name:
+                return client
+        return None
+
+    def __add_client(self, name: str) -> bool:
+        if self.__get_client(name) is None:
+            buf_client = SmarthomeClient(name)
+            self.__clients.append(buf_client)
+            return True
+        return False
+
+    def __trigger_client(self, name: str):
+        if self.__add_client(name):
+            print("Added new Client: '{}'".format(name))
+        client = self.__get_client(name)
+        print("Triggering Activity on Client: '{}'".format(name))
+        client.trigger_activity()
+
     # Characteristics
-    def update_characteristic(self, gadget_name: str, characteristic_name: str, value: int) -> bool:
+    def update_characteristic_on_gadget(self, gadget_name: str, characteristic: CharacteristicIdentifier,
+                                        value: int) -> (CharacteristicUpdateStatus, Gadget):
         """Updates a single characteristic of the selected gadget"""
         with self.__lock:
             for buf_gadget in self.__gadgets:
                 if buf_gadget.get_name() == gadget_name:
-                    return buf_gadget.update_characteristic(characteristic_name, value)
-            return False
+                    return buf_gadget.update_characteristic(characteristic, value), buf_gadget
+        return CharacteristicUpdateStatus.general_error, None
+
+    def update_characteristic_from_client(self, gadget_name: str, characteristic: CharacteristicIdentifier,
+                                          value: int) -> CharacteristicUpdateStatus:
+        """Updates a single characteristic of the selected gadget"""
+        update_status, gadget = self.update_characteristic_on_gadget(gadget_name, characteristic, value)
+        if update_status == CharacteristicUpdateStatus.update_successful:
+            self.update_characteristic_on_connectors(gadget, characteristic, value)
+        return update_status
+
+    def update_characteristic_on_clients(self, gadget: Gadget, characteristic: CharacteristicIdentifier,
+                                         value: int) -> bool:
+        """Forwards a characterisitc update to the clients"""
+
+        req_id = gen_req_id()
+
+        buf_request = Request("smarthome/remotes/gadget/to_client/update",
+                              req_id,
+                              "<bridge>",
+                              gadget.get_host_client(),
+                              {
+                                  "name": gadget.get_name(),
+                                  "characteristic": int(characteristic),
+                                  "value": value
+                              })
+
+        # Sends the request and does not wait for any answer
+        self.__network_gadget.send_request(buf_request, 0)
+        return False
+
+    def update_characteristic_from_connector(self, gadget_name: str, characteristic: CharacteristicIdentifier,
+                                             value: int, sender) -> CharacteristicUpdateStatus:
+        """Gets an characteristic update from a connector and forwards it to every other connector and the clients"""
+        update_status, gadget = self.update_characteristic_on_gadget(gadget_name, characteristic, value)
+        if update_status == CharacteristicUpdateStatus.update_successful:
+
+            # Update characteristic on clients
+            self.update_characteristic_on_clients(gadget, characteristic, value)
+
+            # Update characteristic on every other sender
+            self.update_characteristic_on_connectors(gadget, characteristic, value, sender)
+
+        return update_status
+
+    def update_characteristic_on_connectors(self, gadget: Gadget, characteristic: CharacteristicIdentifier,
+                                            value: int, exclude=None) -> bool:
+        for connector in self.__connectors:
+            if exclude is not None and connector != exclude:
+                connector.update_characteristic(gadget.get_name(), characteristic, value)
+        return True
 
     # Gadgets
     def get_gadget(self, gadget_name: str) -> Optional[Gadget]:
@@ -208,6 +293,3 @@ if __name__ == '__main__':
 
     bridge.set_api_port(4999)
     bridge.run_api()
-
-    bridge.set_webinterface_port(3999)
-    bridge.run_webinterface()
