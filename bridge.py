@@ -108,9 +108,18 @@ class MainBridge:
         req_pl: dict = req.get_payload()
 
         # Check if the request was sent by any known client and report activity
+        if req.get_path() == "smarthome/heartbeat":
+            self.__trigger_client(req.get_sender())
+            return
 
-
+        # Check if the request wants to register a gadget
         if req.get_path() == "smarthome/remotes/gadget/register":
+
+            # Create client when necessary and trigger it
+            self.__trigger_client(req.get_sender())
+
+            # Save client for further use
+            sending_client = self.__get_client(req.get_sender())
 
             if not ("gadget_name" in req_pl and "gadget_type" in req_pl and "characteristics" in req_pl):
                 print("Missing arguments in register payload")
@@ -144,24 +153,27 @@ class MainBridge:
 
     # Clients
     def __get_client(self, name: str) -> Optional[SmarthomeClient]:
-        for client in self.__clients:
-            if client.get_name() == name:
-                return client
+        with self.__lock:
+            for client in self.__clients:
+                if client.get_name() == name:
+                    return client
         return None
 
     def __add_client(self, name: str) -> bool:
-        if self.__get_client(name) is None:
-            buf_client = SmarthomeClient(name)
-            self.__clients.append(buf_client)
-            return True
+        with self.__lock:
+            if self.__get_client(name) is None:
+                buf_client = SmarthomeClient(name)
+                self.__clients.append(buf_client)
+                return True
         return False
 
     def __trigger_client(self, name: str):
         if self.__add_client(name):
             print("Added new Client: '{}'".format(name))
-        client = self.__get_client(name)
-        print("Triggering Activity on Client: '{}'".format(name))
-        client.trigger_activity()
+        with self.__lock:
+            client = self.__get_client(name)
+            print("Triggering Activity on Client: '{}'".format(name))
+            client.trigger_activity()
 
     # Characteristics
     def update_characteristic_on_gadget(self, gadget_name: str, characteristic: CharacteristicIdentifier,

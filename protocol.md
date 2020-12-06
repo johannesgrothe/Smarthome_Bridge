@@ -32,7 +32,7 @@ The broadcast is used to identify every chip in the network.
 ##### Request Payload
 
 ```json
-null
+{}
 ```
 
 ##### Response Frame Info
@@ -44,8 +44,30 @@ null
 ##### Response Payload
 
 ```json
-null
+{}
 ```
+
+---
+
+### Heartbeat
+
+This broadcast should be send to the bridge periodically to report alivelyness
+
+##### Request Frame Info
+
+| Sender | Receiver | Path                  |
+|:------ |:--------:| ---------------------:|
+| Chip   | Master   | `smarthome/heartbeat` |
+
+##### Request Payload
+
+```json
+{}
+```
+
+##### Response Frame Info
+
+No response is sent
 
 ---
 
@@ -267,7 +289,7 @@ The request payload is just the complete gadget config as json.
         "step": uint
       },
     ...
-  
+
 }
 ```
 
@@ -309,9 +331,9 @@ No response is sent.
 
 ##### Frame Info
 
-| Sender | Receiver | Path                              |
-|:------ |:--------:| ---------------------------------:|
-| Master | Chip     | `smarthome/remotes/gadget/update` |
+| Sender | Receiver | Path                                        |
+|:------ |:--------:| -------------------------------------------:|
+| Master | Chip     | `smarthome/remotes/gadget/to_client/update` |
 
 ##### Request Payload
 
@@ -320,7 +342,6 @@ The request payload is just the complete gadget config as json.
 ```json
 {
   "name": string,
-  "type": uint,
   "characteristic": uint,
   "value": int
 }
