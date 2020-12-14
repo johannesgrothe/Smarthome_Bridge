@@ -69,7 +69,7 @@ class HomeConnector:
         pass
 
     def __update_characteristic_on_bridge(self, name: str, characteristic: CharacteristicIdentifier, value: int):
-        self.__bridge.update_characteristic_from_client(name, characteristic, value)
+        self.__bridge.update_characteristic_from_connector(name, characteristic, value)
 
 
 class HomeKitConnector(HomeConnector):

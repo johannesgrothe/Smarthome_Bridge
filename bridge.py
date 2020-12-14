@@ -115,7 +115,7 @@ class MainBridge:
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
 
-            _ = self.__get_or_create_client_from_request(req)
+            local_client = self.__get_or_create_client_from_request(req)
 
             if "gadgets" not in req_pl:
                 print("Received no gadget config on sync response")
@@ -124,6 +124,8 @@ class MainBridge:
             if not isinstance(req_pl["gadgets"], list):
                 print("Gadget config in sync response was no list")
                 return
+
+            print("Received sync data from '{}'".format(local_client.get_name()))
 
             updated_gadgets: [str] = []
 
@@ -175,6 +177,28 @@ class MainBridge:
                     if gadget.get_name() not in updated_gadgets:
                         self.delete_gadget(gadget)
 
+            return
+
+        # Receive gadget characteristic update from client
+        if req.get_path() == "smarthome/remotes/gadget/update":
+            if "name" not in req_pl:
+                print("No name in characteristic update message")
+                return
+
+            if "characteristic" not in req_pl:
+                print("No characteristic in characteristic update message")
+                return
+
+            if "value" not in req_pl:
+                print("No value in characteristic update message")
+                return
+
+            print("Received update for characteristic '{}' from '{}'".format(req_pl["name"],
+                                                                             req_pl["characteristic"]))
+
+            self.update_characteristic_from_client(req_pl["name"],
+                                                   CharacteristicIdentifier(req_pl["characteristic"]),
+                                                   req_pl["value"])
             return
 
     # Clients
