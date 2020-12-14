@@ -17,7 +17,7 @@ def run_api(bridge, port: int):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
-    @app.route('/gadgets/all', methods=['GET'])
+    @app.route('/gadgets', methods=['GET'])
     def get_all_gadgets():
         gadget_list = bridge.get_all_gadgets()
 
@@ -26,7 +26,40 @@ def run_api(bridge, port: int):
             json_gadget = gadget.get_json_representation()
             out_gadget_list.append(json_gadget)
 
-        buf_res = {"gadgets": out_gadget_list, "gadget_count": len(gadget_list)}
+        buf_res = {"gadgets": out_gadget_list,
+                   "gadget_count": len(out_gadget_list)}
+
+        response = jsonify(buf_res)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+
+    @app.route('/info', methods=['GET'])
+    def get_info():
+        bridge_name = bridge.get_bridge_name()
+        gadget_list = bridge.get_all_gadgets()
+        connector_list = bridge.get_all_connectors()
+
+        buf_res = {"bridge_name": bridge_name,
+                   "gadget_count": len(gadget_list),
+                   "connector_count": len(connector_list)}
+
+        response = jsonify(buf_res)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+
+    @app.route('/connectors', methods=['GET'])
+    def get_all_connectors():
+        bridge_name = bridge.get_bridge_name()
+        connector_list = bridge.get_all_connectors()
+
+        out_gadget_list: [dict] = []
+        for connector in connector_list:
+            # TODO: implement sending connector info
+            json_connector = {"data": "to be implemented"}
+            out_gadget_list.append(json_connector)
+
+        buf_res = {"connectors": out_gadget_list,
+                   "connector_count": len(out_gadget_list)}
 
         response = jsonify(buf_res)
         response.headers.add('Access-Control-Allow-Origin', '*')

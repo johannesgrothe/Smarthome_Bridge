@@ -112,6 +112,8 @@ class MainBridge:
             if local_client.needs_update():
                 self.__ask_for_update(local_client)
 
+        # TODO: add time sync
+
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
 
@@ -352,6 +354,12 @@ class MainBridge:
                 connector.remove_gadget(gadget)
 
             self.__gadgets.remove(gadget)
+
+    # Connectors
+    def get_all_connectors(self):
+        """Returns the data for all connectors"""
+        with self.__lock:
+            return self.__connectors
 
     # API settings
     def set_api_port(self, port: int):
