@@ -150,9 +150,9 @@ class HomeKitConnector(HomeConnector):
         buf_req = HomeKitRequest(topic, reg_dict)
         self.__send_request(buf_req)
 
-    def remove_gadget(self, name: str):
+    def remove_gadget(self, gadget: Gadget):
         """Removes a gadget from the homebridge remote"""
-        buf_req = HomeKitRequest("homebridge/to/remove", {"name": name})
+        buf_req = HomeKitRequest("homebridge/to/remove", {"name": gadget.get_name()})
         self.__send_request(buf_req)
 
     def __send_request(self, req: HomeKitRequest):

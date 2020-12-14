@@ -10,11 +10,16 @@ class Characteristic:
     __step: int
     __val: int
 
-    def __init__(self, c_type: CharacteristicIdentifier, min_val: int, max_val: int, step: int):
+    def __init__(self, c_type: CharacteristicIdentifier, min_val: int, max_val: int,
+                 step: int, value: Optional[int] = None):
         self.__min = min_val
         self.__min = max_val
         self.__step = step
         self.__type = c_type
+        if value is not None:
+            self.__val = value
+        else:
+            self.__val = 0
 
     def set_val(self, value: int) -> CharacteristicUpdateStatus:
         if value > self.__max or value < self.__min:

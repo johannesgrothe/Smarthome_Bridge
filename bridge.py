@@ -1,12 +1,11 @@
 import argparse
-import json
 import socket
 import random
 import sys
 from threading import Thread
 import threading
 from smarthomeclient import SmarthomeClient
-from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
+from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
@@ -116,49 +115,67 @@ class MainBridge:
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
 
-            local_client = self.__get_or_create_client_from_request(req)
+            _ = self.__get_or_create_client_from_request(req)
 
-            local_client.update_runtime_id()
-            return
-
-        # Check if the request wants to register a gadget
-        if req.get_path() == "smarthome/remotes/gadget/register":
-
-            # Create client when necessary and trigger it
-            # self.__trigger_client(req.get_sender())
-
-            # Save client for further use
-            sending_client = self.__get_client(req.get_sender())
-
-            if not ("gadget_name" in req_pl and "gadget_type" in req_pl and "characteristics" in req_pl):
-                print("Missing arguments in register payload")
+            if "gadgets" not in req_pl:
+                print("Received no gadget config on sync response")
                 return
 
-            try:
-                gadget_ident = GadgetIdentifier(req_pl["gadget_type"])
-            except ValueError:
-                print("Received illegal gadget identifier")
+            if not isinstance(req_pl["gadgets"], list):
+                print("Gadget config in sync response was no list")
                 return
 
-            buf_gadget = Gadget(name=req_pl["gadget_name"],
-                                g_type=gadget_ident,
-                                host_client=req.get_sender())
+            updated_gadgets: [str] = []
 
-            for ch_name in req_pl["characteristics"]:
-                buf_characteristic = req_pl["characteristics"][ch_name]
+            # Go over all gadgets and create or update them
+            for list_gadget in req_pl["gadgets"]:
 
+                # If a gadget fails, it fails. That's why theres a giant try block.
                 try:
-                    characteristic_type = CharacteristicIdentifier(int(ch_name))
+                    g_name = list_gadget["name"]
+                    g_type = GadgetIdentifier(list_gadget["type"])
+                    g_characteristics = []
+                    for characteristic in list_gadget["characteristics"]:
 
-                    buf_gadget.add_characteristic(c_type=characteristic_type,
-                                                  min_val=buf_characteristic["min"],
-                                                  max_val=buf_characteristic["max"],
-                                                  step=buf_characteristic["step"])
+                        # Create new characteristic
+                        new_c = Characteristic(CharacteristicIdentifier(characteristic["type"]),
+                                               characteristic["min"],
+                                               characteristic["max"],
+                                               characteristic["step"],
+                                               characteristic["value"])
+                        # Save it
+                        g_characteristics.append(new_c)
 
-                except ValueError:
-                    print("received illegal characteristic identifier '{}'".format(ch_name))
+                    # Get the gadget if there is already one in existence with the correct name
+                    buf_gadget: Optional[Gadget] = self.get_gadget(g_name)
+                    if buf_gadget is not None:
+                        # Update existing gadget
+                        buf_gadget.update_gadget_info(g_type,
+                                                      req.get_sender(),
+                                                      req_pl["runtime_id"],
+                                                      g_characteristics)
+                    else:
+                        # Create new gadget since there is no gadget with selected name
+                        buf_gadget = Gadget(g_name,
+                                            g_type,
+                                            req.get_sender(),
+                                            req_pl["runtime_id"],
+                                            g_characteristics)
+                        self.add_gadget(buf_gadget)
 
-            _ = self.add_gadget(buf_gadget)
+                    # Save name of gadget to skip deletion
+                    updated_gadgets.append(buf_gadget.get_name())
+
+                except KeyError as e:
+                    print("Error syncing gadget:")
+                    print(e)
+
+            for gadget in self.__gadgets:
+                if gadget.get_host_client() == req.get_sender():
+                    if gadget.get_name() not in updated_gadgets:
+                        self.delete_gadget(gadget)
+
+            return
 
     # Clients
     def __get_client(self, name: str) -> Optional[SmarthomeClient]:
@@ -208,6 +225,8 @@ class MainBridge:
             return None
 
         self.__trigger_client(local_client)
+        local_client.update_runtime_id(req.get_payload()["runtime_id"])
+
         return local_client
 
     def __ask_for_update(self, client: SmarthomeClient):
@@ -301,6 +320,14 @@ class MainBridge:
             print("Adding new gadget '{}'".format(gadget.get_name()))
             self.__gadgets.append(gadget)
             return True
+
+    def delete_gadget(self, gadget: Gadget):
+        """Deletes the passed gadget from all connectors and the local storage"""
+        with self.__lock:
+            for connector in self.__connectors:
+                connector.remove_gadget(gadget)
+
+            self.__gadgets.remove(gadget)
 
     # API settings
     def set_api_port(self, port: int):
