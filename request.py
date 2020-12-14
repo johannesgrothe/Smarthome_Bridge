@@ -1,5 +1,5 @@
 """Module to contain the request class"""
-from typing import Union, Optional
+from typing import Optional
 
 
 class Request:

@@ -3,7 +3,6 @@ import time
 import paho.mqtt.client as mqtt
 from typing import Optional
 from bridge import MainBridge
-from request import Request
 from gadgetlib import GadgetIdentifier
 from gadget import Characteristic, Gadget, CharacteristicIdentifier
 from queue import Queue
@@ -23,7 +22,7 @@ def gadget_type_to_string(identifier: GadgetIdentifier) -> Optional[str]:
 
 
 def characteristic_type_to_string(identifier: CharacteristicIdentifier) -> Optional[str]:
-    """Takes a characteristic identifer and returns the fitting string. Returns None if nothing matches."""
+    """Takes a characteristic identifier and returns the fitting string. Returns None if nothing matches."""
     switcher = {
         1: "On",
         2: "rotationSpeed",
@@ -69,8 +68,7 @@ class HomeConnector:
                               characteristic: CharacteristicIdentifier, value: int):
         pass
 
-    def __update_characterisitc_on_bridge(self, name: str, g_type: GadgetIdentifier,
-                                          characteristic: CharacteristicIdentifier, value: int):
+    def __update_characteristic_on_bridge(self, name: str, characteristic: CharacteristicIdentifier, value: int):
         self.__bridge.update_characteristic_from_client(name, characteristic, value)
 
 
@@ -89,7 +87,8 @@ class HomeKitConnector(HomeConnector):
     __lock: Lock
     __status_responses: Queue
 
-    def __init__(self, bridge: MainBridge, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str], mqtt_pw: Optional[str]):
+    def __init__(self, bridge: MainBridge, own_name: str, mqtt_ip: str, mqtt_port: int,
+                 mqtt_user: Optional[str], mqtt_pw: Optional[str]):
         super().__init__(bridge)
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name + "_HomeBridge")
@@ -142,12 +141,12 @@ class HomeKitConnector(HomeConnector):
         reg_dict = {"name": gadget.get_name(), "service_name": gadget_service, "service": gadget_service}
         topic = "homebridge/to/add"
 
-        for characterisitc in gadget.get_characteristic_types():
-            charac_str = characteristic_type_to_string(characterisitc)
-            if charac_str:
-                min_v, max_v, step_v = gadget.get_characteristic_options(characterisitc)
+        for characteristic in gadget.get_characteristic_types():
+            characteristic_str = characteristic_type_to_string(characteristic)
+            if characteristic_str:
+                min_v, max_v, step_v = gadget.get_characteristic_options(characteristic)
                 if min_v is not None:
-                    reg_dict[charac_str] = {"minValue": min_v, "minVal": max_v, "maxStep": step_v}
+                    reg_dict[characteristic_str] = {"minValue": min_v, "minVal": max_v, "maxStep": step_v}
         buf_req = HomeKitRequest(topic, reg_dict)
         self.__send_request(buf_req)
 
@@ -166,7 +165,8 @@ class HomeKitConnector(HomeConnector):
                    "service_name": gadget_service,
                    "service": gadget_service,
                    "characteristic": characteristic_type_to_string(characteristic),
-                  "value": value}
+                   "value": value}
+
         topic = "homebridge/to/set"
         buf_req = HomeKitRequest(topic, reg_str)
         with self.__lock:
@@ -176,7 +176,7 @@ class HomeKitConnector(HomeConnector):
                 if not self.__status_responses.empty():
                     resp: HomeKitRequest = self.__status_responses.get()
                     if resp.message["ack"]:
-                        print("Updating Characterisitc was successful")
+                        print("Updating Characteristic was successful")
                         return True
                     else:
                         print("failed to update characteristic")
@@ -189,14 +189,17 @@ class HomeKitConnector(HomeConnector):
             self.__status_responses.put(req)
             return
 
-        # Check handle characeristic updates
+        # Check handle characteristic updates
         if req.topic == "homebridge/from/set":
             # {"name": "flex_lamp", "service_name": "flex_lamp", "service_type": "Lightbulb",
             #  "characteristic": "Brightness", "value": 47}
             if not ("name" in req.message and "characteristic" in req.message and "value" in req.message):
                 print("Received broken characteristic update request")
                 return
-            self.__update_characterisitc_on_bridge(req.message["name"], )
+            self.__update_characteristic_on_bridge(req.message["name"],
+                                                   req.message["characteristic"],
+                                                   req.message["value"])
+
 
 class HomeKitMQTTThread(Thread):
     __parent_object: HomeKitConnector
@@ -216,7 +219,6 @@ class HomeKitMQTTThread(Thread):
 
 
 if __name__ == '__main__':
-    import sys
 
     print(gadget_type_to_string(GadgetIdentifier(1)))
 
@@ -228,4 +230,4 @@ if __name__ == '__main__':
     #     print("Cannot connect to '{}:{}'".format(ip, port))
     #     sys.exit(1)
     #
-    # test_hb_connector.register_gadget(Gadget("testgadget", GadgetIdentifier(1)))
+    # test_hb_connector.register_gadget(Gadget("test_gadget", GadgetIdentifier(1)))

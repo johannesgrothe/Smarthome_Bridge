@@ -109,14 +109,23 @@ class MainBridge:
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/heartbeat":
-            self.__trigger_client(req.get_sender())
+            local_client = self.__get_or_create_client_from_request(req)
+            if local_client.needs_update():
+                self.__ask_for_update(local_client)
+
+        # Check if the request was sent by any known client and report activity
+        if req.get_path() == "smarthome/sync":
+
+            local_client = self.__get_or_create_client_from_request(req)
+
+            local_client.update_runtime_id()
             return
 
         # Check if the request wants to register a gadget
         if req.get_path() == "smarthome/remotes/gadget/register":
 
             # Create client when necessary and trigger it
-            self.__trigger_client(req.get_sender())
+            # self.__trigger_client(req.get_sender())
 
             # Save client for further use
             sending_client = self.__get_client(req.get_sender())
@@ -159,21 +168,56 @@ class MainBridge:
                     return client
         return None
 
-    def __add_client(self, name: str) -> bool:
+    def __add_client(self, name: str, runtime_id: int) -> bool:
         with self.__lock:
             if self.__get_client(name) is None:
-                buf_client = SmarthomeClient(name)
+                buf_client = SmarthomeClient(name, runtime_id)
                 self.__clients.append(buf_client)
                 return True
         return False
 
-    def __trigger_client(self, name: str):
-        if self.__add_client(name):
-            print("Added new Client: '{}'".format(name))
-        with self.__lock:
-            client = self.__get_client(name)
-            print("Triggering Activity on Client: '{}'".format(name))
-            client.trigger_activity()
+    @staticmethod
+    def __trigger_client(client: SmarthomeClient):
+        """Reports an activity signal from a client"""
+        print("Triggering Activity on Client: '{}'".format(client.get_name()))
+        client.trigger_activity()
+
+    def __get_or_create_client(self, name: str, runtime_id: int) -> Optional[SmarthomeClient]:
+        """Searches for a client with the name, creates it if necessary and returns the client"""
+        local_client = self.__get_client(name)
+        if local_client is None:
+            success = self.__add_client(name, runtime_id)
+            local_client = self.__get_client(name)
+            if local_client is None or not success:
+                return None
+        return local_client
+
+    def __get_or_create_client_from_request(self, req: Request) -> Optional[SmarthomeClient]:
+        """Searches for a client with the name, creates it if necessary and returns the client"""
+        if "runtime_id" not in req.get_payload():
+            print("Received heartbeat is missing 'runtime_id'")
+            return None
+
+        if not isinstance(req.get_payload()["runtime_id"], int):
+            print("Received heartbeat has non-integer 'runtime_id'")
+            return None
+
+        local_client = self.__get_or_create_client(req.get_sender(), req.get_payload()["runtime_id"])
+        if local_client is None:
+            print("Something went completely wrong while creating client")
+            return None
+
+        self.__trigger_client(local_client)
+        return local_client
+
+    def __ask_for_update(self, client: SmarthomeClient):
+        """Sends out a request asking the selected client to send an update"""
+        out_req = Request("smarthome/sync",
+                          gen_req_id(),
+                          "<bridge>",
+                          client.get_name(),
+                          {})
+        self.__network_gadget.send_request(out_req)
 
     # Characteristics
     def update_characteristic_on_gadget(self, gadget_name: str, characteristic: CharacteristicIdentifier,
@@ -195,7 +239,7 @@ class MainBridge:
 
     def update_characteristic_on_clients(self, gadget: Gadget, characteristic: CharacteristicIdentifier,
                                          value: int) -> bool:
-        """Forwards a characterisitc update to the clients"""
+        """Forwards a characteristic update to the clients"""
 
         req_id = gen_req_id()
 

@@ -15,7 +15,7 @@ class GadgetIdentifier(enum.IntEnum):
 
 
 class CharacteristicIdentifier(enum.IntEnum):
-    """A Number for every characterisitc"""
+    """A Number for every characteristic"""
     err_type = 0,
     turnOn = 1
     turnOff = 2

@@ -1,5 +1,5 @@
 """Module to contain the gadget class"""
-from typing import Union, Optional
+from typing import Optional
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
 
 
@@ -43,11 +43,59 @@ class Gadget:
     __name: str
     __type: GadgetIdentifier
     __host_client: str
+    __host_client_runtime_id: int
 
-    def __init__(self, name: str, g_type: GadgetIdentifier, host_client: str):
-        self.__characteristics = []
+    def __init__(self,
+                 name: str,
+                 g_type: GadgetIdentifier,
+                 host_client: str,
+                 host_client_runtime_id: int,
+                 characteristics: [Characteristic]):
         self.__name = name
         self.__type = g_type
+        self.__host_client = host_client
+        self.__host_client_runtime_id = host_client_runtime_id
+        self.__characteristics = characteristics
+
+    def update_gadget_info(self,
+                           g_type: GadgetIdentifier,
+                           host_client: str,
+                           host_client_runtime_id: int,
+                           new_characteristics: [Characteristic]) -> bool:
+        """Updates the information a gadget consists of and returns whether anything important was changed"""
+        update_needed = False
+        if self.__type != g_type:
+            update_needed = True
+            self.__type = g_type
+
+        if self.__host_client != host_client:
+            # update_needed = True
+            self.__host_client = host_client
+
+        if self.__host_client_runtime_id != host_client_runtime_id:
+            # update_needed = True
+            self.__host_client_runtime_id = host_client_runtime_id
+
+        old_characteristics: [Characteristic] = self.__characteristics
+        self.__characteristics = []
+
+        for new_c in new_characteristics:
+            found_old_c: Optional[Characteristic] = None
+            for old_c in old_characteristics:
+                if old_c.get_type() != new_c.get_type():
+                    found_old_c = old_c
+                    old_characteristics.remove(old_c)
+
+            if found_old_c is not None:
+                if found_old_c.get_options() != new_c.get_options():
+                    update_needed = True
+
+            self.__characteristics.append(new_c)
+
+        if old_characteristics:
+            update_needed = True
+
+        return update_needed
 
     def __get_characteristic(self, c_type: CharacteristicIdentifier) -> Optional[Characteristic]:
         for characteristic in self.__characteristics:
