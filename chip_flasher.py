@@ -1,4 +1,9 @@
 import os
+import argparse
+
+parser = argparse.ArgumentParser(description='Script to flash different software versions to the chip')
+parser.add_argument('--branch', help='git branch to flash on the chip')
+ARGS = parser.parse_args()
 
 
 def flash_chip(branch_name: str, force_reset: bool = False) -> bool:
@@ -49,5 +54,8 @@ def flash_chip(branch_name: str, force_reset: bool = False) -> bool:
 
 if __name__ == '__main__':
     print("Launching Chip Flasher")
-    flash_chip("fb_27_new_protocol")
+    branch = "develop"
+    if ARGS.branch:
+        branch = ARGS.branch
+    flash_chip(branch)
     print("Done")
