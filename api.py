@@ -12,7 +12,7 @@ def run_api(bridge, port: int):
 
     @app.route('/')
     def root():
-        res_text = "<html><body><center><h1>API</h1><h2>{}</h2></body></html>".format(bridge.get_bridge_name())
+        res_text = "Use /info, /gadgets, /connectors or /clients".format(bridge.get_bridge_name())
         response = jsonify(res_text)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -33,15 +33,34 @@ def run_api(bridge, port: int):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
+    @app.route('/clients', methods=['GET'])
+    def get_all_clients():
+        client_list = bridge.get_all_clients()
+
+        out_client_list: [dict] = []
+        for client in client_list:
+            # TODO: implement sending connector info
+            json_client = {"data": "to be implemented"}
+            out_client_list.append(json_client)
+
+        buf_res = {"clients": out_client_list,
+                   "client_count": len(out_client_list)}
+
+        response = jsonify(buf_res)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+
     @app.route('/info', methods=['GET'])
     def get_info():
         bridge_name = bridge.get_bridge_name()
         gadget_list = bridge.get_all_gadgets()
         connector_list = bridge.get_all_connectors()
+        client_list = bridge.get_all_clients()
 
         buf_res = {"bridge_name": bridge_name,
                    "gadget_count": len(gadget_list),
-                   "connector_count": len(connector_list)}
+                   "connector_count": len(connector_list),
+                   "client_count": len(client_list)}
 
         response = jsonify(buf_res)
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -49,7 +68,6 @@ def run_api(bridge, port: int):
 
     @app.route('/connectors', methods=['GET'])
     def get_all_connectors():
-        bridge_name = bridge.get_bridge_name()
         connector_list = bridge.get_all_connectors()
 
         out_gadget_list: [dict] = []

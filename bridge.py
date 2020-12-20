@@ -219,6 +219,12 @@ class MainBridge:
                 return True
         return False
 
+    def get_all_clients(self) -> [SmarthomeClient]:
+        """Returns a list of all saved clients"""
+        with self.__lock:
+            return self.__clients
+        pass
+
     @staticmethod
     def __trigger_client(client: SmarthomeClient):
         """Reports an activity signal from a client"""
