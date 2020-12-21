@@ -11,6 +11,7 @@ from gadgetlib import GadgetIdentifier, str_to_gadget_ident, GadgetMethod, str_t
 from typing import Optional
 from pprint import pprint
 
+import client_control_methods
 from network_connector import NetworkConnector
 from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
@@ -287,49 +288,29 @@ def reset_config(client_name: str, reset_option: str) -> bool:
     """Resets the config of a client. Select behaviour using 'reset option'.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
-    payload = {"reset_option": reset_option}
-
-    out_request = Request(path="smarthome/config/reset",
-                          session_id=gen_req_id(),
-                          sender=get_sender(),
-                          receiver=client_name,
-                          payload=payload)
-
-    suc, status_msg, result = network_gadget.send_request(out_request)
-    return suc
+    return client_control_methods.reset_config(client_name,
+                                               reset_option,
+                                               get_sender(),
+                                               network_gadget)
 
 
 def reboot_client(client_name: str) -> bool:
     """Reboots the client to make changes take effect.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
-    payload = {"subject": "reboot"}
-
-    out_request = Request(path="smarthome/sys",
-                          session_id=gen_req_id(),
-                          sender=get_sender(),
-                          receiver=client_name,
-                          payload=payload)
-
-    suc, status_msg, result = network_gadget.send_request(out_request)
-    return suc is True
+    return client_control_methods.reboot_client(client_name,
+                                                get_sender(),
+                                                network_gadget)
 
 
-def upload_gadget(client_name: str, gadget: dict) -> (bool, Optional[str]):
+def upload_gadget(client_name: str, upl_gadget: dict) -> (bool, Optional[str]):
     """uploads a gadget to a client.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
-    if "type" not in gadget or "name" not in gadget:
-        return False
-
-    out_request = Request(path="smarthome/gadget/add",
-                          session_id=gen_req_id(),
-                          sender=get_sender(),
-                          receiver=client_name,
-                          payload=gadget)
-
-    suc, status_message, result = network_gadget.send_request(out_request)
-    return suc is True, status_message
+    return client_control_methods.upload_gadget(client_name,
+                                                upl_gadget,
+                                                get_sender(),
+                                                network_gadget)
 
 
 if __name__ == '__main__':

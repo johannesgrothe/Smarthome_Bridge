@@ -12,6 +12,7 @@ from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
 import api
+import client_control_methods
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
 parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.', type=str)
@@ -245,7 +246,7 @@ class MainBridge:
             return
 
     # Clients
-    def __get_client(self, name: str) -> Optional[SmarthomeClient]:
+    def get_client(self, name: str) -> Optional[SmarthomeClient]:
         with self.__lock:
             for client in self.__clients:
                 if client.get_name() == name:
@@ -253,7 +254,7 @@ class MainBridge:
         return None
 
     def __add_client(self, name: str, runtime_id: int) -> bool:
-        if self.__get_client(name) is None:
+        if self.get_client(name) is None:
             with self.__lock:
                 buf_client = SmarthomeClient(name, runtime_id)
                 self.__clients.append(buf_client)
@@ -274,10 +275,10 @@ class MainBridge:
 
     def __get_or_create_client(self, name: str, runtime_id: int) -> Optional[SmarthomeClient]:
         """Searches for a client with the name, creates it if necessary and returns the client"""
-        local_client = self.__get_client(name)
+        local_client = self.get_client(name)
         if local_client is None:
             success = self.__add_client(name, runtime_id)
-            local_client = self.__get_client(name)
+            local_client = self.get_client(name)
             if local_client is None or not success:
                 return None
         return local_client
@@ -310,6 +311,13 @@ class MainBridge:
                           client.get_name(),
                           {})
         self.__network_gadget.send_request(out_req)
+
+    def restart_client(self, client: SmarthomeClient) -> bool:
+        """Sends out a request to restart the client and"""
+
+        return client_control_methods.reboot_client(client.get_name(),
+                                                    "<bridge>",
+                                                    self.__network_gadget)
 
     # Characteristics
     def update_characteristic_on_gadget(self, gadget_name: str, characteristic: CharacteristicIdentifier,

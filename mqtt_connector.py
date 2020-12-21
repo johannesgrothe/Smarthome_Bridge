@@ -80,11 +80,17 @@ class MQTTConnector(NetworkConnector):
         return None
 
     def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
+        """
+        Sends a request and waits for a response by default.
+
+        Returns the Ack-Status of the response, the status message of the response and the response itself.
+        """
         global mqtt_res_queue
 
         self.__client.publish(req.get_path(), str(req.get_body()))
         if timeout > 0:
             timeout_time = time.time() + timeout
+            checked_requests_list = Queue()
             while time.time() < timeout_time:
                 if not mqtt_res_queue.empty():
                     res: Request = mqtt_res_queue.get()
@@ -94,8 +100,22 @@ class MQTTConnector(NetworkConnector):
                         res_status_msg = res.get_status_msg()
                         if res_status_msg is None:
                             res_status_msg = "no status message received"
+
+                        # Put checked requests back in queue
+                        while not checked_requests_list.empty():
+                            mqtt_res_queue.put(checked_requests_list.get())
+
                         return res_ack, res_status_msg, res
-        return None, "no response received", None
+
+                    # Save request to put it back in queue later
+                    checked_requests_list.put(res)
+
+            # Put checked requests back in queue
+            while not checked_requests_list.empty():
+                mqtt_res_queue.put(checked_requests_list.get())
+            return None, "no response received", None
+
+        return None, "no response awaited", None
 
     def send_broadcast(self, req: Request, timeout: int = 6) -> [Request]:
         global mqtt_res_queue

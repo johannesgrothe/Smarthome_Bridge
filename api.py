@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, request, jsonify
+from flask import Flask, redirect, url_for, request, jsonify, Response
 # from bridge import MainBridge
 from typing import Optional
 
@@ -80,6 +80,16 @@ def run_api(bridge, port: int):
         response = jsonify(buf_res)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
+
+    @app.route('/clients/<client_name>/restart', methods=['POST'])
+    def restart_client(client_name):
+        gadget = bridge.get_client(client_name)
+        if gadget is None:
+            return Response('{"status": "Gadget name was not found"}', status=404, mimetype='application/json')
+        success = bridge.restart_client(gadget)
+        if success:
+            return Response('{"status": "Reboot was successful"}', status=200, mimetype='application/json')
+        return Response('{"status": "Error triggering reboot on client"}', status=400, mimetype='application/json')
 
     # @app.route('/gadgets/all', methods=['POST', 'GET'])
     # def login():
