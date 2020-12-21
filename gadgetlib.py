@@ -17,23 +17,13 @@ class GadgetIdentifier(enum.IntEnum):
 class CharacteristicIdentifier(enum.IntEnum):
     """A Number for every characteristic"""
     err_type = 0,
-    turnOn = 1
-    turnOff = 2
-    toggleStatus = 3
-    brightnessUp = 4
-    brightnessDown = 5
-    volumeUp = 6
-    volumeDown = 7
-    mute = 8
-    unmute = 9
-    toggleMute = 10
-    mode0 = 11
-    mode1 = 12
-    mode2 = 13
-    mode3 = 14
-    mode4 = 15
-    modeUp = 16
-    modeDown = 17
+    status = 1,
+    fanSpeed = 2,
+    brightness = 3,
+    hue = 4,
+    saturation = 5,
+    temperature = 6,
+    humidity = 7
 
 
 class CharacteristicUpdateStatus(enum.IntEnum):

@@ -26,7 +26,7 @@ class SmarthomeClient:
     def __init__(self, name: str, runtime_id: int):
         self.__name = name
         self.__last_connected = 0
-        self.__created: int(time())
+        self.__created = int(time())
         self.__runtime_id = runtime_id
         self.__needs_update = True
 
@@ -63,3 +63,10 @@ class SmarthomeClient:
     def report_update(self):
         """Reports an successful update to the client"""
         self.__needs_update = False
+
+    def serialized(self) -> dict:
+        """Returns a serialized version of the client"""
+        return {"name": self.__name,
+                "created": self.__created,
+                "last_connected": self.__last_connected,
+                "is_active": self.is_active()}

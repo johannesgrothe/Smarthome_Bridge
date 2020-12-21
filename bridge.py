@@ -4,6 +4,8 @@ import random
 import sys
 from threading import Thread
 import threading
+
+from homekit_connector import HomeConnectorType, HomeKitConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional
@@ -12,10 +14,11 @@ from request import Request
 import api
 
 parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
-parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.')
-parser.add_argument('--mqtt_port', help='port to be uploaded.')
-parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.')
-parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.')
+parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.', type=str)
+parser.add_argument('--mqtt_port', help='port to be uploaded.', type=int)
+parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.', type=str)
+parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.', type=str)
+parser.add_argument('--dummy_data', help='Adds dummy data for debugging.', action="store_true")
 ARGS = parser.parse_args()
 
 
@@ -96,6 +99,45 @@ class MainBridge:
         with self.__lock:
             return self.__bridge_name
 
+    def add_dummy_data(self):
+        self.__add_client("dummy_client1",
+                          1234567)
+        self.add_gadget(Gadget("dummy_lamp",
+                               GadgetIdentifier(1),
+                               "dummy_client1",
+                               1234567,
+                               [
+                                   Characteristic(CharacteristicIdentifier(1),
+                                                  0,
+                                                  1,
+                                                  1,
+                                                  1),
+                                   Characteristic(CharacteristicIdentifier(3),
+                                                  0,
+                                                  100,
+                                                  1,
+                                                  35)
+                               ]))
+        self.add_gadget(Gadget("dummy_fan",
+                               GadgetIdentifier(3),
+                               "dummy_client1",
+                               1234567,
+                               [
+                                   Characteristic(CharacteristicIdentifier(1),
+                                                  0,
+                                                  100,
+                                                  1,
+                                                  35),
+                                   Characteristic(CharacteristicIdentifier(2),
+                                                  0,
+                                                  100,
+                                                  33,
+                                                  66)
+                               ]))
+        self.__add_connector(HomeConnectorType(1), {"name": "test_connector1",
+                                                    "ip": "192.168.178.111",
+                                                    "port": 1883})
+
     def handle_request(self, req: Request):
         """Receives a request from the watcher Thread and handles it"""
         print("Received Request Nr. {}: {}".format(self.__received_requests + 1, req.get_path()))
@@ -140,7 +182,6 @@ class MainBridge:
                     g_type = GadgetIdentifier(list_gadget["type"])
                     g_characteristics = []
                     for characteristic in list_gadget["characteristics"]:
-
                         # Create new characteristic
                         new_c = Characteristic(CharacteristicIdentifier(characteristic["type"]),
                                                characteristic["min"],
@@ -212,8 +253,8 @@ class MainBridge:
         return None
 
     def __add_client(self, name: str, runtime_id: int) -> bool:
-        with self.__lock:
-            if self.__get_client(name) is None:
+        if self.__get_client(name) is None:
+            with self.__lock:
                 buf_client = SmarthomeClient(name, runtime_id)
                 self.__clients.append(buf_client)
                 return True
@@ -313,7 +354,6 @@ class MainBridge:
         """Gets an characteristic update from a connector and forwards it to every other connector and the clients"""
         update_status, gadget = self.update_characteristic_on_gadget(gadget_name, characteristic, value)
         if update_status == CharacteristicUpdateStatus.update_successful:
-
             # Update characteristic on clients
             self.update_characteristic_on_clients(gadget, characteristic, value)
 
@@ -345,10 +385,10 @@ class MainBridge:
 
     def add_gadget(self, gadget: Gadget) -> bool:
         """Adds a gadget to the bridge"""
+        if self.get_gadget(gadget.get_name()):
+            print("Gadget with this name is already present")
+            return False
         with self.__lock:
-            if self.get_gadget(gadget.get_name()):
-                print("Gadget with this name is already present")
-                return False
             print("Adding new gadget '{}'".format(gadget.get_name()))
             self.__gadgets.append(gadget)
             return True
@@ -366,6 +406,20 @@ class MainBridge:
         """Returns the data for all connectors"""
         with self.__lock:
             return self.__connectors
+
+    def __add_connector(self, c_type: HomeConnectorType, data: dict):
+        if c_type == HomeConnectorType.homekit:
+            try:
+                buf_connector = HomeKitConnector(self,
+                                                 own_name=data["name"],
+                                                 mqtt_ip=data["ip"],
+                                                 mqtt_port=data["port"])
+                self.__connectors.append(buf_connector)
+                print("Added 'HomeKit' connector '{}'".format(buf_connector.get_name()))
+            except KeyError:
+                print("Received broken connector config")
+
+            return
 
     # API settings
     def set_api_port(self, port: int):
@@ -413,4 +467,9 @@ if __name__ == '__main__':
     bridge = MainBridge(get_sender(), buf_mqtt_ip, buf_mqtt_port, None, None)
 
     bridge.set_api_port(4999)
+
+    if ARGS.dummy_data:
+        print("Adding dummy data:")
+        bridge.add_dummy_data()
+
     bridge.run_api()

@@ -1,8 +1,8 @@
+import enum
 import json
 import time
 import paho.mqtt.client as mqtt
 from typing import Optional
-from bridge import MainBridge
 from gadgetlib import GadgetIdentifier
 from gadget import Characteristic, Gadget, CharacteristicIdentifier
 from queue import Queue
@@ -10,6 +10,12 @@ from threading import Thread, Lock
 
 # Global queue for mqtt results
 mqtt_res_queue = Queue()
+
+
+class HomeConnectorType(enum.IntEnum):
+    """A number identifier for every gadget type"""
+    err_type = 0
+    homekit = 1
 
 
 def gadget_type_to_string(identifier: GadgetIdentifier) -> Optional[str]:
@@ -56,10 +62,13 @@ class HomeKitRequest:
 
 class HomeConnector:
 
-    __bridge: MainBridge
+    __bridge = None
 
-    def __init__(self, bridge: MainBridge):
+    __type: HomeConnectorType
+
+    def __init__(self, bridge):
         self.__bridge = bridge
+        self.__type = HomeConnectorType.err_type
 
     def register_gadget(self, gadget: Gadget):
         pass
@@ -70,6 +79,9 @@ class HomeConnector:
 
     def __update_characteristic_on_bridge(self, name: str, characteristic: CharacteristicIdentifier, value: int):
         self.__bridge.update_characteristic_from_connector(name, characteristic, value)
+
+    def serialized(self) -> dict:
+        return {"type": int(self.__type)}
 
 
 class HomeKitConnector(HomeConnector):
@@ -87,8 +99,8 @@ class HomeKitConnector(HomeConnector):
     __lock: Lock
     __status_responses: Queue
 
-    def __init__(self, bridge: MainBridge, own_name: str, mqtt_ip: str, mqtt_port: int,
-                 mqtt_user: Optional[str], mqtt_pw: Optional[str]):
+    def __init__(self, bridge, own_name: str, mqtt_ip: str, mqtt_port: int,
+                 mqtt_user: Optional[str] = None, mqtt_pw: Optional[str] = None):
         super().__init__(bridge)
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name + "_HomeBridge")
@@ -107,10 +119,15 @@ class HomeKitConnector(HomeConnector):
         self.__mqtt_callback_thread = HomeKitMQTTThread(parent=self)
         self.__mqtt_callback_thread.start()
 
+        self.__type = HomeConnectorType.homekit
+
         self.__lock = Lock()
 
     def __del__(self):
         self.__client.disconnect()
+
+    def get_name(self) -> str:
+        return self.__own_name
 
     @staticmethod
     def __on_message(client, userdata, message):

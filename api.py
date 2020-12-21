@@ -23,7 +23,7 @@ def run_api(bridge, port: int):
 
         out_gadget_list: [dict] = []
         for gadget in gadget_list:
-            json_gadget = gadget.get_json_representation()
+            json_gadget = gadget.serialized()
             out_gadget_list.append(json_gadget)
 
         buf_res = {"gadgets": out_gadget_list,
@@ -39,8 +39,7 @@ def run_api(bridge, port: int):
 
         out_client_list: [dict] = []
         for client in client_list:
-            # TODO: implement sending connector info
-            json_client = {"data": "to be implemented"}
+            json_client = client.serialized()
             out_client_list.append(json_client)
 
         buf_res = {"clients": out_client_list,
@@ -72,8 +71,7 @@ def run_api(bridge, port: int):
 
         out_gadget_list: [dict] = []
         for connector in connector_list:
-            # TODO: implement sending connector info
-            json_connector = {"data": "to be implemented"}
+            json_connector = connector.serialized()
             out_gadget_list.append(json_connector)
 
         buf_res = {"connectors": out_gadget_list,

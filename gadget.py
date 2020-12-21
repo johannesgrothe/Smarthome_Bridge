@@ -13,7 +13,7 @@ class Characteristic:
     def __init__(self, c_type: CharacteristicIdentifier, min_val: int, max_val: int,
                  step: int, value: Optional[int] = None):
         self.__min = min_val
-        self.__min = max_val
+        self.__max = max_val
         self.__step = step
         self.__type = c_type
         if value is not None:
@@ -38,7 +38,7 @@ class Characteristic:
     def get_options(self) -> (int, int, int):
         return self.__min, self.__max, self.__step
 
-    def get_json_representation(self) -> dict:
+    def serialized(self) -> dict:
         return {"type": int(self.__type), "min": self.__min, "max": self.__max, "step": self.__step,
                 "value": self.__val}
 
@@ -145,8 +145,8 @@ class Gadget:
             buf_list.append(characteristic.get_type())
         return buf_list
 
-    def get_json_representation(self) -> dict:
+    def serialized(self) -> dict:
         buf_json = {"type": int(self.__type), "name": self.__name, "characteristics": []}
         for characteristic in self.__characteristics:
-            buf_json["characteristics"].append(characteristic.get_json_representation())
+            buf_json["characteristics"].append(characteristic.serialized())
         return buf_json
