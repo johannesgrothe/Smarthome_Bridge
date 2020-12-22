@@ -20,7 +20,8 @@ class MQTTConnector(NetworkConnector):
     __mqtt_username: Optional[str]
     __mqtt_password: Optional[str]
 
-    def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str], mqtt_pw: Optional[str]):
+    def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int,
+                 mqtt_user: Optional[str] = None, mqtt_pw: Optional[str] = None):
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name)
         self.__ip = mqtt_ip

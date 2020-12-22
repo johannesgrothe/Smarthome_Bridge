@@ -141,11 +141,12 @@ class MainBridge:
 
     def handle_request(self, req: Request):
         """Receives a request from the watcher Thread and handles it"""
-        print("Received Request Nr. {}: {}".format(self.__received_requests + 1, req.get_path()))
         self.__received_requests += 1
 
         if req.get_receiver() != "<bridge>":
             return
+
+        print("Received Request Nr. {}: {}".format(self.__received_requests + 1, req.get_path()))
 
         req_pl: dict = req.get_payload()
 
@@ -161,6 +162,10 @@ class MainBridge:
         if req.get_path() == "smarthome/sync":
 
             local_client = self.__get_or_create_client_from_request(req)
+
+            if "runtime_id" not in req_pl:
+                print("Received no runtime id on sync response")
+                return
 
             if "gadgets" not in req_pl:
                 print("Received no gadget config on sync response")
@@ -196,12 +201,14 @@ class MainBridge:
                     buf_gadget: Optional[Gadget] = self.get_gadget(g_name)
                     if buf_gadget is not None:
                         # Update existing gadget
+                        print("Updating '{}'".format(buf_gadget.get_name()))
                         buf_gadget.update_gadget_info(g_type,
                                                       req.get_sender(),
                                                       req_pl["runtime_id"],
                                                       g_characteristics)
                     else:
                         # Create new gadget since there is no gadget with selected name
+                        print("Creating new '{}'".format(g_name))
                         buf_gadget = Gadget(g_name,
                                             g_type,
                                             req.get_sender(),
@@ -216,10 +223,21 @@ class MainBridge:
                     print("Error syncing gadget:")
                     print(e)
 
+            deleted_gadgets = 0
+
             for gadget in self.__gadgets:
                 if gadget.get_host_client() == req.get_sender():
                     if gadget.get_name() not in updated_gadgets:
                         self.delete_gadget(gadget)
+                        deleted_gadgets += 1
+
+            print("Updated {} Gadgets".format(len(updated_gadgets)))
+            print("Deleted {} Gadgets".format(deleted_gadgets))
+
+            # Report update to client
+            local_client.report_update()
+
+            print("Update finished.")
 
             return
 
@@ -310,7 +328,7 @@ class MainBridge:
                           "<bridge>",
                           client.get_name(),
                           {})
-        self.__network_gadget.send_request(out_req)
+        self.__network_gadget.send_request(out_req, timeout=0)
 
     def restart_client(self, client: SmarthomeClient) -> bool:
         """Sends out a request to restart the client and"""

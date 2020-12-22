@@ -1,8 +1,8 @@
 """Module for the SmarthomeClient Class"""
 from time import time
 
-# Maximum timeout before the client is considered inactive
-max_timeout = 15000
+# Maximum timeout in seconds before the client is considered inactive
+max_timeout = 17
 
 
 class SmarthomeClient:
