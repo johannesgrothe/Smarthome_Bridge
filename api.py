@@ -1,5 +1,4 @@
 from flask import Flask, redirect, url_for, request, jsonify, Response
-# from bridge import MainBridge
 from typing import Optional
 
 # https://pythonbasics.org/flask-http-methods/

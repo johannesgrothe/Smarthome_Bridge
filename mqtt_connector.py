@@ -75,7 +75,7 @@ class MQTTConnector(NetworkConnector):
             print("Error creating Request")
 
     @staticmethod
-    def get_request(self) -> Optional[bool]:
+    def get_request() -> Optional[bool]:
         """Returns a request if there is one"""
         if not mqtt_res_queue.empty():
             return mqtt_res_queue.get()

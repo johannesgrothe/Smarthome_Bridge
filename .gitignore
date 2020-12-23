@@ -35,3 +35,6 @@ __pycache__
 venv
 .DS_Store
 Smarthome_ESP32
+
+/configs
+!/configs/example.json

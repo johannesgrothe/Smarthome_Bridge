@@ -3,8 +3,8 @@
   "description": "Example config for testing and as reference",
   "data": {
     "id": "YoloChip14",
-    "wifi_ssid": "testwifi",
-    "wifi_pw": "testpw",
+    "wifi_ssid": "test_wifi",
+    "wifi_pw": "test_pw",
     "mqtt_ip": "192.168.178.111",
     "mqtt_port": 1883,
     "mqtt_user": null,

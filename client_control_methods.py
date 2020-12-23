@@ -57,4 +57,3 @@ def upload_gadget(client_name: str, gadget: dict, sender: str, network: NetworkC
 
     suc, status_message, result = network.send_request(out_request)
     return suc is True, status_message
-
