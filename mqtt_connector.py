@@ -47,7 +47,7 @@ class MQTTConnector(NetworkConnector):
 
         try:
             json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
-        except Exception:
+        except UnicodeDecodeError:
             print("Couldn't format json string")
             return
 
@@ -74,6 +74,7 @@ class MQTTConnector(NetworkConnector):
         except ValueError:
             print("Error creating Request")
 
+    @staticmethod
     def get_request(self) -> Optional[bool]:
         """Returns a request if there is one"""
         if not mqtt_res_queue.empty():
@@ -149,6 +150,6 @@ if __name__ == '__main__':
                       125543,
                       "me",
                       "you",
-                      {"yolo": "blub"})
+                      {"yolo": "hallo"})
 
     mqtt_gadget.send_request(buf_req)

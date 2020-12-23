@@ -1,5 +1,4 @@
 import serial
-import time
 import argparse
 import json
 import socket
@@ -7,17 +6,17 @@ import random
 import os
 import sys
 from request import Request
-from gadgetlib import GadgetIdentifier, str_to_gadget_ident, GadgetMethod, str_to_gadget_method
+from gadgetlib import GadgetIdentifier, str_to_gadget_ident, str_to_gadget_method
 from typing import Optional
-from pprint import pprint
 
 import client_control_methods
-from network_connector import NetworkConnector
 from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 
 NETWORK_MODES = ["serial", "mqtt"]
-CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_recv_pin", "radio_send_pin", "network_mode", "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw", "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
+CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_recv_pin", "radio_send_pin", "network_mode",
+                     "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw",
+                     "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
 PRIVATE_ATTRIBUTES = ["wifi_pw", "mqtt_pw"]
 PUBLIC_ATTRIBUTES = [x for x in CONFIG_ATTRIBUTES if x not in PRIVATE_ATTRIBUTES]
 
@@ -139,17 +138,17 @@ def select_option(input_list: [str], category: str = None) -> int:
         print("Please select a {}:".format(category))
     for i in range(len(input_list)):
         print("    {}: {}".format(i, input_list[i]))
-    var = None
-    while var is None:
-        var = input("Please select an option by entering its number:\n")
+    selection = None
+    while selection is None:
+        selection = input("Please select an option by entering its number:\n")
         try:
-            var = int(var)
+            selection = int(selection)
         except TypeError:
-            var = None
-        if var < 0 or var >= len(input_list):
+            selection = None
+        if selection < 0 or selection >= len(input_list):
             print("Illegal input, try again.")
-            var = None
-    return var
+            selection = None
+    return selection
 
 
 def load_config_file(f_name: str) -> Optional[dict]:
@@ -222,12 +221,12 @@ def load_config() -> Optional[dict]:
 
     # Remove unknown attributes
     illegal_attributes = []
-    for attr in out_cfg["data"]:
-        if attr not in CONFIG_ATTRIBUTES:
-            print("[!] Unknown attribute in config: '{}'".format(attr))
-            illegal_attributes.append(attr)
-    for attr in illegal_attributes:
-        out_cfg["data"].pop(attr)
+    for data_attr in out_cfg["data"]:
+        if data_attr not in CONFIG_ATTRIBUTES:
+            print("[!] Unknown attribute in config: '{}'".format(data_attr))
+            illegal_attributes.append(data_attr)
+    for data_attr in illegal_attributes:
+        out_cfg["data"].pop(data_attr)
 
     # Translate the types for the gadgets from string to GadgetIdentifier
     if "gadgets" in out_cfg:
@@ -263,24 +262,23 @@ def read_client_config() -> dict:
 
     out_settings = {}
 
-    # for attr in [x for x in PUBLIC_ATTRIBUTES if x != "id"]:
-    for attr in PUBLIC_ATTRIBUTES:
+    for pub_attr in PUBLIC_ATTRIBUTES:
 
-        payload_dict = {"param": attr}
+        attr_payload_dict = {"param": pub_attr}
 
-        out_req = Request(path="smarthome/config/read",
-                          session_id=gen_req_id(),
-                          sender=get_sender(),
-                          receiver=CLIENT_NAME,
-                          payload=payload_dict)
+        attr_req = Request(path="smarthome/config/read",
+                           session_id=gen_req_id(),
+                           sender=get_sender(),
+                           receiver=CLIENT_NAME,
+                           payload=attr_payload_dict)
 
-        success, status, res = network_gadget.send_request(out_req)
-        if res is not None and success is not False:
-            # print("[✓] Reading '{}' was successful".format(attr))
-            out_settings[attr] = res.get_payload()["value"]
+        req_success, req_status, req_res = network_gadget.send_request(attr_req)
+        if req_res is not None and req_success is not False:
+            # print("[✓] Reading '{}' was successful".format(pub_attr))
+            out_settings[pub_attr] = req_res.get_payload()["value"]
         else:
-            # print("[×] Reading '{}' failed".format(attr))
-            out_settings[attr] = None
+            # print("[×] Reading '{}' failed".format(pub_attr))
+            out_settings[pub_attr] = None
     return out_settings
 
 
