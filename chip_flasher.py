@@ -1,5 +1,6 @@
 import os
 import argparse
+import subprocess
 from typing import Optional
 
 parser = argparse.ArgumentParser(description='Script to flash different software versions to the chip')
@@ -46,6 +47,12 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     os.system("git pull --quiet")
 
     print("OK.\n".format(branch_name))
+
+    branch_name = os.popen("git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)").read().strip("\n")
+
+    commit_hash = os.popen("git rev-parse HEAD").read().strip("\n")
+
+    print("Flashing branch '{}', commit ''".format(branch_name, commit_hash))
 
     uploading_successful = os.system("cd {};pio run --target upload{}".format(repo_name, upload_port_phrase)) == 0
 
