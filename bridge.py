@@ -4,6 +4,7 @@ import random
 import sys
 from threading import Thread
 import threading
+from datetime import datetime
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
 from smarthomeclient import SmarthomeClient
@@ -31,6 +32,23 @@ def gen_req_id() -> int:
 def get_sender() -> str:
     """Returns the name used as sender (local hostname)"""
     return socket.gethostname()
+
+
+def check_dict_for_keys(check_dict: dict, key_list: [str]) -> bool:
+    """Checks if all given keys are included in the dict"""
+    for key in key_list:
+        if key not in check_dict:
+            return False
+    return True
+
+
+def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
+    """Checks if every of the given keys are present and adds the missing keys with a None value"""
+    buf_dict = check_dict
+    for key in key_list:
+        if key not in buf_dict:
+            buf_dict[key] = None
+    return buf_dict
 
 
 class MainBridge:
@@ -163,13 +181,11 @@ class MainBridge:
 
             local_client = self.__get_or_create_client_from_request(req)
 
-            if "runtime_id" not in req_pl:
-                print("Received no runtime id on sync response")
-                return
+            all_keys_existing = check_dict_for_keys(req_pl, ["runtime_id", "gadgets", "port_mapping"])
+            if not all_keys_existing:
+                print("Request is missing keys")
 
-            if "gadgets" not in req_pl:
-                print("Received no gadget config on sync response")
-                return
+            req_pl = fill_with_nones(req_pl, ["sw_uploaded", "sw_commit", "sw_branch"])
 
             if not isinstance(req_pl["gadgets"], list):
                 print("Gadget config in sync response was no list")
@@ -235,7 +251,8 @@ class MainBridge:
             print("Deleted {} Gadgets".format(deleted_gadgets))
 
             # Report update to client
-            local_client.report_update()
+            local_client.update_data(req_pl["sw_uploaded"], req_pl["sw_commit"],
+                                     req_pl["sw_branch"], req_pl["port_mapping"])
 
             print("Update finished.")
 
