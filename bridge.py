@@ -2,6 +2,7 @@ import argparse
 import socket
 import random
 import sys
+import os
 from threading import Thread
 import threading
 from datetime import datetime
@@ -54,7 +55,17 @@ def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
 class MainBridge:
     """Main Bridge for the Smarthome Environment"""
 
+    # Name of the bridge
     __bridge_name: str
+
+    # Bridge software commit hash
+    __sw_commit: Optional[str]
+
+    # Bridge software commit branch
+    __sw_branch: Optional[str]
+
+    # Time the bridge was launched
+    __time_launched: datetime
 
     # MQTT
     __mqtt_port: int
@@ -84,8 +95,26 @@ class MainBridge:
     def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int,
                  mqtt_username: Optional[str], mqtt_pw: Optional[str]):
         print("Setting up Bridge...")
+
+        # Setting bridge name
         self.__bridge_name = bridge_name
+
+        # Setting counter for received requests to 0
         self.__received_requests = 0
+
+        # Setting the value for the software commit hash
+        self.__sw_commit = os.popen("git rev-parse HEAD").read().strip("\n")
+        if self.__sw_commit == "":
+            self.__sw_commit = None
+
+        # Setting the value for the software branch
+        self.__sw_branch = os.popen("git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\
+            .read().strip("\n")
+        if self.__sw_branch == "":
+            self.__sw_branch = None
+
+        # Set launch time
+        self.__time_launched = datetime.now()
 
         # MQTT
         self.__mqtt_ip = mqtt_ip
@@ -112,11 +141,6 @@ class MainBridge:
 
         self.__lock = threading.Lock()
         print("Ok.")
-
-    def get_bridge_name(self) -> str:
-        """Sets the name for the bridge"""
-        with self.__lock:
-            return self.__bridge_name
 
     def add_dummy_data(self):
         self.__add_client("dummy_client1",
@@ -280,7 +304,31 @@ class MainBridge:
                                                    req_pl["value"])
             return
 
-    # Clients
+    # region BRIDGE DATA
+
+    def get_bridge_name(self) -> str:
+        """Sets the name for the bridge"""
+        with self.__lock:
+            return self.__bridge_name
+
+    def get_time_launched(self) -> datetime:
+        """Returns the time the bridge got started"""
+        with self.__lock:
+            return self.__time_launched
+
+    def get_sw_commit(self) -> Optional[str]:
+        """Returns the software commit hash of the bridge"""
+        with self.__lock:
+            return self.__sw_commit
+
+    def get_sw_branch(self) -> Optional[str]:
+        """Returns the software branch of the bridge"""
+        with self.__lock:
+            return self.__sw_branch
+
+    # endregion
+
+    # region CLIENT METHODS
     def get_client(self, name: str) -> Optional[SmarthomeClient]:
         with self.__lock:
             for client in self.__clients:
@@ -354,7 +402,9 @@ class MainBridge:
                                                     "<bridge>",
                                                     self.__network_gadget)
 
-    # Characteristics
+    # endregion
+
+    # region CHARACTERISTIC METHODS
     def update_characteristic_on_gadget(self, gadget_name: str, characteristic: CharacteristicIdentifier,
                                         value: int) -> (CharacteristicUpdateStatus, Gadget):
         """Updates a single characteristic of the selected gadget"""
@@ -412,7 +462,9 @@ class MainBridge:
                 connector.update_characteristic(gadget.get_name(), characteristic, value)
         return True
 
-    # Gadgets
+    # endregion
+
+    # region GADGET METHODS
     def get_gadget(self, gadget_name: str) -> Optional[Gadget]:
         """Returns the data for the selected gadget"""
         with self.__lock:
@@ -444,7 +496,9 @@ class MainBridge:
 
             self.__gadgets.remove(gadget)
 
-    # Connectors
+    # endregion
+
+    # region CONNECTOR METHODS
     def get_all_connectors(self):
         """Returns the data for all connectors"""
         with self.__lock:
@@ -464,7 +518,9 @@ class MainBridge:
 
             return
 
-    # API settings
+    # endregion
+
+    # region API
     def set_api_port(self, port: int):
         """Sets the port for the REST API"""
         self.__api_port = port
@@ -473,6 +529,8 @@ class MainBridge:
         """Launches the REST API"""
         print("Launching API")
         api.run_api(bridge, self.__api_port)
+
+    # endregion
 
 
 class BridgeMQTTThread(Thread):

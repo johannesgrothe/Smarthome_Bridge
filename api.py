@@ -56,6 +56,9 @@ def run_api(bridge, port: int):
         client_list = bridge.get_all_clients()
 
         buf_res = {"bridge_name": bridge_name,
+                   "software_commit": bridge.get_sw_commit(),
+                   "software_branch": bridge.get_sw_branch(),
+                   "running_since": str(bridge.get_time_launched()),
                    "gadget_count": len(gadget_list),
                    "connector_count": len(connector_list),
                    "client_count": len(client_list)}
