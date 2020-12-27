@@ -6,7 +6,6 @@ from typing import Optional
 # Maximum timeout in seconds before the client is considered inactive
 max_timeout = 17
 
-
 def filter_mapping(in_map: dict) -> (bool, dict):
     """Filters a port mapping dict to not contain any non-int or negative keys and no double values.
 
@@ -64,6 +63,9 @@ class SmarthomeClient:
     # Mapping for the ports on the client
     __port_mapping: dict
 
+    # Boot mode of the client
+    __boot_mode: int
+
     def __init__(self, name: str, runtime_id: int):
         self.__name = name
         self.__last_connected = 0
@@ -74,6 +76,8 @@ class SmarthomeClient:
         self.__flash_date = None
         self.__software_commit = None
         self.__software_branch = None
+
+        self.__boot_mode = 0
 
         has_err, self.__port_mapping = filter_mapping({})
 
@@ -108,14 +112,17 @@ class SmarthomeClient:
         return self.__needs_update
 
     def update_data(self, flash_date: Optional[datetime], software_commit: Optional[str],
-                    software_branch: Optional[str], port_mapping: dict):
+                    software_branch: Optional[str], port_mapping: dict, boot_mode: int):
         """Reports an successful update to the client"""
 
         self.__flash_date = datetime.strptime(flash_date, "%Y-%m-%d")
         self.__software_commit = software_commit
         self.__software_branch = software_branch
+        self.__boot_mode = boot_mode
 
         has_err, self.__port_mapping = filter_mapping(port_mapping)
+        if has_err:
+            print(f"WARNING: PROBLEM FOUND IN PORT MAPPING '{port_mapping}'")
 
         self.__needs_update = False
 
@@ -129,6 +136,7 @@ class SmarthomeClient:
                 "created": self.__created,
                 "last_connected": self.__last_connected,
                 "is_active": self.is_active(),
+                "boot_mode": self.__boot_mode,
                 "sw_uploaded": out_date,
                 "sw_version": self.__software_commit,
                 "sw_branch": self.__software_branch,
@@ -149,3 +157,7 @@ class SmarthomeClient:
     def get_sw_branch(self) -> Optional[str]:
         """Returns the software branch name if available"""
         return self.__software_branch
+
+    def get_boot_mode(self) -> int:
+        """Returns the boot mode of the chip"""
+        return self.__boot_mode

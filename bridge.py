@@ -3,6 +3,7 @@ import socket
 import random
 import sys
 import os
+import time
 from threading import Thread
 import threading
 from datetime import datetime
@@ -205,7 +206,7 @@ class MainBridge:
 
             local_client = self.__get_or_create_client_from_request(req)
 
-            all_keys_existing = check_dict_for_keys(req_pl, ["runtime_id", "gadgets", "port_mapping"])
+            all_keys_existing = check_dict_for_keys(req_pl, ["runtime_id", "gadgets", "port_mapping", "boot_mode"])
             if not all_keys_existing:
                 print("Request is missing keys")
 
@@ -276,7 +277,8 @@ class MainBridge:
 
             # Report update to client
             local_client.update_data(req_pl["sw_uploaded"], req_pl["sw_commit"],
-                                     req_pl["sw_branch"], req_pl["port_mapping"])
+                                     req_pl["sw_branch"], req_pl["port_mapping"],
+                                     req_pl["boot_mode"])
 
             print("Update finished.")
 
@@ -392,7 +394,7 @@ class MainBridge:
                           gen_req_id(),
                           "<bridge>",
                           client.get_name(),
-                          {})
+                          {"server_time": int(time.time() / 1000)})
         self.__network_gadget.send_request(out_req, timeout=0)
 
     def restart_client(self, client: SmarthomeClient) -> bool:
