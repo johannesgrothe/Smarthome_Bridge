@@ -1,6 +1,7 @@
 from flask import Flask, redirect, url_for, request, jsonify, Response
 from typing import Optional
 
+
 # https://pythonbasics.org/flask-http-methods/
 
 
@@ -92,6 +93,31 @@ def run_api(bridge, port: int):
         if success:
             return Response('{"status": "Reboot was successful"}', status=200, mimetype='application/json')
         return Response('{"status": "Error triggering reboot on client"}', status=400, mimetype='application/json')
+
+    @app.route('/system/get_serial_ports', methods=['GET'])
+    def get_serial_ports():
+        return jsonify({"serial_ports": bridge.get_serial_ports()})
+
+    @app.route('/system/flash_software', methods=['POST'])
+    def flash_software():
+        branch_name = request.args.get('branch_name')
+        serial_port = request.args.get('serial_port')
+
+        success = bridge.flash_software(branch_name, serial_port)
+
+        str_branch = branch_name if branch_name is not None else "master"
+        str_port = serial_port if serial_port is not None else "default"
+
+        response: dict = {"status": f"Flashing software from '{str_branch}' on port '{str_port}' was successful"}
+        res_code = 200
+
+        if not success:
+            response = {"status": f"Error flashing software from '{str_branch}' on port '{str_port}'."}
+            res_code = 400
+
+        return Response(str(response),
+                        status=res_code,
+                        mimetype='application/json')
 
     # @app.route('/gadgets/all', methods=['POST', 'GET'])
     # def login():

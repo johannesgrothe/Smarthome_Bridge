@@ -1,17 +1,16 @@
 import os
 import argparse
-import subprocess
 from typing import Optional
 
-parser = argparse.ArgumentParser(description='Script to flash different software versions to the chip')
-parser.add_argument('--branch', help='git branch to flash on the chip')
-parser.add_argument('--serial_port', help='serial port for uploading')
-ARGS = parser.parse_args()
+repo_name = "Smarthome_ESP32"
+repo_url = "git@github.com:A20GameCo/{}.git".format(repo_name)
+
+
+def get_serial_ports() -> [str]:
+    return os.popen(f"cd {repo_name};ls /dev/tty.*").read().strip("\n").split()
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None) -> bool:
-    repo_name = "Smarthome_ESP32"
-    repo_url = "git@github.com:A20GameCo/{}.git".format(repo_name)
 
     upload_port_phrase = ""
     if upload_port is not None:
@@ -81,6 +80,11 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Script to flash different software versions to the chip')
+    parser.add_argument('--branch', help='git branch to flash on the chip')
+    parser.add_argument('--serial_port', help='serial port for uploading')
+    ARGS = parser.parse_args()
+
     print("Launching Chip Flasher")
     branch = "develop"
     if ARGS.branch:

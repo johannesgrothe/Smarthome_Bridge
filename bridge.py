@@ -7,6 +7,7 @@ import time
 from threading import Thread
 import threading
 from datetime import datetime
+from chip_flasher import flash_chip, get_serial_ports
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
 from smarthomeclient import SmarthomeClient
@@ -16,14 +17,6 @@ from mqtt_connector import MQTTConnector
 from request import Request
 import api
 import client_control_methods
-
-parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
-parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.', type=str)
-parser.add_argument('--mqtt_port', help='port to be uploaded.', type=int)
-parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.', type=str)
-parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.', type=str)
-parser.add_argument('--dummy_data', help='Adds dummy data for debugging.', action="store_true")
-ARGS = parser.parse_args()
 
 
 def gen_req_id() -> int:
@@ -306,6 +299,16 @@ class MainBridge:
                                                    req_pl["value"])
             return
 
+    @staticmethod
+    def flash_software(branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> bool:
+        """Flashes the Smarthome_ESP32 software from the selected branch to the chip"""
+        return flash_chip(branch, False, serial_port)
+
+    @staticmethod
+    def get_serial_ports() -> [str]:
+        """Returns all serial ports existing on the system"""
+        return get_serial_ports()
+
     # region BRIDGE DATA
 
     def get_bridge_name(self) -> str:
@@ -553,6 +556,15 @@ class BridgeMQTTThread(Thread):
 
 
 if __name__ == '__main__':
+    # Argument-parser
+    parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
+    parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.', type=str)
+    parser.add_argument('--mqtt_port', help='port to be uploaded.', type=int)
+    parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.', type=str)
+    parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.', type=str)
+    parser.add_argument('--dummy_data', help='Adds dummy data for debugging.', action="store_true")
+    ARGS = parser.parse_args()
+
     print("Launching Bridge")
 
     if ARGS.mqtt_port:
