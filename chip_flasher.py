@@ -24,37 +24,51 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
         os.remove(repo_name)
     else:
         if os.path.isdir(repo_name):
-            repo_works = os.system("cd {};git fetch".format(repo_name)) == 0
-            if not repo_works:
+
+            # Fetch branch
+            print(f"Fetching '{branch_name}'")
+            fetch_ok = os.system(f"cd {repo_name};git fetch") == 0
+            if not fetch_ok:
+                print("Failed.")
+            print("Ok.")
+
+            if not fetch_ok:
                 os.remove(repo_name)
+            else:
+                repo_works = True
 
     if not repo_works:
-        print("Repo doesn't exist or is broken, cloning new one")
+        print(f"Repo doesn't exist or is broken.\nCloning repository from '{repo_url}'")
         repo_works = os.system("git clone {}".format(repo_url)) == 0
+        os.system(f"cd {repo_name};git config pull.ff only")
 
     if not repo_works:
-        print("Error cloning repo")
+        print("Error cloning repository")
         return False
 
-    print("Checking out '{}':".format(branch_name))
-
-    checkout_successful = os.system("cd {};git checkout {}".format(repo_name, branch_name)) == 0
-
+    # Check out selected branch
+    print(f"Checking out '{branch_name}':")
+    checkout_successful = os.system(f"cd {repo_name};git checkout {branch_name}") == 0
     if not checkout_successful:
         print("Failed.")
         return False
+    print("Ok.\n")
 
-    os.system("git pull --quiet")
+    # Pull branch
+    print(f"Pulling '{branch_name}'")
+    pull_ok = os.system(f"cd {repo_name};git pull") == 0
+    if not pull_ok:
+        print("Failed.")
+    print("Ok.\n")
 
-    print("OK.\n".format(branch_name))
+    # Get double check data
+    branch_name = os.popen(f"cd {repo_name};git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\
+        .read().strip("\n")
+    commit_hash = os.popen(f"cd {repo_name};git rev-parse HEAD").read().strip("\n")
+    print("Flashing branch '{}', commit '{}'\n".format(branch_name, commit_hash))
 
-    branch_name = os.popen("git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)").read().strip("\n")
-
-    commit_hash = os.popen("git rev-parse HEAD").read().strip("\n")
-
-    print("Flashing branch '{}', commit ''".format(branch_name, commit_hash))
-
-    uploading_successful = os.system("cd {};pio run --target upload{}".format(repo_name, upload_port_phrase)) == 0
+    # Upload software
+    uploading_successful = os.system(f"cd {repo_name};pio run --target upload{upload_port_phrase}") == 0
 
     print("\n")
 
