@@ -30,7 +30,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             fetch_ok = os.system(f"cd {repo_name};git fetch") == 0
             if not fetch_ok:
                 print("Failed.")
-            print("Ok.")
+            print("Ok.\n")
 
             if not fetch_ok:
                 os.remove(repo_name)
