@@ -16,7 +16,7 @@ from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
 import api
-import websocket_api
+import socket_api
 import client_control_methods
 
 
@@ -546,20 +546,20 @@ class MainBridge:
             self.__api_thread = BridgeAPIThread(parent=self)
             self.__api_thread.start()
 
-    def set_ws_api_port(self, port: int):
+    def set_socket_api_port(self, port: int):
         """Sets the port for the REST API"""
         with self.__lock:
             self.__ws_api_port = port
 
-    def get_ws_api_port(self):
+    def get_socket_api_port(self):
         """returns the current API port of the bridge"""
         with self.__lock:
             return self.__ws_api_port
 
-    def run_ws_api(self):
+    def run_socket_api(self):
         """Launches the REST API"""
         with self.__lock:
-            self.__api_thread = BridgeWSAPIThread(parent=self)
+            self.__api_thread = BridgeSocketAPIThread(parent=self)
             self.__api_thread.start()
 
     # endregion
@@ -605,7 +605,7 @@ class BridgeAPIThread(Thread):
         api.run_api(self.__parent_object, buf_api_port)
 
 
-class BridgeWSAPIThread(Thread):
+class BridgeSocketAPIThread(Thread):
     __parent_object: MainBridge
 
     def __init__(self, parent: MainBridge):
@@ -614,14 +614,13 @@ class BridgeWSAPIThread(Thread):
         self.__parent_object = parent
 
     def run(self):
-        buf_api_port = self.__parent_object.get_ws_api_port()
+        buf_api_port = self.__parent_object.get_socket_api_port()
 
         if buf_api_port == 0:
             print("Websocket API port not configured")
             return
 
-        print("Launching Websocket API")
-        websocket_api.run_websocket_api(self.__parent_object, buf_api_port)
+        socket_api.run_socket_api(self.__parent_object, buf_api_port)
 
 
 if __name__ == '__main__':
@@ -658,8 +657,8 @@ if __name__ == '__main__':
 
     # Set API Ports
     bridge.set_api_port(4999)
-    bridge.set_ws_api_port(6200)
+    bridge.set_socket_api_port(6200)
 
     # Start API Threads
     # bridge.run_api()
-    bridge.run_ws_api()
+    bridge.run_socket_api()
