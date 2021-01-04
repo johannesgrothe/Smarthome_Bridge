@@ -16,6 +16,7 @@ from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
 import api
+import websocket_api
 import client_control_methods
 
 
@@ -69,6 +70,8 @@ class MainBridge:
 
     # API
     __api_port: int
+    __api_thread: Thread
+    __ws_api_port: int
 
     __network_gadget: MQTTConnector
     __mqtt_callback_thread: Thread
@@ -117,7 +120,8 @@ class MainBridge:
         self.__mqtt_pw = mqtt_pw
 
         # API
-        self.__api_port = 5000
+        self.__api_port = 0
+        self.__ws_api_port = 0
 
         self.__clients = []
         self.__gadgets = []
@@ -528,14 +532,41 @@ class MainBridge:
     # region API
     def set_api_port(self, port: int):
         """Sets the port for the REST API"""
-        self.__api_port = port
+        with self.__lock:
+            self.__api_port = port
+
+    def get_api_port(self):
+        """returns the current API port of the bridge"""
+        with self.__lock:
+            return self.__api_port
 
     def run_api(self):
         """Launches the REST API"""
-        print("Launching API")
-        api.run_api(bridge, self.__api_port)
+        with self.__lock:
+            self.__api_thread = BridgeAPIThread(parent=self)
+            self.__api_thread.start()
+
+    def set_ws_api_port(self, port: int):
+        """Sets the port for the REST API"""
+        with self.__lock:
+            self.__ws_api_port = port
+
+    def get_ws_api_port(self):
+        """returns the current API port of the bridge"""
+        with self.__lock:
+            return self.__ws_api_port
+
+    def run_ws_api(self):
+        """Launches the REST API"""
+        with self.__lock:
+            self.__api_thread = BridgeWSAPIThread(parent=self)
+            self.__api_thread.start()
 
     # endregion
+
+    def get_streaming_message(self) -> Optional[str]:
+        with self.__lock:
+            return "blub"
 
 
 class BridgeMQTTThread(Thread):
@@ -553,6 +584,44 @@ class BridgeMQTTThread(Thread):
             buf_req: Optional[Request] = self.__mqtt_connector.get_request()
             if buf_req:
                 self.__parent_object.handle_request(buf_req)
+
+
+class BridgeAPIThread(Thread):
+    __parent_object: MainBridge
+
+    def __init__(self, parent: MainBridge):
+        super().__init__()
+        print("Starting Bridge API Thread")
+        self.__parent_object = parent
+
+    def run(self):
+        buf_api_port = self.__parent_object.get_api_port()
+
+        if buf_api_port == 0:
+            print("API port not configured")
+            return
+
+        print("Launching API")
+        api.run_api(self.__parent_object, buf_api_port)
+
+
+class BridgeWSAPIThread(Thread):
+    __parent_object: MainBridge
+
+    def __init__(self, parent: MainBridge):
+        super().__init__()
+        print("Starting Bridge Websocket API Thread")
+        self.__parent_object = parent
+
+    def run(self):
+        buf_api_port = self.__parent_object.get_ws_api_port()
+
+        if buf_api_port == 0:
+            print("Websocket API port not configured")
+            return
+
+        print("Launching Websocket API")
+        websocket_api.run_websocket_api(self.__parent_object, buf_api_port)
 
 
 if __name__ == '__main__':
@@ -579,12 +648,18 @@ if __name__ == '__main__':
         print("No IP selected.")
         sys.exit(22)
 
+    # Create Bridge
     bridge = MainBridge(get_sender(), buf_mqtt_ip, buf_mqtt_port, None, None)
 
-    bridge.set_api_port(4999)
-
+    # Insert dummy data if wanted
     if ARGS.dummy_data:
         print("Adding dummy data:")
         bridge.add_dummy_data()
 
-    bridge.run_api()
+    # Set API Ports
+    bridge.set_api_port(4999)
+    bridge.set_ws_api_port(6200)
+
+    # Start API Threads
+    # bridge.run_api()
+    bridge.run_ws_api()

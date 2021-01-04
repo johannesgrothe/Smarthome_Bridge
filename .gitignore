@@ -38,3 +38,4 @@ Smarthome_ESP32
 
 /configs
 !/configs/example.json
+*.lock
