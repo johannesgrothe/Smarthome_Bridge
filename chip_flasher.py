@@ -1,5 +1,7 @@
 import os
+import re
 import argparse
+import subprocess
 from typing import Optional
 
 repo_name = "Smarthome_ESP32"
@@ -10,7 +12,8 @@ def get_serial_ports() -> [str]:
     return os.popen(f"cd {repo_name};ls /dev/tty.*").read().strip("\n").split()
 
 
-def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None) -> bool:
+def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
+               output_callback=None) -> bool:
 
     upload_port_phrase = ""
     if upload_port is not None:
@@ -29,12 +32,12 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             fetch_ok = os.system(f"cd {repo_name};git fetch") == 0
             if not fetch_ok:
                 print("Failed.")
-            print("Ok.\n")
-
-            if not fetch_ok:
+                output_callback("[SOFTWARE_UPLOAD] Fetching failed.")
                 os.remove(repo_name)
             else:
                 repo_works = True
+                print("Ok.\n")
+                output_callback("[SOFTWARE_UPLOAD] Fetching OK.")
 
     if not repo_works:
         print(f"Repo doesn't exist or is broken.\nCloning repository from '{repo_url}'")
@@ -43,40 +46,83 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
 
     if not repo_works:
         print("Error cloning repository")
+        output_callback("[SOFTWARE_UPLOAD] Cloning failed.")
         return False
+    else:
+        output_callback("[SOFTWARE_UPLOAD] Cloning OK.")
 
     # Check out selected branch
     print(f"Checking out '{branch_name}':")
     checkout_successful = os.system(f"cd {repo_name};git checkout {branch_name}") == 0
     if not checkout_successful:
         print("Failed.")
+        output_callback(f"[SOFTWARE_UPLOAD] Checking out '{branch_name}' failed.")
         return False
     print("Ok.\n")
+    output_callback(f"[SOFTWARE_UPLOAD] Checking out '{branch_name}' OK.")
 
     # Pull branch
     print(f"Pulling '{branch_name}'")
     pull_ok = os.system(f"cd {repo_name};git pull") == 0
     if not pull_ok:
         print("Failed.")
+        output_callback(f"[SOFTWARE_UPLOAD] Pulling '{branch_name}' failed.")
     print("Ok.\n")
+    output_callback(f"[SOFTWARE_UPLOAD] Pulling '{branch_name}' OK.")
 
     # Get double check data
     branch_name = os.popen(f"cd {repo_name};git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\
         .read().strip("\n")
     commit_hash = os.popen(f"cd {repo_name};git rev-parse HEAD").read().strip("\n")
-    print("Flashing branch '{}', commit '{}'\n".format(branch_name, commit_hash))
+    print(f"Flashing branch '{branch_name}', commit '{commit_hash}'")
+    print()
+    output_callback(f"[SOFTWARE_UPLOAD] Flashing branch '{branch_name}', commit '{commit_hash}'")
 
     # Upload software
-    uploading_successful = os.system(f"cd {repo_name};pio run --target upload{upload_port_phrase}") == 0
+    upload_command = f"cd {repo_name}; pio run --target upload{upload_port_phrase}"
+    process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, shell=True)
+
+    # Analyze output
+    compiling_pattern = "Compiling \\.pio.+?.cpp.o"
+    link_pattern = "Linking .pio/build/[a-zA-Z0-9]+?/firmware.elf"
+    ram_pattern = "RAM:.+?([0-9\\.]+?)%"
+    flash_pattern = "Flash:.+?([0-9\\.]+?)%"
+
+    for raw_line in iter(process.stdout.readline, b''):
+        line = raw_line.decode()
+        if re.findall(compiling_pattern, line):
+            output_callback("[SOFTWARE_UPLOAD] Compiling...")
+        elif re.findall(link_pattern, line):
+            output_callback("[SOFTWARE_UPLOAD] Linking...")
+
+        ram_groups = re.match(ram_pattern, line)
+        if ram_groups:
+            ram = ram_groups.groups()[0]
+            output_callback(f"[SOFTWARE_UPLOAD] RAM usage: {ram}%")
+
+        flash_groups = re.match(flash_pattern, line)
+        if flash_groups:
+            flash = flash_groups.groups()[0]
+            output_callback(f"[SOFTWARE_UPLOAD] Flash usage: {flash}%")
+
+        print(line.strip("\n"))
+
+    process.wait()
+    if process.returncode == 0:
+        output_callback("[SOFTWARE_UPLOAD] Flashing was successful")
+    else:
+        output_callback(f"[SOFTWARE_UPLOAD] Flashing failed with errorcode {process.returncode}")
 
     print("\n")
 
-    if uploading_successful:
-        print("Software upload was successful")
-    else:
-        print("Software upload failed")
+    # if uploading_successful:
+    #     print("Software upload was successful")
+    # else:
+    #     print("Software upload failed")
 
-    return uploading_successful
+    # return uploading_successful
+
+    return True
 
 
 if __name__ == '__main__':

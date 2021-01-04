@@ -77,6 +77,8 @@ class MainBridge:
     __mqtt_callback_thread: Thread
     __received_requests: int
 
+    __streaming_message_queue: [str]
+
     # Gadgets:
     __gadgets: [Gadget]
 
@@ -126,6 +128,8 @@ class MainBridge:
         self.__clients = []
         self.__gadgets = []
         self.__connectors = []
+
+        self.__streaming_message_queue = []
 
         print("Setting up Network...")
         self.__network_gadget = MQTTConnector(self.__bridge_name,
@@ -303,10 +307,9 @@ class MainBridge:
                                                    req_pl["value"])
             return
 
-    @staticmethod
-    def flash_software(branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> bool:
+    def flash_software(self, branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> bool:
         """Flashes the Smarthome_ESP32 software from the selected branch to the chip"""
-        return flash_chip(branch, False, serial_port)
+        return flash_chip(branch, False, serial_port, self.add_streaming_message)
 
     @staticmethod
     def get_serial_ports() -> [str]:
@@ -564,9 +567,15 @@ class MainBridge:
 
     # endregion
 
+    def add_streaming_message(self, message: str):
+        with self.__lock:
+            self.__streaming_message_queue.append(message)
+
     def get_streaming_message(self) -> Optional[str]:
         with self.__lock:
-            return "blub"
+            if self.__streaming_message_queue:
+                return self.__streaming_message_queue.pop(0)
+            return None
 
 
 class BridgeMQTTThread(Thread):
@@ -657,8 +666,8 @@ if __name__ == '__main__':
 
     # Set API Ports
     bridge.set_api_port(4999)
-    bridge.set_socket_api_port(6200)
+    bridge.set_socket_api_port(5003)
 
     # Start API Threads
-    # bridge.run_api()
+    bridge.run_api()
     bridge.run_socket_api()

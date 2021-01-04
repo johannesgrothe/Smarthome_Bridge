@@ -2,15 +2,9 @@ import asyncio
 import socket
 
 
-async def hello(uri):
-    async with websockets.connect(uri) as websocket:
-        await websocket.send("Hello world!")
-        await websocket.recv()
-
-
 def client_program():
     host = socket.gethostname()  # as both code is running on same pc
-    port = 6200  # socket server port number
+    port = 5003  # socket server port number
 
     try:
         client_socket = socket.socket()  # instantiate
@@ -26,7 +20,7 @@ def client_program():
             # client_socket.send(message.encode())  # send message
             data = client_socket.recv(5000).decode()  # receive response
 
-            print('Received from server: ' + data)  # show in terminal
+            print('-> ' + data)  # show in terminal
 
     except KeyboardInterrupt:
         print("Forced Exit...")

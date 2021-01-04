@@ -12,6 +12,7 @@ def run_api(bridge, port: int):
 
     @app.route('/')
     def root():
+        bridge.add_streaming_message("[API] received req for '/'")
         res_text = "Use /info, /gadgets, /connectors or /clients".format(bridge.get_bridge_name())
         response = jsonify(res_text)
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -19,6 +20,7 @@ def run_api(bridge, port: int):
 
     @app.route('/gadgets', methods=['GET'])
     def get_all_gadgets():
+        bridge.add_streaming_message("[API] received req for '/gadgets'")
         gadget_list = bridge.get_all_gadgets()
 
         out_gadget_list: [dict] = []
@@ -35,6 +37,7 @@ def run_api(bridge, port: int):
 
     @app.route('/clients', methods=['GET'])
     def get_all_clients():
+        bridge.add_streaming_message("[API] received req for '/clients'")
         client_list = bridge.get_all_clients()
 
         out_client_list: [dict] = []
@@ -51,6 +54,7 @@ def run_api(bridge, port: int):
 
     @app.route('/info', methods=['GET'])
     def get_info():
+        bridge.add_streaming_message("[API] received req for '/info'")
         bridge_name = bridge.get_bridge_name()
         gadget_list = bridge.get_all_gadgets()
         connector_list = bridge.get_all_connectors()
@@ -70,6 +74,7 @@ def run_api(bridge, port: int):
 
     @app.route('/connectors', methods=['GET'])
     def get_all_connectors():
+        bridge.add_streaming_message("[API] received req for '/connectors'")
         connector_list = bridge.get_all_connectors()
 
         out_gadget_list: [dict] = []
@@ -86,6 +91,7 @@ def run_api(bridge, port: int):
 
     @app.route('/clients/<client_name>/restart', methods=['POST'])
     def restart_client(client_name):
+        bridge.add_streaming_message(f"[API] received req for '/clients/{client_name}/restart'")
         gadget = bridge.get_client(client_name)
         if gadget is None:
             return Response('{"status": "Gadget name was not found"}', status=404, mimetype='application/json')
@@ -96,10 +102,12 @@ def run_api(bridge, port: int):
 
     @app.route('/system/get_serial_ports', methods=['GET'])
     def get_serial_ports():
+        bridge.add_streaming_message(f"[API] received req for '/system/serial_ports'")
         return jsonify({"serial_ports": bridge.get_serial_ports()})
 
     @app.route('/system/flash_software', methods=['POST'])
     def flash_software():
+        bridge.add_streaming_message(f"[API] received req for '/system/flash_software'")
         branch_name = request.args.get('branch_name')
         serial_port = request.args.get('serial_port')
 
