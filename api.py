@@ -136,4 +136,4 @@ def run_api(bridge, port: int):
     #         user = request.args.get('nm')
     #         return redirect(url_for('success', name=user))
 
-    app.run(host='localhost', port=port)
+    app.run(host='0.0.0.0', port=port)
