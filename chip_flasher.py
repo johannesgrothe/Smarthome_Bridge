@@ -88,7 +88,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     ram_pattern = "RAM:.+?([0-9\\.]+?)%"
     flash_pattern = "Flash:.+?([0-9\\.]+?)%"
     # connecting_pattern = "Connecting[\\._]*?\n"
-    connecting_pattern = "Hash of data verified."
+    connecting_pattern = "Serial port .+?"
     connecting_error_pattern = r"A fatal error occurred: \.+? Timed out waiting for packet header"
     writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
 
@@ -100,7 +100,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             output_callback("[SOFTWARE_UPLOAD] Linking...")
         elif re.findall(connecting_error_pattern, line):
             output_callback("[SOFTWARE_UPLOAD] Error connecting to Chip.")
-        elif line.strip("\n") == connecting_pattern:
+        elif re.findall(connecting_pattern, line):
             output_callback("[SOFTWARE_UPLOAD] Connecting to Chip...")
 
         # connecting_message = re.findall(connecting_pattern, line)
