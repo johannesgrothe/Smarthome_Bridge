@@ -1,10 +1,10 @@
-import asyncio
 import socket
+import argparse
 
 
-def client_program():
-    host = socket.gethostname()  # as both code is running on same pc
-    port = 5003  # socket server port number
+def client_program(port: int, host: str):
+    if host == "localhost":
+        host = socket.gethostname()  # as both code is running on same pc
 
     try:
         client_socket = socket.socket()  # instantiate
@@ -28,9 +28,8 @@ def client_program():
     print("Connection Closed")
 
 
-def manual_tester():
+def manual_tester(port: int):
     host = socket.gethostname()  # as both code is running on same pc
-    port = 6200  # socket server port number
 
     client_socket = socket.socket()  # instantiate
     client_socket.connect((host, port))  # connect to the server
@@ -50,5 +49,13 @@ def manual_tester():
 
 
 if __name__ == '__main__':
-    client_program()
-    # manual_tester()
+    # Argument-parser
+    parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
+    parser.add_argument('--socket_port', help='Port of the Socket Server', type=int)
+    parser.add_argument('--socket_addr', help='Address of the Socket Server', type=str)
+    ARGS = parser.parse_args()
+
+    if ARGS.socket_port and ARGS.socket_addr:
+        client_program(ARGS.socket_port, ARGS.socket_addr)
+    else:
+        print("No port/address Configured.")

@@ -635,11 +635,13 @@ class BridgeSocketAPIThread(Thread):
 if __name__ == '__main__':
     # Argument-parser
     parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
-    parser.add_argument('--mqtt_ip', help='mqtt ip to be uploaded.', type=str)
-    parser.add_argument('--mqtt_port', help='port to be uploaded.', type=int)
-    parser.add_argument('--mqtt_user', help='mqtt username to be uploaded.', type=str)
-    parser.add_argument('--mqtt_pw', help='mqtt password to be uploaded.', type=str)
+    parser.add_argument('--mqtt_ip', help='IP of the MQTT Broker', type=str)
+    parser.add_argument('--mqtt_port', help='Port of the MQTT Broker', type=int)
+    parser.add_argument('--mqtt_user', help='Username for the MQTT Broker', type=str)
+    parser.add_argument('--mqtt_pw', help='mPassword for the MQTT Broker', type=str)
     parser.add_argument('--dummy_data', help='Adds dummy data for debugging.', action="store_true")
+    parser.add_argument('--api_port', help='Port for the REST-API', type=int)
+    parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
     ARGS = parser.parse_args()
 
     print("Launching Bridge")
@@ -664,10 +666,14 @@ if __name__ == '__main__':
         print("Adding dummy data:")
         bridge.add_dummy_data()
 
-    # Set API Ports
-    bridge.set_api_port(4999)
-    bridge.set_socket_api_port(5003)
+    if ARGS.api_port:
+        bridge.set_api_port(ARGS.api_port)
+        bridge.run_api()
+    else:
+        print("No port for REST API configured.")
 
-    # Start API Threads
-    bridge.run_api()
-    bridge.run_socket_api()
+    if ARGS.socket_port:
+        bridge.set_socket_api_port(ARGS.socket_port)
+        bridge.run_socket_api()
+    else:
+        print("No port for Socket API configured.")
