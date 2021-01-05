@@ -83,36 +83,42 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, shell=True)
 
     # Analyze output
-    compiling_pattern = "Compiling \\.pio.+?.cpp.o"
     link_pattern = "Linking .pio/build/[a-zA-Z0-9]+?/firmware.elf"
     ram_pattern = "RAM:.+?([0-9\\.]+?)%"
     flash_pattern = "Flash:.+?([0-9\\.]+?)%"
-    # connecting_pattern = "Connecting[\\._]*?\n"
     connecting_pattern = "Serial port .+?"
     connecting_error_pattern = r"A fatal error occurred: \.+? Timed out waiting for packet header"
     writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
 
+    compile_src_pattern = r"Compiling .pio/build/\w+?/src/\w+?.cpp.o"
+    compile_src_unsent = False
+
+    compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/\w+?.cpp.o"
+    compile_framework_unsent = False
+
+    compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?"
+    compile_lib_unsent = False
+
     for raw_line in iter(process.stdout.readline, b''):
         line = raw_line.decode()
-        if re.findall(compiling_pattern, line):
-            output_callback("[SOFTWARE_UPLOAD] Compiling...")
-        elif re.findall(link_pattern, line):
+        if re.findall(link_pattern, line):
             output_callback("[SOFTWARE_UPLOAD] Linking...")
         elif re.findall(connecting_error_pattern, line):
             output_callback("[SOFTWARE_UPLOAD] Error connecting to Chip.")
         elif re.findall(connecting_pattern, line):
             output_callback("[SOFTWARE_UPLOAD] Connecting to Chip...")
-
-        # connecting_message = re.findall(connecting_pattern, line)
-        # if connecting_message:
-        #     last_part = connecting_message[0][-6:-1]
-        #     status_bar = connecting_message[0][13:-1]
-        #     percentage = (len(status_bar) / 5) * 100 / 14
-        #     print(last_part)
-        #     print(status_bar)
-        #     print("{:.2f}".format(percentage))
-        #     if last_part == "....." or last_part == "_____":
-        #         output_callback("[SOFTWARE_UPLOAD] Connecting {:.2f}%".format(percentage))
+        elif re.findall(compile_src_pattern, line):
+            if compile_src_unsent:
+                output_callback("[SOFTWARE_UPLOAD] Compiling Source")
+                compile_src_unsent = False
+        elif re.findall(compile_framework_pattern, line):
+            if compile_framework_unsent:
+                output_callback("[SOFTWARE_UPLOAD] Compiling Framework")
+                compile_framework_unsent = False
+        elif re.findall(compile_lib_pattern, line):
+            if compile_lib_unsent:
+                output_callback("[SOFTWARE_UPLOAD] Compiling Libraries")
+                compile_lib_unsent = False
 
         writing_group = re.match(writing_pattern, line)
         if writing_group:
