@@ -5,8 +5,8 @@ writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
 
 teststr = "Compiling .pio/build/esp32cam/src/color.cpp.o"
 
-compile_src_pattern = r"Compiling .pio/build/\w+?/src/\w+?.cpp.o"
-compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/\w+?.cpp.o"
+compile_src_pattern = r"Compiling .pio/build/\w+?/src/.+?"
+compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/.+?"
 compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?"
 
 

@@ -90,14 +90,14 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     connecting_error_pattern = r"A fatal error occurred: \.+? Timed out waiting for packet header"
     writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
 
-    compile_src_pattern = r"Compiling .pio/build/\w+?/src/\w+?.cpp.o"
-    compile_src_unsent = False
+    compile_src_pattern = r"Compiling .pio/build/\w+?/src/.+?.cpp.o"
+    compile_src_unsent = True
 
-    compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/\w+?.cpp.o"
-    compile_framework_unsent = False
+    compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/.+?.cpp.o"
+    compile_framework_unsent = True
 
-    compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?"
-    compile_lib_unsent = False
+    compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?.o"
+    compile_lib_unsent = True
 
     for raw_line in iter(process.stdout.readline, b''):
         line = raw_line.decode()
@@ -123,7 +123,6 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
         writing_group = re.match(writing_pattern, line)
         if writing_group:
             writing_address = int(writing_group.groups()[0], 16)
-            print(writing_address)
             percentage = writing_group.groups()[1]
             if writing_address >= 65536:
                 output_callback(f"[SOFTWARE_UPLOAD] Writing Firmware: {percentage}%")
