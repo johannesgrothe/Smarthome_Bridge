@@ -142,19 +142,9 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     process.wait()
     if process.returncode == 0:
         output_callback("[SOFTWARE_UPLOAD] Flashing was successful")
-    else:
-        output_callback(f"[SOFTWARE_UPLOAD] Flashing failed with errorcode {process.returncode}")
-
-    print("\n")
-
-    # if uploading_successful:
-    #     print("Software upload was successful")
-    # else:
-    #     print("Software upload failed")
-
-    # return uploading_successful
-
-    return True
+        return True
+    output_callback(f"[SOFTWARE_UPLOAD] Flashing failed with errorcode {process.returncode}")
+    return False
 
 
 if __name__ == '__main__':
