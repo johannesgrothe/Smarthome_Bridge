@@ -91,6 +91,9 @@ class MainBridge:
     # thread lock
     __lock = None
 
+    # Chip Flashing
+    __chip_sw_flash_thread = None
+
     def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int,
                  mqtt_username: Optional[str], mqtt_pw: Optional[str]):
         print("Setting up Bridge...")
@@ -307,9 +310,25 @@ class MainBridge:
                                                    req_pl["value"])
             return
 
-    def flash_software(self, branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> bool:
+    def flash_software(self, branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> (bool, str):
         """Flashes the Smarthome_ESP32 software from the selected branch to the chip"""
-        return flash_chip(branch, False, serial_port, self.add_streaming_message)
+
+        # Check if there is still a process running
+        if self.__chip_sw_flash_thread and self.__chip_sw_flash_thread.is_alive():
+            return False, "There is still a process running"
+
+        # Check if Serial Port is existing
+        if serial_port and serial_port not in self.get_serial_ports():
+            return False, "Serial port is not existing"
+
+        # Launch Thread
+        self.__chip_sw_flash_thread = ChipSWFlasherThread(branch,
+                                                          False,
+                                                          serial_port,
+                                                          self.add_streaming_message)
+        self.__chip_sw_flash_thread.start()
+
+        return True, "Flashing successful"
 
     @staticmethod
     def get_serial_ports() -> [str]:
@@ -337,6 +356,16 @@ class MainBridge:
         """Returns the software branch of the bridge"""
         with self.__lock:
             return self.__sw_branch
+
+    def get_api_port(self) -> int:
+        """Returns the REST API port of the bridge"""
+        with self.__lock:
+            return self.__api_port
+
+    def get_socket_api_port(self) -> int:
+        """Returns the Socket API port of the bridge"""
+        with self.__lock:
+            return self.__ws_api_port
 
     # endregion
 
@@ -612,6 +641,29 @@ class BridgeAPIThread(Thread):
 
         print("Launching API")
         api.run_api(self.__parent_object, buf_api_port)
+
+
+class ChipSWFlasherThread(Thread):
+    __streaming_callback = None
+    __branch: str
+    __force_reset: bool
+    __upload_port: Optional[str]
+
+    def __init__(self, branch: str, force_reset: bool, serial_port: Optional[str] = None, callback=None):
+        super().__init__()
+        print("Chip Software Flasher Thread")
+        self.__branch = branch
+        self.__force_reset = force_reset
+        self.__upload_port = serial_port
+        self.__streaming_callback = callback
+
+    def run(self):
+        print("Starting chip flasher Thread")
+        flash_chip(self.__branch,
+                   self.__force_reset,
+                   self.__upload_port,
+                   self.__streaming_callback)
+        print("Flashing done.")
 
 
 class BridgeSocketAPIThread(Thread):

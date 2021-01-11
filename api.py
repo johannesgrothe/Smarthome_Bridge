@@ -111,16 +111,19 @@ def run_api(bridge, port: int):
         branch_name = request.args.get('branch_name')
         serial_port = request.args.get('serial_port')
 
-        success = bridge.flash_software(branch_name, serial_port)
+        success, status = bridge.flash_software(branch_name, serial_port)
 
         str_branch = branch_name if branch_name is not None else "master"
         str_port = serial_port if serial_port is not None else "default"
 
-        response: dict = {"status": f"Flashing software from '{str_branch}' on port '{str_port}' was successful"}
+        suc_resp = f"Flashing software from '{str_branch}' on port '{str_port}'started."
+        suc_resp += f"Connect to port {bridge.get_socket_api_port()} to view progress."
+
+        response: dict = {"status": suc_resp}
         res_code = 200
 
         if not success:
-            response = {"status": f"Error flashing software from '{str_branch}' on port '{str_port}'."}
+            response = {"status": f"Error flashing software from '{str_branch}' on port '{str_port}': {status}"}
             res_code = 400
 
         return Response(str(response),

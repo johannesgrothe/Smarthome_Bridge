@@ -3,9 +3,15 @@ import argparse
 import sys
 import requests
 import json
+from typing import Optional
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
+BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip"]
+DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
+
+FLASHING_SW_FAILURE = "[SOFTWARE_UPLOAD] Flashing failed."
+FLASHING_SW_SUCCESS = "[SOFTWARE_UPLOAD] Flashing was successful."
 
 
 def select_option(input_list: [str], category: str = None) -> int:
@@ -30,6 +36,15 @@ def select_option(input_list: [str], category: str = None) -> int:
     return selection
 
 
+def send_api_command(url: str, content: str = "") -> (int, str):
+    if not url.startswith("http"):
+        url = "http://" + url
+
+    # print(f"Sending API command to '{url}'")
+    response = requests.post(url, content)
+    return response.status_code, response.content.decode()
+
+
 def send_api_request(url: str) -> (int, str):
     if not url.startswith("http"):
         url = "http://" + url
@@ -39,7 +54,23 @@ def send_api_request(url: str) -> (int, str):
     return response.status_code, response.content.decode()
 
 
-def socket_connector(port: int, host: str):
+def read_socket_data_until(client: socket, print_lines: bool = True, exit_lines: [str] = None) -> (bool, str):
+    last_line_received: str = ""
+    try:
+        while True:
+            data: str = client.recv(5000).decode().strip("\n").strip("'").strip('"').strip()  # receive response
+            if print_lines:
+                print('-> ' + data)  # show in terminal
+            last_line_received = data
+            if exit_lines and data in exit_lines:
+                break
+    except KeyboardInterrupt:
+        print("Forced Exit...")
+        return False, last_line_received
+    return True, last_line_received
+
+
+def socket_connector(port: int, host: str, exit_lines: [str] = None) -> (bool, str):
     if host == "localhost":
         host = socket.gethostname()  # as both code is running on same pc
 
@@ -49,20 +80,14 @@ def socket_connector(port: int, host: str):
         client_socket.connect((host, port))  # connect to the server
     except ConnectionRefusedError:
         print(f"Connection to {host}:{port} was refused")
-        return
+        return False, ""
     print("Connected.")
 
-    try:
-        while True:
-            # client_socket.send(message.encode())  # send message
-            data = client_socket.recv(5000).decode()  # receive response
+    buf_res, last_line = read_socket_data_until(client_socket, exit_lines)
 
-            print('-> ' + data)  # show in terminal
-
-    except KeyboardInterrupt:
-        print("Forced Exit...")
     client_socket.close()  # close the connection
     print("Connection Closed")
+    return buf_res, last_line
 
 
 if __name__ == '__main__':
@@ -179,8 +204,11 @@ if __name__ == '__main__':
             except KeyError:
                 print("A gadget could not be loaded")
 
+        client_names: [str] = []
+
         print("Clients loaded:")
         for client_data in bridge_clients:
+            client_names.append(client_data["name"])
             client_pattern = " -> {} | Commit: {} | Branch: {} | {}"
             print(client_pattern.format(client_data["name"] + " " * (max_name_len - len(client_data["name"])),
                                         client_data["sw_version"],
@@ -188,3 +216,51 @@ if __name__ == '__main__':
                                         ("Active" if client_data["is_active"] else "Inactive")
                                         )
                   )
+
+        task_option = select_option(BRIDGE_FUNCTIONS, "What to do")
+
+        keep_running = True
+
+        while keep_running:
+            if task_option == 0:
+                # Write software to chip
+                selected_cip = client_names[select_option(client_names, "Chip")]
+                selected_branch = select_option(DEFAULT_SW_BRANCH_NAMES, "Branch")
+                selected_branch_name = ""
+                if selected_branch == 0:
+                    selected_branch_name = input("Enter branch name:")
+                else:
+                    selected_branch_name = DEFAULT_SW_BRANCH_NAMES[selected_branch]
+                print(f"Writing software branch '{selected_branch_name}' to '{selected_cip}'...")
+
+                status, resp_data = send_api_command(f"{bridge_addr}:{api_port}/system/flash_software")
+                if status != 200:
+                    print(f"Software flashing could no be started:\n{resp_data}")
+                    continue
+
+                # Read lines from socket port
+                success, last_line = read_socket_data_until(socket_client, True, [FLASHING_SW_FAILURE,
+                                                                                  FLASHING_SW_SUCCESS])
+
+                if not success:
+                    print("Unknown error or interruption while reading socket data")
+                    continue
+
+                if last_line == FLASHING_SW_SUCCESS:
+                    print("Flashing Software was successful")
+                elif last_line == FLASHING_SW_FAILURE:
+                    print("Flashing Software failed")
+                else:
+                    print("[Script Error] Problem in flashing status detection")
+
+            elif task_option == 1:
+                # Write config to chip
+                selected_cip = client_names[select_option(client_names, "Chip")]
+                print(f"Writing config to '{selected_cip}'...")
+                pass
+            elif task_option == 2:
+                # restart client
+                selected_cip = client_names[select_option(client_names, "Chip")]
+                print(f"Restarting client '{selected_cip}'...")
+
+    print("Quitting...")
