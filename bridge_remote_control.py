@@ -36,41 +36,83 @@ def select_option(input_list: [str], category: str = None) -> int:
     return selection
 
 
-def send_api_command(url: str, content: str = "") -> (int, str):
+def read_serial_ports_from_bridge() -> [str]:
+    res_status, serial_port_data = send_api_request(f"{bridge_addr}:{api_port}/system/get_serial_ports")
+    if res_status == 200:
+        if "serial_ports" in serial_port_data:
+            return serial_port_data["serial_ports"]
+    return []
+
+
+def send_api_command(url: str, content: str = "") -> (int, dict):
     if not url.startswith("http"):
         url = "http://" + url
 
     # print(f"Sending API command to '{url}'")
     response = requests.post(url, content)
-    return response.status_code, response.content.decode()
+    res_data = {}
+    try:
+        res_data = json.dumps(response.content.decode())
+    except json.decoder.JSONDecodeError:
+        pass
+    return response.status_code, res_data
 
 
-def send_api_request(url: str) -> (int, str):
+def send_api_request(url: str) -> (int, dict):
     if not url.startswith("http"):
         url = "http://" + url
 
     # print(f"Sending API request to '{url}'")
     response = requests.get(url)
-    return response.status_code, response.content.decode()
+    res_data = {}
+    try:
+        res_data = json.dumps(response.content.decode())
+    except json.decoder.JSONDecodeError:
+        pass
+    return response.status_code, res_data
 
 
-def read_socket_data_until(client: socket, print_lines: bool = True, exit_lines: [str] = None) -> (bool, str):
-    last_line_received: str = ""
+def read_socket_data_until(client: socket, print_lines: bool, exit_on_zero: bool = True) -> (bool, Optional[dict]):
+    last_data_received: Optional[dict] = None
     try:
         while True:
-            data: str = client.recv(5000).decode().strip("\n").strip("'").strip('"').strip()  # receive response
-            if print_lines:
-                print('-> ' + data)  # show in terminal
-            last_line_received = data
-            if exit_lines and data in exit_lines:
-                break
+            buf_rec_data = client.recv(5000).decode().strip("\n").strip("'").strip('"').strip()
+            data: dict = {}
+
+            rec_message: str = buf_rec_data
+            rec_status: int = -1
+            rec_sender: str = "ERROR"
+
+            try:
+                data: dict = json.loads(buf_rec_data)
+            except json.decoder.JSONDecodeError:
+                rec_status = -2
+
+            if "message" in data:
+                rec_message = data["message"]
+
+            if "status" in data:
+                rec_status = data["status"]
+
+            if "sender" in data:
+                rec_sender = data["sender"]
+
+            if print_lines:  # Print lines if wanted
+                print(f'-> [{rec_sender} / {"?" if rec_status == -1 else rec_status}]: {rec_message}')
+
+            if "sender" in data or "status" in data:
+                last_data_received = data
+                if exit_on_zero:
+                    if rec_status > 0:
+                        break
+
     except KeyboardInterrupt:
         print("Forced Exit...")
-        return False, last_line_received
-    return True, last_line_received
+        return False, last_data_received
+    return True, last_data_received
 
 
-def socket_connector(port: int, host: str, exit_lines: [str] = None) -> (bool, str):
+def socket_connector(port: int, host: str, exit_lines: [str] = None) -> (bool, Optional[dict]):
     if host == "localhost":
         host = socket.gethostname()  # as both code is running on same pc
 
@@ -83,11 +125,11 @@ def socket_connector(port: int, host: str, exit_lines: [str] = None) -> (bool, s
         return False, ""
     print("Connected.")
 
-    buf_res, last_line = read_socket_data_until(client_socket, exit_lines)
+    buf_res, last_data_received = read_socket_data_until(client_socket, exit_lines)
 
     client_socket.close()  # close the connection
     print("Connection Closed")
-    return buf_res, last_line
+    return buf_res, last_data_received
 
 
 if __name__ == '__main__':
@@ -158,15 +200,13 @@ if __name__ == '__main__':
             print("Could not load information from the bridge.")
             sys.exit(4)
 
-        json_bridge_data = json.loads(bridge_data)
-
-        print("Connected to bridge '{}'".format(json_bridge_data["bridge_name"]))
-        print(" -> Running since: {}".format(json_bridge_data["running_since"]))
-        print(" -> Software Branch: {}".format(json_bridge_data["software_branch"]))
-        print(" -> Software Commit: {}".format(json_bridge_data["software_commit"]))
-        print(" -> Clients: {}".format(json_bridge_data["client_count"]))
-        print(" -> Connectors: {}".format(json_bridge_data["connector_count"]))
-        print(" -> Gadgets: {}".format(json_bridge_data["gadget_count"]))
+        print("Connected to bridge '{}'".format(bridge_data["bridge_name"]))
+        print(" -> Running since: {}".format(bridge_data["running_since"]))
+        print(" -> Software Branch: {}".format(bridge_data["software_branch"]))
+        print(" -> Software Commit: {}".format(bridge_data["software_commit"]))
+        print(" -> Clients: {}".format(bridge_data["client_count"]))
+        print(" -> Connectors: {}".format(bridge_data["connector_count"]))
+        print(" -> Gadgets: {}".format(bridge_data["gadget_count"]))
 
         bridge_clients: [dict] = []
 
@@ -224,31 +264,40 @@ if __name__ == '__main__':
         while keep_running:
             if task_option == 0:
                 # Write software to chip
-                selected_cip = client_names[select_option(client_names, "Chip")]
                 selected_branch = select_option(DEFAULT_SW_BRANCH_NAMES, "Branch")
                 selected_branch_name = ""
                 if selected_branch == 0:
                     selected_branch_name = input("Enter branch name:")
                 else:
                     selected_branch_name = DEFAULT_SW_BRANCH_NAMES[selected_branch]
-                print(f"Writing software branch '{selected_branch_name}' to '{selected_cip}'...")
+                print(f"Writing software branch '{selected_branch_name}':")
 
-                status, resp_data = send_api_command(f"{bridge_addr}:{api_port}/system/flash_software")
+                detected_serial_ports = read_serial_ports_from_bridge()
+                sel_ser_port = 0
+                sel_ser_port_str = ""
+                if detected_serial_ports:
+                    possible_serial_ports = ["default"] + detected_serial_ports
+                    sel_ser_port_str = select_option(possible_serial_ports, "Serial Port for Upload")
+                    sel_port_str = possible_serial_ports[sel_ser_port]
+
+                serial_port_option = f'%serial_port={sel_ser_port_str}' if sel_ser_port else ''
+                flash_path = f"/system/flash_software?branch_name={selected_branch_name}{serial_port_option}"
+
+                status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}")
                 if status != 200:
                     print(f"Software flashing could no be started:\n{resp_data}")
                     continue
 
                 # Read lines from socket port
-                success, last_line = read_socket_data_until(socket_client, True, [FLASHING_SW_FAILURE,
-                                                                                  FLASHING_SW_SUCCESS])
+                success, last_data = read_socket_data_until(socket_client, True)
 
                 if not success:
                     print("Unknown error or interruption while reading socket data")
                     continue
 
-                if last_line == FLASHING_SW_SUCCESS:
+                if last_data["status"] == 0:
                     print("Flashing Software was successful")
-                elif last_line == FLASHING_SW_FAILURE:
+                elif last_data["status"] != 0:
                     print("Flashing Software failed")
                 else:
                     print("[Script Error] Problem in flashing status detection")
@@ -258,6 +307,7 @@ if __name__ == '__main__':
                 selected_cip = client_names[select_option(client_names, "Chip")]
                 print(f"Writing config to '{selected_cip}'...")
                 pass
+
             elif task_option == 2:
                 # restart client
                 selected_cip = client_names[select_option(client_names, "Chip")]

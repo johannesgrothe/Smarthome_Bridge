@@ -1,4 +1,5 @@
 import argparse
+import json
 import socket
 import random
 import sys
@@ -596,9 +597,9 @@ class MainBridge:
 
     # endregion
 
-    def add_streaming_message(self, message: str):
+    def add_streaming_message(self, message: dict):
         with self.__lock:
-            self.__streaming_message_queue.append(message)
+            self.__streaming_message_queue.append(json.dumps(message))
 
     def get_streaming_message(self) -> Optional[str]:
         with self.__lock:
