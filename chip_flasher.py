@@ -39,7 +39,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
                 repo_works = True
                 print("Ok.\n")
                 if output_callback:
-                    output_callback("[SOFTWARE_UPLOAD] Fetching OK.")
+                    output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Fetching OK."})
 
     if not repo_works:
         print(f"Repo doesn't exist or is broken.\nCloning repository from '{repo_url}'")
@@ -78,7 +78,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             output_callback({"sender": "SOFTWARE_UPLOAD", "status": 1, "message": f"Pulling '{branch_name}' failed."})
     print("Ok.\n")
     if output_callback:
-        output_callback({"sender": "SOFTWARE_UPLOAD", "status": 1, "message": f"Pulling '{branch_name}' OK."})
+        output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": f"Pulling '{branch_name}' OK."})
 
     # Get double check data
     branch_name = os.popen(f"cd {repo_name};git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\

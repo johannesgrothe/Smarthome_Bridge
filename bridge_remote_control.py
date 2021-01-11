@@ -7,7 +7,7 @@ from typing import Optional
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
-BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip"]
+BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Quit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 
 FLASHING_SW_FAILURE = "[SOFTWARE_UPLOAD] Flashing failed."
@@ -66,7 +66,7 @@ def send_api_request(url: str) -> (int, dict):
     response = requests.get(url)
     res_data = {}
     try:
-        res_data = json.dumps(response.content.decode())
+        res_data = json.loads(response.content.decode())
     except json.decoder.JSONDecodeError:
         pass
     return response.status_code, res_data
@@ -219,9 +219,7 @@ if __name__ == '__main__':
             print("Could not load clients from the bridge.")
             sys.exit(5)
 
-        json_client_data = json.loads(client_data)
-
-        for client_data in json_client_data["clients"]:
+        for client_data in client_data["clients"]:
             try:
                 buf_client = {"boot_mode": client_data["boot_mode"],
                               "name": client_data["name"],
@@ -257,11 +255,12 @@ if __name__ == '__main__':
                                         )
                   )
 
-        task_option = select_option(BRIDGE_FUNCTIONS, "What to do")
-
         keep_running = True
 
         while keep_running:
+            print()
+            task_option = select_option(BRIDGE_FUNCTIONS, "What to do")
+
             if task_option == 0:
                 # Write software to chip
                 selected_branch = select_option(DEFAULT_SW_BRANCH_NAMES, "Branch")
@@ -312,5 +311,10 @@ if __name__ == '__main__':
                 # restart client
                 selected_cip = client_names[select_option(client_names, "Chip")]
                 print(f"Restarting client '{selected_cip}'...")
+
+            elif task_option == 3:
+                # Quit
+                print(f"Quitting...")
+                sys.exit(0)
 
     print("Quitting...")
