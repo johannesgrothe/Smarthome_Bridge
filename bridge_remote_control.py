@@ -7,22 +7,25 @@ from typing import Optional
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
-BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Quit"]
+BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 
-FLASHING_SW_FAILURE = "[SOFTWARE_UPLOAD] Flashing failed."
-FLASHING_SW_SUCCESS = "[SOFTWARE_UPLOAD] Flashing was successful."
 
-
-def select_option(input_list: [str], category: str = None) -> int:
+def select_option(input_list: [str], category: Optional[str] = None, back_option: Optional[str] = None) -> int:
     """Presents every elem from the list and lets the user select one"""
 
     if category is None:
         print("Please select:")
     else:
         print("Please select a {}:".format(category))
+    max_i = 0
     for i in range(len(input_list)):
         print("    {}: {}".format(i, input_list[i]))
+        max_i += 1
+    if back_option:
+        print("    {}: {}".format(max_i + 1, back_option))
+        max_i += 1
+
     selection = None
     while selection is None:
         selection = input("Please select an option by entering its number:\n")
@@ -30,9 +33,12 @@ def select_option(input_list: [str], category: str = None) -> int:
             selection = int(selection)
         except TypeError:
             selection = None
-        if selection < 0 or selection >= len(input_list):
+
+        if selection < 0 or selection > max_i:
             print("Illegal input, try again.")
             selection = None
+    if selection == max_i:
+        selection = -1
     return selection
 
 
@@ -146,7 +152,10 @@ if __name__ == '__main__':
     if ARGS.connection_mode:
         connection_mode = ARGS.connection_mode
     else:
-        connection_mode = CONNECTION_MODES[select_option(CONNECTION_MODES, "Connection Mode")]
+        connection_mode_nr = select_option(CONNECTION_MODES, "Connection Mode", "Quit")
+        if connection_mode_nr == -1:
+            sys.exit(0)
+        connection_mode = CONNECTION_MODES[connection_mode_nr]
 
     if connection_mode == "bridge":
 
@@ -259,14 +268,16 @@ if __name__ == '__main__':
 
         while keep_running:
             print()
-            task_option = select_option(BRIDGE_FUNCTIONS, "What to do")
+            task_option = select_option(BRIDGE_FUNCTIONS, "What to do", "Quit")
 
             if task_option == 0:
                 # Write software to chip
-                selected_branch = select_option(DEFAULT_SW_BRANCH_NAMES, "Branch")
+                selected_branch = select_option(DEFAULT_SW_BRANCH_NAMES, "Branch", "Back")
                 selected_branch_name = ""
                 if selected_branch == 0:
                     selected_branch_name = input("Enter branch name:")
+                elif selected_branch == -1:
+                    continue
                 else:
                     selected_branch_name = DEFAULT_SW_BRANCH_NAMES[selected_branch]
                 print(f"Writing software branch '{selected_branch_name}':")
@@ -276,7 +287,9 @@ if __name__ == '__main__':
                 sel_ser_port_str = ""
                 if detected_serial_ports:
                     possible_serial_ports = ["default"] + detected_serial_ports
-                    sel_ser_port_str = select_option(possible_serial_ports, "Serial Port for Upload")
+                    sel_ser_port = select_option(possible_serial_ports, "Serial Port for Upload", "Back")
+                    if sel_ser_port == -1:
+                        continue
                     sel_port_str = possible_serial_ports[sel_ser_port]
 
                 serial_port_option = f'%serial_port={sel_ser_port_str}' if sel_ser_port else ''
@@ -303,7 +316,10 @@ if __name__ == '__main__':
 
             elif task_option == 1:
                 # Write config to chip
-                selected_cip = client_names[select_option(client_names, "Chip")]
+                selected_chip_nr = select_option(client_names, "Chip", "Back")
+                if selected_chip_nr == -1:
+                    continue
+                selected_cip = client_names[selected_chip_nr]
                 print(f"Writing config to '{selected_cip}'...")
                 pass
 
@@ -312,9 +328,13 @@ if __name__ == '__main__':
                 selected_cip = client_names[select_option(client_names, "Chip")]
                 print(f"Restarting client '{selected_cip}'...")
 
-            elif task_option == 3:
+            elif task_option == -1:
                 # Quit
                 print(f"Quitting...")
                 sys.exit(0)
+
+    elif connection_mode == "direct":
+        print("Local connection not yet supported")
+        sys.exit(1)
 
     print("Quitting...")
