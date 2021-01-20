@@ -78,7 +78,8 @@ def send_api_request(url: str) -> (int, dict):
     return response.status_code, res_data
 
 
-def read_socket_data_until(client: socket, print_lines: bool, exit_on_zero: bool = True) -> (bool, Optional[dict]):
+def read_socket_data_until(client: socket, print_lines: bool, filter_for_sender: Optional[str] = None,
+                           exit_on_failure: bool = True) -> (bool, Optional[dict]):
     last_data_received: Optional[dict] = None
     try:
         while True:
@@ -86,13 +87,20 @@ def read_socket_data_until(client: socket, print_lines: bool, exit_on_zero: bool
             data: dict = {}
 
             rec_message: str = buf_rec_data
-            rec_status: int = -1
-            rec_sender: str = "ERROR"
+            rec_status: int = 0
+            rec_sender: str = "???"
 
             try:
                 data: dict = json.loads(buf_rec_data)
             except json.decoder.JSONDecodeError:
-                rec_status = -2
+                rec_status = -1000
+
+            if "sender" in data:
+                rec_sender = data["sender"]
+
+            if filter_for_sender and rec_sender != filter_for_sender:
+                print("Skipping message not of any value...")
+                continue
 
             if "message" in data:
                 rec_message = data["message"]
@@ -100,16 +108,13 @@ def read_socket_data_until(client: socket, print_lines: bool, exit_on_zero: bool
             if "status" in data:
                 rec_status = data["status"]
 
-            if "sender" in data:
-                rec_sender = data["sender"]
-
             if print_lines:  # Print lines if wanted
-                print(f'-> [{rec_sender} / {"?" if rec_status == -1 else rec_status}]: {rec_message}')
+                print(f'-> [{rec_sender}][{rec_status}]: {rec_message}')
 
             if "sender" in data or "status" in data:
                 last_data_received = data
-                if exit_on_zero:
-                    if rec_status > 0:
+                if exit_on_failure:
+                    if rec_status < 0:
                         break
 
     except KeyboardInterrupt:
@@ -118,7 +123,7 @@ def read_socket_data_until(client: socket, print_lines: bool, exit_on_zero: bool
     return True, last_data_received
 
 
-def socket_connector(port: int, host: str, exit_lines: [str] = None) -> (bool, Optional[dict]):
+def socket_connector(port: int, host: str, exit_on_failure: False) -> (bool, Optional[dict]):
     if host == "localhost":
         host = socket.gethostname()  # as both code is running on same pc
 
@@ -131,7 +136,9 @@ def socket_connector(port: int, host: str, exit_lines: [str] = None) -> (bool, O
         return False, ""
     print("Connected.")
 
-    buf_res, last_data_received = read_socket_data_until(client_socket, exit_lines)
+    buf_res, last_data_received = read_socket_data_until(client_socket,
+                                                         True,
+                                                         exit_on_failure=exit_on_failure)
 
     client_socket.close()  # close the connection
     print("Connection Closed")
@@ -301,7 +308,9 @@ if __name__ == '__main__':
                     continue
 
                 # Read lines from socket port
-                success, last_data = read_socket_data_until(socket_client, True)
+                success, last_data = read_socket_data_until(socket_client,
+                                                            True,
+                                                            "SOFTWARE_UPLOAD")
 
                 if not success:
                     print("Unknown error or interruption while reading socket data")

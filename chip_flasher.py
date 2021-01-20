@@ -7,6 +7,32 @@ from typing import Optional
 repo_name = "Smarthome_ESP32"
 repo_url = "git@github.com:A20GameCo/{}.git".format(repo_name)
 
+__fetch_ok_code = 1
+__fetch_fail_code = -1
+
+__cloning_ok_code = 2
+__cloning_fail_code = -2
+
+__checkout_ok_code = 3
+__checkout_fail_code = -3
+
+__pull_ok_code = 4
+__pull_fail_code = -4
+
+__connecting_ok_code = 5
+__connecting_error_code = -5
+
+__flash_ok_code = 6
+__flash_fail_code = 7
+
+__sw_upload_code = 8
+__linking_code = 9
+__compiling_framework_code = 10
+__compiling_src_code = 11
+__compiling_lib_code = 12
+__writing_fw_code = 13
+__ram_usage_code = 14
+
 
 def get_serial_ports() -> [str]:
     return os.popen(f"cd {repo_name};ls /dev/tty.*").read().strip("\n").split()
@@ -33,13 +59,13 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             if not fetch_ok:
                 print("Failed.")
                 if output_callback:
-                    output_callback("[SOFTWARE_UPLOAD] Fetching failed.")
+                    output_callback("SOFTWARE_UPLOAD", __fetch_fail_code, "Fetching failed.")
                 os.remove(repo_name)
             else:
                 repo_works = True
                 print("Ok.\n")
                 if output_callback:
-                    output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Fetching OK."})
+                    output_callback("SOFTWARE_UPLOAD", __fetch_ok_code, "Fetching OK.")
 
     if not repo_works:
         print(f"Repo doesn't exist or is broken.\nCloning repository from '{repo_url}'")
@@ -49,11 +75,11 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     if not repo_works:
         print("Error cloning repository")
         if output_callback:
-            output_callback({"sender": "SOFTWARE_UPLOAD", "status": 1, "message": "Cloning failed."})
+            output_callback("SOFTWARE_UPLOAD", __cloning_fail_code, "Cloning failed.")
         return False
     else:
         if output_callback:
-            output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Cloning ok."})
+            output_callback("SOFTWARE_UPLOAD", __cloning_ok_code, "Cloning ok.")
 
     # Check out selected branch
     print(f"Checking out '{branch_name}':")
@@ -61,13 +87,11 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     if not checkout_successful:
         print("Failed.")
         if output_callback:
-            output_callback({"sender": "SOFTWARE_UPLOAD",
-                             "status": 2,
-                             "message": f"Checking out '{branch_name}' failed."})
+            output_callback("SOFTWARE_UPLOAD", __checkout_fail_code, f"Checking out '{branch_name}' failed.")
         return False
     print("Ok.\n")
     if output_callback:
-        output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": f"Checking out '{branch_name}' OK."})
+        output_callback("SOFTWARE_UPLOAD", __checkout_ok_code, f"Checking out '{branch_name}' OK.")
 
     # Pull branch
     print(f"Pulling '{branch_name}'")
@@ -75,10 +99,10 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     if not pull_ok:
         print("Failed.")
         if output_callback:
-            output_callback({"sender": "SOFTWARE_UPLOAD", "status": 1, "message": f"Pulling '{branch_name}' failed."})
+            output_callback("SOFTWARE_UPLOAD", __pull_fail_code, f"Pulling '{branch_name}' failed.")
     print("Ok.\n")
     if output_callback:
-        output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": f"Pulling '{branch_name}' OK."})
+        output_callback("SOFTWARE_UPLOAD", __pull_ok_code, f"Pulling '{branch_name}' OK.")
 
     # Get double check data
     branch_name = os.popen(f"cd {repo_name};git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\
@@ -87,9 +111,9 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
     print(f"Flashing branch '{branch_name}', commit '{commit_hash}'")
     print()
     if output_callback:
-        output_callback({"sender": "SOFTWARE_UPLOAD",
-                         "status": 0,
-                         "message": f"Flashing branch '{branch_name}', commit '{commit_hash}'"})
+        output_callback("SOFTWARE_UPLOAD",
+                        __sw_upload_code,
+                        f"Flashing branch '{branch_name}', commit '{commit_hash}'")
 
     # Upload software
     upload_command = f"cd {repo_name}; pio run --target upload{upload_port_phrase}"
@@ -116,27 +140,27 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
         line = raw_line.decode()
         if re.findall(link_pattern, line):
             if output_callback:
-                output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Linking..."})
+                output_callback("SOFTWARE_UPLOAD", __linking_code, "Linking...")
         elif re.findall(connecting_error_pattern, line):
             if output_callback:
-                output_callback({"sender": "SOFTWARE_UPLOAD", "status": 3, "message": "Error connecting to Chip."})
+                output_callback("SOFTWARE_UPLOAD", __connecting_error_code, "Error connecting to Chip.")
         elif re.findall(connecting_pattern, line):
             if output_callback:
-                output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Connecting to Chip..."})
+                output_callback("SOFTWARE_UPLOAD", __connecting_ok_code, "Connecting to Chip...")
         elif re.findall(compile_src_pattern, line):
             if compile_src_unsent:
                 if output_callback:
-                    output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Compiling Source"})
+                    output_callback("SOFTWARE_UPLOAD", __compiling_src_code, "Compiling Source")
                 compile_src_unsent = False
         elif re.findall(compile_framework_pattern, line):
             if compile_framework_unsent:
                 if output_callback:
-                    output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Compiling Framework"})
+                    output_callback("SOFTWARE_UPLOAD", __compiling_framework_code, "Compiling Framework")
                 compile_framework_unsent = False
         elif re.findall(compile_lib_pattern, line):
             if compile_lib_unsent:
                 if output_callback:
-                    output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Compiling Libraries"})
+                    output_callback("SOFTWARE_UPLOAD", __compiling_lib_code, "Compiling Libraries")
                 compile_lib_unsent = False
 
         writing_group = re.match(writing_pattern, line)
@@ -145,31 +169,39 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             percentage = writing_group.groups()[1]
             if writing_address >= 65536:
                 if output_callback:
-                    output_callback({"sender": "SOFTWARE_UPLOAD",
-                                     "status": 0,
-                                     "message": f"Writing Firmware: {percentage}%"})
+                    output_callback("SOFTWARE_UPLOAD",
+                                    (__writing_fw_code * 1000) + percentage,
+                                    f"Writing Firmware: {percentage}%")
 
         ram_groups = re.match(ram_pattern, line)
         if ram_groups:
             ram = ram_groups.groups()[0]
             if output_callback:
-                output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": f"RAM usage: {ram}%"})
+                output_callback("SOFTWARE_UPLOAD",
+                                (__ram_usage_code * 1000) + ram,
+                                f"RAM usage: {ram}%")
 
         flash_groups = re.match(flash_pattern, line)
         if flash_groups:
             flash = flash_groups.groups()[0]
             if output_callback:
-                output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": f"Flash usage: {flash}%"})
+                output_callback("SOFTWARE_UPLOAD",
+                                (__sw_upload_code * 1000) + ram,
+                                f"Flash usage: {flash}%")
 
         print(line.strip("\n"))
 
     process.wait()
     if process.returncode == 0:
         if output_callback:
-            output_callback({"sender": "SOFTWARE_UPLOAD", "status": 0, "message": "Flashing was successful."})
+            output_callback("SOFTWARE_UPLOAD",
+                            __flash_ok_code,
+                            "Flashing was successful.")
         return True
     if output_callback:
-        output_callback({"sender": "SOFTWARE_UPLOAD", "status": 4, "message": f"Flashing failed."})
+        output_callback("SOFTWARE_UPLOAD",
+                        __flash_fail_code,
+                        f"Flashing failed.")
     return False
 
 

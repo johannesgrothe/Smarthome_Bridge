@@ -5,6 +5,7 @@ import random
 import sys
 import os
 import time
+import config_functions
 from threading import Thread
 import threading
 from datetime import datetime
@@ -135,7 +136,7 @@ class MainBridge:
 
         self.__streaming_message_queue = []
 
-        print("Setting up Network...")
+        print("Setting up Network...")  # TODO: implement timeout
         self.__network_gadget = MQTTConnector(self.__bridge_name,
                                               self.__mqtt_ip,
                                               self.__mqtt_port,
@@ -330,6 +331,28 @@ class MainBridge:
         self.__chip_sw_flash_thread.start()
 
         return True, "Flashing successful"
+
+    def write_config_to_network_chip(self, client_name: str, config: dict) -> bool:
+        return True
+
+    def write_config_to_chip(self, config: dict) -> bool:
+        return True
+
+    @staticmethod
+    def write_config(config: dict) -> bool:
+        return config_functions.write_config(config)
+
+    @staticmethod
+    def load_config_names() -> [str]:
+        configs, config_names = config_functions.load_configs()
+        return config_names
+
+    @staticmethod
+    def load_config(name: str) -> Optional[dict]:
+        configs, _ = config_functions.load_configs()
+        for config in configs:
+            if config["name"] == name:
+                return config
 
     @staticmethod
     def get_serial_ports() -> [str]:
@@ -597,9 +620,12 @@ class MainBridge:
 
     # endregion
 
-    def add_streaming_message(self, message: dict):
+    def add_streaming_message_dict(self, message: dict):
         with self.__lock:
             self.__streaming_message_queue.append(json.dumps(message))
+
+    def add_streaming_message(self, sender: str, status_code: str, message: str):
+        self.add_streaming_message_dict({"sender": sender, "status": status_code, "message": message})
 
     def get_streaming_message(self) -> Optional[str]:
         with self.__lock:
