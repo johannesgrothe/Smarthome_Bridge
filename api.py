@@ -134,21 +134,26 @@ def run_api(bridge, port: int):
                         status=res_code,
                         mimetype='application/json')
 
+    @app.route('/system/configs', methods=['GET'])
+    def get_config_names():
+        config_names = bridge.load_config_names()
+        return jsonify({"config_names": config_names})
+
+    @app.route('/system/configs/<config_name>', methods=['GET'])
+    def get_config(config_name: str):
+        config_data = bridge.load_config(config_name)
+        return jsonify({"config_data": config_data})
+
     @app.route('/clients/<client_name>/write_config', methods=['POST'])
     def write_config_to_network(client_name: str):
-        config_id = request.args.get('config_id')
-        config = request.args.get('config')
+        config = request.args.get('config')  # TODO: use post request content instead of url stuff
 
         res_code = 200
         response = {"status": f"Writing config to client '{client_name}' was successful."}
 
-        if config or config_id:
+        if config:
 
-            config_arg = config
-            if config_id:
-                config_arg = config_id
-
-            success, status = bridge.write_config_to_network_chip(config_arg, client_name)
+            success, status = bridge.write_config_to_network_chip(config, client_name)
 
             if not success:
                 response = {"status": f"Error writing config to client '{client_name}': {status}"}
@@ -157,26 +162,25 @@ def run_api(bridge, port: int):
             response = {"status": f"No config selected."}
             res_code = 400
 
-        return Response(json.dumps(response),
+        return Response(str(response),
                         status=res_code,
                         mimetype='application/json')
 
     @app.route('/system/write_config', methods=['POST'])
     def write_config_to_serial():
         serial_port = request.args.get('serial_port')
-        config_id = request.args.get('config_id')
-        config = request.args.get('config')
+        config = request.args.get('config')  # TODO: use post request content instead of url stuff
 
         res_code = 200
-        response = {"status": f"Writing config on port '{serial_port}' was successful."}
+        response: dict = {"status": f"Writing config on port '{serial_port}' was successful."}
 
-        if config or config_id:
+        if config:
 
-            config_arg = config
-            if config_id:
-                config_arg = config_id
+            print(config)
+            print(serial_port)
+            print(type(serial_port))
 
-            success, status = bridge.write_config_to_chip(config_arg, serial_port)
+            success, status = bridge.write_config_to_chip(config, serial_port)
 
             if not success:
                 response = {"status": f"Error writing config on port '{serial_port}': {status}"}
@@ -185,7 +189,11 @@ def run_api(bridge, port: int):
             response = {"status": f"No config selected."}
             res_code = 400
 
-        return Response(json.dumps(response),
+        print(response)
+        response_str = json.dumps(response)
+        print(response_str)
+
+        return Response(response_str,
                         status=res_code,
                         mimetype='application/json')
 

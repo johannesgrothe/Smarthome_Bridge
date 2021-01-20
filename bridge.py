@@ -332,10 +332,10 @@ class MainBridge:
 
         return True, "Flashing successful"
 
-    def write_config_to_network_chip(self, config: Union[dict, int], client_name: str) -> (bool, str):
+    def write_config_to_network_chip(self, config: dict, client_name: str) -> (bool, str):
         return False, "Not implemented"  # TODO
 
-    def write_config_to_chip(self, config: Union[dict, int], serial_port: Optional[str]) -> (bool, str):
+    def write_config_to_chip(self, config: dict, serial_port: Optional[str]) -> (bool, str):
         if not serial_port:
             serial_port = "/dev/cu.SLAB_USBtoUART"
         return False, "Not implemented"  # TODO
