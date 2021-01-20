@@ -9,6 +9,7 @@ CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
+CONFIG_FLASH_OPTIONS = ["direct", "wifi"]
 
 
 def select_option(input_list: [str], category: Optional[str] = None, back_option: Optional[str] = None) -> int:
@@ -216,6 +217,12 @@ if __name__ == '__main__':
             print("Could not load information from the bridge.")
             sys.exit(4)
 
+        # Serial Ports available on the bridge
+        bridge_serial_ports = []
+        detected_serial_ports = read_serial_ports_from_bridge()
+        if detected_serial_ports:
+            bridge_serial_ports = ["default"] + detected_serial_ports
+
         print("Connected to bridge '{}'".format(bridge_data["bridge_name"]))
         print(" -> Running since: {}".format(bridge_data["running_since"]))
         print(" -> Software Branch: {}".format(bridge_data["software_branch"]))
@@ -289,15 +296,13 @@ if __name__ == '__main__':
                     selected_branch_name = DEFAULT_SW_BRANCH_NAMES[selected_branch]
                 print(f"Writing software branch '{selected_branch_name}':")
 
-                detected_serial_ports = read_serial_ports_from_bridge()
                 sel_ser_port = 0
                 sel_ser_port_str = ""
-                if detected_serial_ports:
-                    possible_serial_ports = ["default"] + detected_serial_ports
-                    sel_ser_port = select_option(possible_serial_ports, "Serial Port for Upload", "Back")
+                if bridge_serial_ports:
+                    sel_ser_port = select_option(bridge_serial_ports, "Serial Port for Upload", "Back")
                     if sel_ser_port == -1:
                         continue
-                    sel_port_str = possible_serial_ports[sel_ser_port]
+                    sel_port_str = bridge_serial_ports[sel_ser_port]
 
                 serial_port_option = f'%serial_port={sel_ser_port_str}' if sel_ser_port else ''
                 flash_path = f"/system/flash_software?branch_name={selected_branch_name}{serial_port_option}"
@@ -325,12 +330,50 @@ if __name__ == '__main__':
 
             elif task_option == 1:
                 # Write config to chip
-                selected_chip_nr = select_option(client_names, "Chip", "Back")
-                if selected_chip_nr == -1:
+                flash_mode = select_option(CONFIG_FLASH_OPTIONS, "Chip Connection", "Back")
+                if flash_mode == -1:
                     continue
-                selected_cip = client_names[selected_chip_nr]
-                print(f"Writing config to '{selected_cip}'...")
-                pass
+
+                config_option_str = ""
+
+                config_selection = 1
+
+                if isinstance(config_selection, int):
+                    config_option_str = f"config_id={config_selection}"
+                else:
+                    config_option_str = f"config={config_selection}"
+
+                if flash_mode == 0:
+                    print(f"Writing config to chip connected via USB...")
+
+                    sel_ser_port = 0
+                    sel_ser_port_str = ""
+                    if bridge_serial_ports:
+                        sel_ser_port = select_option(bridge_serial_ports, "Serial Port for Upload", "Back")
+                        if sel_ser_port == -1:
+                            continue
+                        sel_port_str = bridge_serial_ports[sel_ser_port]
+
+                    serial_port_option = f'%serial_port={sel_ser_port_str}' if sel_ser_port else ''
+
+                    flash_path = f"/system/write_config?{config_option_str}{serial_port_option}"
+                    status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}")
+                    if status != 200:
+                        print(f"Software flashing could no be started:\n{resp_data}")
+                        continue
+                else:
+                    print(f"Writing config to chip connected via Wifi...")
+                    selected_chip_nr = select_option(client_names, "Chip", "Back")
+                    if selected_chip_nr == -1:
+                        continue
+                    selected_cip = client_names[selected_chip_nr]
+                    print(f"Writing config to '{selected_cip}'...")
+
+                    flash_path = f"/clients/{selected_cip}/write_config?{config_option_str}%{selected_cip}"
+                    status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}")
+                    if status != 200:
+                        print(f"Software flashing could no be started:\n{resp_data}")
+                        continue
 
             elif task_option == 2:
                 # restart client

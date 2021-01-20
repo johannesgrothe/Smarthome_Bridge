@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask, redirect, url_for, request, jsonify, Response
 from typing import Optional
 
@@ -128,13 +130,64 @@ def run_api(bridge, port: int):
             response = {"status": f"Error flashing software from '{str_branch}' on port '{str_port}': {status}"}
             res_code = 400
 
-        return Response(str(response),
+        return Response(json.dumps(response),
+                        status=res_code,
+                        mimetype='application/json')
+
+    @app.route('/clients/<client_name>/write_config', methods=['POST'])
+    def write_config_to_network(client_name: str):
+        config_id = request.args.get('config_id')
+        config = request.args.get('config')
+
+        res_code = 200
+        response = {"status": f"Writing config to client '{client_name}' was successful."}
+
+        if config or config_id:
+
+            config_arg = config
+            if config_id:
+                config_arg = config_id
+
+            success, status = bridge.write_config_to_network_chip(config_arg, client_name)
+
+            if not success:
+                response = {"status": f"Error writing config to client '{client_name}': {status}"}
+                res_code = 400
+        else:
+            response = {"status": f"No config selected."}
+            res_code = 400
+
+        return Response(json.dumps(response),
                         status=res_code,
                         mimetype='application/json')
 
     @app.route('/system/write_config', methods=['POST'])
-    def write_config():
-        pass
+    def write_config_to_serial():
+        serial_port = request.args.get('serial_port')
+        config_id = request.args.get('config_id')
+        config = request.args.get('config')
+
+        res_code = 200
+        response = {"status": f"Writing config on port '{serial_port}' was successful."}
+
+        if config or config_id:
+
+            config_arg = config
+            if config_id:
+                config_arg = config_id
+
+            success, status = bridge.write_config_to_chip(config_arg, serial_port)
+
+            if not success:
+                response = {"status": f"Error writing config on port '{serial_port}': {status}"}
+                res_code = 400
+        else:
+            response = {"status": f"No config selected."}
+            res_code = 400
+
+        return Response(json.dumps(response),
+                        status=res_code,
+                        mimetype='application/json')
 
     # @app.route('/gadgets/all', methods=['POST', 'GET'])
     # def login():

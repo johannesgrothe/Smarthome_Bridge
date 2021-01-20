@@ -14,7 +14,7 @@ from chip_flasher import flash_chip, get_serial_ports
 from homekit_connector import HomeConnectorType, HomeKitConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
-from typing import Optional
+from typing import Optional, Union
 from mqtt_connector import MQTTConnector
 from request import Request
 import api
@@ -332,11 +332,13 @@ class MainBridge:
 
         return True, "Flashing successful"
 
-    def write_config_to_network_chip(self, client_name: str, config: dict) -> bool:
-        return True
+    def write_config_to_network_chip(self, config: Union[dict, int], client_name: str) -> (bool, str):
+        return False, "Not implemented"  # TODO
 
-    def write_config_to_chip(self, config: dict) -> bool:
-        return True
+    def write_config_to_chip(self, config: Union[dict, int], serial_port: Optional[str]) -> (bool, str):
+        if not serial_port:
+            serial_port = "/dev/cu.SLAB_USBtoUART"
+        return False, "Not implemented"  # TODO
 
     @staticmethod
     def write_config(config: dict) -> bool:
@@ -380,16 +382,6 @@ class MainBridge:
         """Returns the software branch of the bridge"""
         with self.__lock:
             return self.__sw_branch
-
-    def get_api_port(self) -> int:
-        """Returns the REST API port of the bridge"""
-        with self.__lock:
-            return self.__api_port
-
-    def get_socket_api_port(self) -> int:
-        """Returns the Socket API port of the bridge"""
-        with self.__lock:
-            return self.__ws_api_port
 
     # endregion
 
