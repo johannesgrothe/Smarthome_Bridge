@@ -21,6 +21,7 @@ class MQTTConnector(NetworkConnector):
 
     def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int,
                  mqtt_user: Optional[str] = None, mqtt_pw: Optional[str] = None):
+        super().__init__()
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name)
         self.__ip = mqtt_ip
@@ -36,6 +37,8 @@ class MQTTConnector(NetworkConnector):
         self.__client.loop_start()
         self.__client.on_message = self.generate_callback(self.__message_queue)
         self.__client.subscribe("smarthome/#")
+
+        self.__connected = self.__client.is_connected()
 
     def __del__(self):
         self.__client.disconnect()

@@ -15,12 +15,22 @@ class SerialConnector(NetworkConnector):
     __port: str
 
     def __init__(self, own_name: str, port: str, baudrate: int):
+        super().__init__()
         self.__own_name = own_name
         self.__baud_rate = baudrate
         self.__port = port
-        self.__client = serial.Serial(port=self.__port, baudrate=self.__baud_rate, timeout=1)
+        try:
+            self.__client = serial.Serial(port=self.__port, baudrate=self.__baud_rate, timeout=1)
+            self.__connected = True
+        except serial.serialutil.SerialException:
+            pass
 
     def __del__(self):
+        try:
+            self.__client.close()
+        except AttributeError:
+            pass
+        print(f"Closing Serial Connection to '{self.__port}@{self.__baud_rate}'")
         pass
 
     @staticmethod

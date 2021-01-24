@@ -360,10 +360,17 @@ class MainBridge:
 
         # Check client name?
 
+        buf_mqtt_gadget = MQTTConnector(
+            self.get_bridge_name() + "config_upload_" + str(gen_req_id()),
+            self.__mqtt_ip,
+            self.__mqtt_port,
+            self.__mqtt_user,
+            self.__mqtt_pw)
+
         # Launch Thread
         self.__chip_config_flash_thread = ChipConfigFlasherThread(
             self.get_bridge_name(),
-            self.__network_gadget,  # TODO: will be problem
+            buf_mqtt_gadget,
             config,
             client_name,
             self.add_streaming_message
@@ -385,6 +392,9 @@ class MainBridge:
             serial_port,
             115200
         )
+
+        if not buf_serial_gadget.connected():
+            return False, f"Could not connect to '{serial_port}'"
 
         # Get client name
         client_name = get_connected_chip_id(buf_serial_gadget, self.get_bridge_name())

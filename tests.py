@@ -1,4 +1,5 @@
 from mqtt_connector import MQTTConnector
+from serial_connector import SerialConnector
 
 
 def test_mqtt_connector():
@@ -17,5 +18,21 @@ def test_mqtt_connector():
             i += 1
 
 
+def test_serial_connector():
+    serial_port = "/dev/cu.SLAB_USBtoUART"
+
+    connector = SerialConnector(
+        "tester",
+        serial_port,
+        115200
+    )
+
+    if connector.connected():
+        print("Connected!")
+    else:
+        print("NOT Connected!")
+
+
 if __name__ == '__main__':
-    test_mqtt_connector()
+    # test_mqtt_connector()
+    test_serial_connector()
