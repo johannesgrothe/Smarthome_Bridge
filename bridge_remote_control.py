@@ -101,7 +101,7 @@ def send_api_request(url: str) -> (int, dict):
 
 
 def read_socket_data_until(client: socket, print_lines: bool, filter_for_sender: Optional[str] = None,
-                           exit_on_failure: bool = True) -> (bool, Optional[dict]):
+                           exit_on_finish_code: bool = True) -> (bool, Optional[dict]):  # TODO: add exit success/failure codes
     last_data_received: Optional[dict] = None
     try:
         while True:
@@ -121,7 +121,6 @@ def read_socket_data_until(client: socket, print_lines: bool, filter_for_sender:
                 rec_sender = data["sender"]
 
             if filter_for_sender and rec_sender != filter_for_sender:
-                print("Skipping message not of any value...")
                 continue
 
             if "message" in data:
@@ -135,8 +134,8 @@ def read_socket_data_until(client: socket, print_lines: bool, filter_for_sender:
 
             if "sender" in data or "status" in data:
                 last_data_received = data
-                if exit_on_failure:
-                    if rec_status < 0:
+                if exit_on_finish_code:
+                    if rec_status == 0:
                         break
 
     except KeyboardInterrupt:
@@ -160,7 +159,7 @@ def socket_connector(port: int, host: str, exit_on_failure: False) -> (bool, Opt
 
     buf_res, last_data_received = read_socket_data_until(client_socket,
                                                          True,
-                                                         exit_on_failure=exit_on_failure)
+                                                         exit_on_finish_code=exit_on_failure)
 
     client_socket.close()  # close the connection
     print("Connection Closed")
@@ -349,7 +348,7 @@ if __name__ == '__main__':
                     print("Unknown error or interruption while reading socket data")
                     continue
 
-                if last_data["status"] == 0:
+                if last_data["status"] == 0:  # TODO: make use of new status codes
                     print("Flashing Software was successful")
                 elif last_data["status"] != 0:
                     print("Flashing Software failed")
@@ -401,6 +400,12 @@ if __name__ == '__main__':
                         else:
                             print(f"Writing config could no be started.")
                         continue
+
+                    # Read lines from socket port
+                    success, last_data = read_socket_data_until(socket_client,
+                                                                True,
+                                                                "CONFIG_UPLOAD")
+
                 else:
                     print(f"Writing config to chip connected via Wifi...")
                     selected_chip_nr = select_option(client_names, "Chip", "Back")
@@ -417,6 +422,11 @@ if __name__ == '__main__':
                         else:
                             print(f"Writing config could no be started.")
                         continue
+
+                        # Read lines from socket port
+                    success, last_data = read_socket_data_until(socket_client,
+                                                                True,
+                                                                "CONFIG_UPLOAD")
 
             elif task_option == 2:
                 # restart client

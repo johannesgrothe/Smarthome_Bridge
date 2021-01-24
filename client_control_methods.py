@@ -12,6 +12,8 @@ PRIVATE_ATTRIBUTES = ["wifi_pw", "mqtt_pw"]
 PUBLIC_ATTRIBUTES = [x for x in CONFIG_ATTRIBUTES if x not in PRIVATE_ATTRIBUTES]
 LOG_SENDER = "CONFIG_UPLOAD"
 
+__general_exit_code = 0
+
 __upload_data_ok_code = 1
 __upload_data_fail_code = -1
 
@@ -76,6 +78,8 @@ def upload_gadget(client_name: str, gadget: dict, sender: str, network: NetworkC
 
 def write_config(client_name: str, config: dict, sender: str, network: NetworkConnector, print_callback=None):
 
+    err_count = 0
+
     for attr in CONFIG_ATTRIBUTES:
         if attr in config["data"]:
             attr_data = config["data"][attr]
@@ -94,7 +98,9 @@ def write_config(client_name: str, config: dict, sender: str, network: NetworkCo
                 if attr == "id":
                     client_name = attr_data
             else:
-                print_callback(LOG_SENDER, __upload_data_fail_code, f"Flashing '{attr}' failed")
+                err_count += 1
+                if print_callback:
+                    print_callback(LOG_SENDER, __upload_data_fail_code, f"Flashing '{attr}' failed")
 
     # upload gadgets
     if "gadgets" in config and config["gadgets"]:
@@ -102,19 +108,31 @@ def write_config(client_name: str, config: dict, sender: str, network: NetworkCo
             if "type" in gadget and "name" in gadget:
                 success, status = upload_gadget(client_name, gadget, sender, network)
                 if success:
-                    print_callback(LOG_SENDER,
-                                   __upload_gadget_ok_code,
-                                   f"Uploading '{gadget['name']}' was successful")
+                    if print_callback:
+                        print_callback(LOG_SENDER,
+                                       __upload_gadget_ok_code,
+                                       f"Uploading '{gadget['name']}' was successful")
                 else:
-                    print_callback(LOG_SENDER,
-                                   __upload_gadget_ok_code,
-                                   f"Uploading '{gadget['name']}' failed: {status}")
+                    err_count += 1
+                    if print_callback:
+                        print_callback(LOG_SENDER,
+                                       __upload_gadget_fail_code,
+                                       f"Uploading '{gadget['name']}' failed: {status}")
             else:
-                print_callback(LOG_SENDER,
-                               __upload_gadget_format_error_code,
-                               "Cannot upload gadget without type or name")
+                err_count += 1
+                if print_callback:
+                    print_callback(LOG_SENDER,
+                                   __upload_gadget_format_error_code,
+                                   "Cannot upload gadget without type or name")
 
     else:
+        err_count += 1
+        if print_callback:
+            print_callback(LOG_SENDER,
+                           __upload_gadget_no_gadget_in_cfg_code,
+                           "No gadget needs to be uploaded")
+
+    if print_callback:
         print_callback(LOG_SENDER,
-                       __upload_gadget_no_gadget_in_cfg_code,
-                       "No gadget needs to be uploaded")
+                       __general_exit_code,
+                       f"Process finished with {err_count} errors")
