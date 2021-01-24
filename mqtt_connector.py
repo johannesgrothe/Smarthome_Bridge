@@ -5,9 +5,6 @@ import paho.mqtt.client as mqtt
 import time
 import json
 
-# Global queue for mqtt results
-mqtt_res_queue = Queue()
-
 
 class MQTTConnector(NetworkConnector):
     """Class to implement a MQTT connection module"""
@@ -16,6 +13,8 @@ class MQTTConnector(NetworkConnector):
     __own_name: str
     __ip: str
     __port: int
+
+    __message_queue: Queue
 
     __mqtt_username: Optional[str]
     __mqtt_password: Optional[str]
@@ -29,56 +28,63 @@ class MQTTConnector(NetworkConnector):
         self.__mqtt_username = mqtt_user
         self.__mqtt_password = mqtt_pw
 
+        self.__message_queue = Queue()
+
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         self.__client.connect(self.__ip, self.__port, 60)
         self.__client.loop_start()
-        self.__client.on_message = self.__on_message
+        self.__client.on_message = self.generate_callback(self.__message_queue)
         self.__client.subscribe("smarthome/#")
 
     def __del__(self):
         self.__client.disconnect()
 
     @staticmethod
-    def __on_message(client, userdata, message):
-        global mqtt_res_queue
+    def generate_callback(request_queue: Queue):
+        """Generates a callback with captured queue"""
 
-        topic = message.topic
+        def buf_callback(client, userdata, message):
+            """Callback to attach to mqtt object, mqtt_res_queue gets catched in closure"""
+            topic = message.topic
 
-        try:
-            json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
-        except UnicodeDecodeError:
-            print("Couldn't format json string")
-            return
+            try:
+                json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
+            except UnicodeDecodeError:
+                print("Couldn't format json string")
+                return
 
-        try:
-            body = json.loads(json_str)
-        except json.decoder.JSONDecodeError:
-            print("Couldn't decode json: '{}'".format(json_str))
-            return
+            try:
+                body = json.loads(json_str)
+            except json.decoder.JSONDecodeError:
+                print("Couldn't decode json: '{}'".format(json_str))
+                return
 
-        if not ("session_id" in body and "sender" in body and "receiver" in body and "payload" in body):
-            print("Missing key(s) in request")
-            return
+            if not ("session_id" in body and "sender" in body and "receiver" in body and "payload" in body):
+                print("Missing key(s) in request")
+                return
 
-        try:
-            inc_req = Request(topic,
-                              body["session_id"],
-                              body["sender"],
-                              body["receiver"],
-                              body["payload"])
-            print("Received: {}".format(inc_req.to_string()))
+            try:
+                inc_req = Request(topic,
+                                  body["session_id"],
+                                  body["sender"],
+                                  body["receiver"],
+                                  body["payload"])
+                print("Received: {}".format(inc_req.to_string()))
 
-            mqtt_res_queue.put(inc_req)
+                request_queue.put(inc_req)
 
-        except ValueError:
-            print("Error creating Request")
+            except ValueError:
+                print("Error creating Request")
 
-    @staticmethod
-    def get_request() -> Optional[bool]:
+        # Return closured callback
+        return buf_callback
+
+    def get_request(self) -> Optional[Request]:
         """Returns a request if there is one"""
-        if not mqtt_res_queue.empty():
-            return mqtt_res_queue.get()
+
+        if not self.__message_queue.empty():
+            return self.__message_queue.get()
         return None
 
     def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
@@ -87,15 +93,14 @@ class MQTTConnector(NetworkConnector):
 
         Returns the Ack-Status of the response, the status message of the response and the response itself.
         """
-        global mqtt_res_queue
 
         self.__client.publish(req.get_path(), str(req.get_body()))
         if timeout > 0:
             timeout_time = time.time() + timeout
             checked_requests_list = Queue()
             while time.time() < timeout_time:
-                if not mqtt_res_queue.empty():
-                    res: Request = mqtt_res_queue.get()
+                if not self.__message_queue.empty():
+                    res: Request = self.__message_queue.get()
                     # print("Got from Queue: {}".format(res.to_string()))
                     if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
                         res_ack = res.get_ack()
@@ -105,7 +110,7 @@ class MQTTConnector(NetworkConnector):
 
                         # Put checked requests back in queue
                         while not checked_requests_list.empty():
-                            mqtt_res_queue.put(checked_requests_list.get())
+                            self.__message_queue.put(checked_requests_list.get())
 
                         return res_ack, res_status_msg, res
 
@@ -114,7 +119,7 @@ class MQTTConnector(NetworkConnector):
 
             # Put checked requests back in queue
             while not checked_requests_list.empty():
-                mqtt_res_queue.put(checked_requests_list.get())
+                self.__message_queue.put(checked_requests_list.get())
             return None, "no response received", None
 
         return None, "no response awaited", None
