@@ -12,6 +12,8 @@ from datetime import datetime
 from chip_flasher import flash_chip, get_serial_ports
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
+from network_connector import NetworkConnector
+from serial_connector import SerialConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional, Union
@@ -20,6 +22,22 @@ from request import Request
 import api
 import socket_api
 import client_control_methods
+
+
+def get_connected_chip_id(network: SerialConnector, sender: str) -> Optional[str]:
+    broadcast_req = Request(
+        "smarthome/broadcast/req",
+        gen_req_id(),
+        sender,
+        None,
+        {}
+    )
+
+    responses = network.send_broadcast(broadcast_req, 5, 1)
+
+    if responses:
+        return responses[0].get_sender()
+    return None
 
 
 def gen_req_id() -> int:
@@ -95,6 +113,9 @@ class MainBridge:
 
     # Chip Flashing
     __chip_sw_flash_thread = None
+
+    # Config Flashing
+    __chip_config_flash_thread = None
 
     def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int,
                  mqtt_username: Optional[str], mqtt_pw: Optional[str]):
@@ -330,15 +351,58 @@ class MainBridge:
                                                           self.add_streaming_message)
         self.__chip_sw_flash_thread.start()
 
-        return True, "Flashing successful"
+        return True, "Flashing started."
 
     def write_config_to_network_chip(self, config: dict, client_name: str) -> (bool, str):
-        return False, "Not implemented"  # TODO
+        # Check if there is still a process running
+        if self.__chip_config_flash_thread and self.__chip_config_flash_thread.is_alive():
+            return False, "There is still a process running"
+
+        # Check client name?
+
+        # Launch Thread
+        self.__chip_config_flash_thread = ChipConfigFlasherThread(
+            self.get_bridge_name(),
+            self.__network_gadget,  # TODO: will be problem
+            config,
+            client_name,
+            self.add_streaming_message
+        )
+        self.__chip_config_flash_thread.start()
+
+        return True, "Writing started."
 
     def write_config_to_chip(self, config: dict, serial_port: Optional[str]) -> (bool, str):
         if not serial_port:
             serial_port = "/dev/cu.SLAB_USBtoUART"
-        return False, "Not implemented"  # TODO
+
+        # Check if there is still a process running
+        if self.__chip_config_flash_thread and self.__chip_config_flash_thread.is_alive():
+            return False, "There is still a process running"
+
+        buf_serial_gadget = SerialConnector(
+            self.get_bridge_name(),
+            serial_port,
+            115200
+        )
+
+        # Get client name
+        client_name = get_connected_chip_id(buf_serial_gadget, self.get_bridge_name())
+
+        if not client_name:
+            return False, "Could not connect to serial client"
+
+        # Launch Thread
+        self.__chip_config_flash_thread = ChipConfigFlasherThread(
+            self.get_bridge_name(),
+            buf_serial_gadget,
+            config,
+            client_name,
+            self.add_streaming_message
+        )
+        self.__chip_config_flash_thread.start()
+
+        return True, "Upload started."
 
     @staticmethod
     def write_config(config: dict) -> bool:
@@ -660,6 +724,32 @@ class BridgeAPIThread(Thread):
 
         print("Launching API")
         api.run_api(self.__parent_object, buf_api_port)
+
+
+class ChipConfigFlasherThread(Thread):
+    __streaming_callback = None
+    __config: dict
+    __client_name: str
+    __sender: str
+    __network: NetworkConnector
+
+    def __init__(self, sender: str, network: NetworkConnector, config: dict, client_name: str, callback=None):
+        super().__init__()
+        print("Chip Software Flasher Thread")
+        self.__config = config
+        self.__streaming_callback = callback
+        self.__sender = sender
+        self.__network = network
+        self.__client_name = client_name
+
+    def run(self):
+        print("Starting config flasher thread")
+        client_control_methods.write_config(self.__client_name,
+                                            self.__config,
+                                            self.__sender,
+                                            self.__network,
+                                            self.__streaming_callback)
+        print("Flashing done.")
 
 
 class ChipSWFlasherThread(Thread):

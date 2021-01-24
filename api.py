@@ -146,7 +146,8 @@ def run_api(bridge, port: int):
 
     @app.route('/clients/<client_name>/write_config', methods=['POST'])
     def write_config_to_network(client_name: str):
-        config = request.args.get('config')  # TODO: use post request content instead of url stuff
+        json_payload = request.json
+        config = json_payload
 
         res_code = 200
         response = {"status": f"Writing config to client '{client_name}' was successful."}
@@ -162,23 +163,23 @@ def run_api(bridge, port: int):
             response = {"status": f"No config selected."}
             res_code = 400
 
-        return Response(str(response),
+        response_str = json.dumps(response)
+
+        return Response(response_str,
                         status=res_code,
                         mimetype='application/json')
 
     @app.route('/system/write_config', methods=['POST'])
     def write_config_to_serial():
         serial_port = request.args.get('serial_port')
-        config = request.args.get('config')  # TODO: use post request content instead of url stuff
+
+        json_payload = request.json
+        config = json_payload
 
         res_code = 200
         response: dict = {"status": f"Writing config on port '{serial_port}' was successful."}
 
         if config:
-
-            print(config)
-            print(serial_port)
-            print(type(serial_port))
 
             success, status = bridge.write_config_to_chip(config, serial_port)
 
@@ -189,9 +190,7 @@ def run_api(bridge, port: int):
             response = {"status": f"No config selected."}
             res_code = 400
 
-        print(response)
         response_str = json.dumps(response)
-        print(response_str)
 
         return Response(response_str,
                         status=res_code,

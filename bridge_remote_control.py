@@ -67,12 +67,17 @@ def read_config_from_bridge(cfg_name: str) -> Optional[dict]:
     return None
 
 
-def send_api_command(url: str, content: str = "") -> (int, dict):
+def send_api_command(url: str, content: dict = None) -> (int, dict):
     if not url.startswith("http"):
         url = "http://" + url
 
+    response = None
     # print(f"Sending API command to '{url}'")
-    response = requests.post(url, content)
+    if content:
+        response = requests.post(url, json=content)
+    else:
+        response = requests.post(url)
+
     res_data = {}
     try:
         res_data = json.loads(response.content.decode())
@@ -366,14 +371,12 @@ if __name__ == '__main__':
                     print("Custom Config not implemented")
                     continue
                 else:
-                    config_name = bridge_configs[config_index]
+                    config_name = bridge_configs[config_index-1]
                     config_to_flash = read_config_from_bridge(config_name)
 
                 if not config_to_flash:
                     print("Error: Unable to load config from bridge.")
                     continue
-
-                config_option_str = f"config={json.dumps(config_to_flash)}"
 
                 if flash_mode == 0:
                     print(f"Writing config to chip connected via USB...")
@@ -387,20 +390,16 @@ if __name__ == '__main__':
 
                         sel_ser_port_str = bridge_serial_ports[sel_ser_port]
 
-                    serial_port_option = f'&serial_port={sel_ser_port_str}' if sel_ser_port else ''
+                    serial_port_option = f'?serial_port={sel_ser_port_str}' if sel_ser_port else ''
 
-                    print(serial_port_option)
+                    flash_path = f"/system/write_config{serial_port_option}"
 
-                    flash_path = f"/system/write_config?{config_option_str}{serial_port_option}"
-
-                    print(flash_path)
-
-                    status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}")
+                    status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}", config_to_flash)
                     if status != 200:
                         if "status" in resp_data:
-                            print(f"Software flashing could no be started:\n{resp_data['status']}")
+                            print(f"Writing config could no be started:\n{resp_data['status']}")
                         else:
-                            print(f"Software flashing could no be started.")
+                            print(f"Writing config could no be started.")
                         continue
                 else:
                     print(f"Writing config to chip connected via Wifi...")
@@ -410,13 +409,13 @@ if __name__ == '__main__':
                     selected_cip = client_names[selected_chip_nr]
                     print(f"Writing config to '{selected_cip}'...")
 
-                    flash_path = f"/clients/{selected_cip}/write_config?{config_option_str}%{selected_cip}"
-                    status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}")
+                    flash_path = f"/clients/{selected_cip}/write_config"
+                    status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}", config_to_flash)
                     if status != 200:
                         if "status" in resp_data:
-                            print(f"Software flashing could no be started:\n{resp_data['status']}")
+                            print(f"Writing config could no be started:\n{resp_data['status']}")
                         else:
-                            print(f"Software flashing could no be started.")
+                            print(f"Writing config could no be started.")
                         continue
 
             elif task_option == 2:
