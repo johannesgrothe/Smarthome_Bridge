@@ -1,13 +1,15 @@
+import os
 import socket
 import argparse
 import sys
 import requests
 import json
 from typing import Optional
+import git_tools
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
-BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip"]
+BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
 
@@ -16,7 +18,8 @@ def select_option(input_list: [str], category: Optional[str] = None, back_option
     """Presents every elem from the list and lets the user select one"""
 
     if category is None:
-        print("Please select:")
+        # print("Please select:")
+        pass
     else:
         print("Please select a {}:".format(category))
     max_i = 0
@@ -185,6 +188,8 @@ if __name__ == '__main__':
     parser.add_argument('--bridge_api_port', help='Port of the Socket Server', type=int)
     parser.add_argument('--bridge_addr', help='Address of the Socket Server', type=str)
     ARGS = parser.parse_args()
+
+    print("Launching...")
 
     if ARGS.connection_mode:
         connection_mode = ARGS.connection_mode
@@ -441,6 +446,16 @@ if __name__ == '__main__':
                 # restart client
                 selected_cip = client_names[select_option(client_names, "Chip")]
                 print(f"Restarting client '{selected_cip}'...")
+
+            elif task_option == 3:
+                # Update Toolkit
+                update_status = git_tools.update()
+                if update_status:
+                    print("Restart?")
+                    restart_bridge = select_option(["Yes", "No"]) == 0
+                    if restart_bridge:
+                        print("Restarting...")
+                        os.execl(sys.executable, os.path.abspath(__file__), *sys.argv)
 
             elif task_option == -1:
                 # Quit
