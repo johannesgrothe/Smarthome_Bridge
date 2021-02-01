@@ -2,10 +2,15 @@ import os
 import re
 import argparse
 import subprocess
-from typing import Optional
+from typing import Optional, Callable
+
+# Declare Type of callback function for hinting
+CallbackFunction = Optional[Callable[[str, int, str], None]]
 
 repo_name = "Smarthome_ESP32"
 repo_url = "git@github.com:A20GameCo/{}.git".format(repo_name)
+
+__general_exit_code = 0
 
 __fetch_ok_code = 1
 __fetch_fail_code = -1
@@ -23,7 +28,7 @@ __connecting_ok_code = 5
 __connecting_error_code = -5
 
 __flash_ok_code = 6
-__flash_fail_code = 7
+__flash_fail_code = -6
 
 __sw_upload_code = 8
 __linking_code = 9
@@ -39,7 +44,15 @@ def get_serial_ports() -> [str]:
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
-               output_callback=None) -> bool:
+               output_callback: CallbackFunction = None) -> bool:
+    res = flash_chip_helper(branch_name, force_reset, upload_port, output_callback)
+    if output_callback:
+        output_callback("SOFTWARE_UPLOAD", __general_exit_code, "Flashing process finished.")
+    return res
+
+
+def flash_chip_helper(b_name: str, f_reset: bool = False, upload_port: Optional[str] = None,
+                      output_callback: CallbackFunction = None) -> bool:
 
     upload_port_phrase = ""
     if upload_port is not None:
@@ -48,13 +61,13 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
 
     repo_works = False
 
-    if force_reset:
+    if f_reset:
         os.remove(repo_name)
     else:
         if os.path.isdir(repo_name):
 
             # Fetch branch
-            print(f"Fetching '{branch_name}'")
+            print(f"Fetching '{b_name}'")
             fetch_ok = os.system(f"cd {repo_name};git fetch") == 0
             if not fetch_ok:
                 print("Failed.")
@@ -82,38 +95,38 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             output_callback("SOFTWARE_UPLOAD", __cloning_ok_code, "Cloning ok.")
 
     # Check out selected branch
-    print(f"Checking out '{branch_name}':")
-    checkout_successful = os.system(f"cd {repo_name};git checkout {branch_name}") == 0
+    print(f"Checking out '{b_name}':")
+    checkout_successful = os.system(f"cd {repo_name};git checkout {b_name}") == 0
     if not checkout_successful:
         print("Failed.")
         if output_callback:
-            output_callback("SOFTWARE_UPLOAD", __checkout_fail_code, f"Checking out '{branch_name}' failed.")
+            output_callback("SOFTWARE_UPLOAD", __checkout_fail_code, f"Checking out '{b_name}' failed.")
         return False
     print("Ok.\n")
     if output_callback:
-        output_callback("SOFTWARE_UPLOAD", __checkout_ok_code, f"Checking out '{branch_name}' OK.")
+        output_callback("SOFTWARE_UPLOAD", __checkout_ok_code, f"Checking out '{b_name}' OK.")
 
     # Pull branch
-    print(f"Pulling '{branch_name}'")
+    print(f"Pulling '{b_name}'")
     pull_ok = os.system(f"cd {repo_name};git pull") == 0
     if not pull_ok:
         print("Failed.")
         if output_callback:
-            output_callback("SOFTWARE_UPLOAD", __pull_fail_code, f"Pulling '{branch_name}' failed.")
+            output_callback("SOFTWARE_UPLOAD", __pull_fail_code, f"Pulling '{b_name}' failed.")
     print("Ok.\n")
     if output_callback:
-        output_callback("SOFTWARE_UPLOAD", __pull_ok_code, f"Pulling '{branch_name}' OK.")
+        output_callback("SOFTWARE_UPLOAD", __pull_ok_code, f"Pulling '{b_name}' OK.")
 
     # Get double check data
-    branch_name = os.popen(f"cd {repo_name};git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\
+    b_name = os.popen(f"cd {repo_name};git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)") \
         .read().strip("\n")
     commit_hash = os.popen(f"cd {repo_name};git rev-parse HEAD").read().strip("\n")
-    print(f"Flashing branch '{branch_name}', commit '{commit_hash}'")
+    print(f"Flashing branch '{b_name}', commit '{commit_hash}'")
     print()
     if output_callback:
         output_callback("SOFTWARE_UPLOAD",
                         __sw_upload_code,
-                        f"Flashing branch '{branch_name}', commit '{commit_hash}'")
+                        f"Flashing branch '{b_name}', commit '{commit_hash}'")
 
     # Upload software
     upload_command = f"cd {repo_name}; pio run --target upload{upload_port_phrase}"
@@ -170,7 +183,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             if writing_address >= 65536:
                 if output_callback:
                     output_callback("SOFTWARE_UPLOAD",
-                                    (__writing_fw_code * 1000) + percentage,
+                                    __writing_fw_code,
                                     f"Writing Firmware: {percentage}%")
 
         ram_groups = re.match(ram_pattern, line)
@@ -178,7 +191,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             ram = ram_groups.groups()[0]
             if output_callback:
                 output_callback("SOFTWARE_UPLOAD",
-                                (__ram_usage_code * 1000) + ram,
+                                __ram_usage_code,
                                 f"RAM usage: {ram}%")
 
         flash_groups = re.match(flash_pattern, line)
@@ -186,7 +199,7 @@ def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optiona
             flash = flash_groups.groups()[0]
             if output_callback:
                 output_callback("SOFTWARE_UPLOAD",
-                                (__sw_upload_code * 1000) + ram,
+                                __sw_upload_code,
                                 f"Flash usage: {flash}%")
 
         print(line.strip("\n"))

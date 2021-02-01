@@ -2,8 +2,11 @@
 
 import random
 from request import Request
-from typing import Optional
+from typing import Optional, Callable
 from network_connector import NetworkConnector
+
+# Declare Type of callback function for hinting
+CallbackFunction = Optional[Callable[[str, int, str], None]]
 
 CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_recv_pin", "radio_send_pin", "network_mode",
                      "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw",
@@ -76,7 +79,8 @@ def upload_gadget(client_name: str, gadget: dict, sender: str, network: NetworkC
     return suc is True, status_message
 
 
-def write_config(client_name: str, config: dict, sender: str, network: NetworkConnector, print_callback=None):
+def write_config(client_name: str, config: dict, sender: str, network: NetworkConnector,
+                 print_callback: CallbackFunction = None):
 
     err_count = 0
 

@@ -16,7 +16,7 @@ from network_connector import NetworkConnector
 from serial_connector import SerialConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
-from typing import Optional, Union
+from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
 import api
@@ -354,6 +354,13 @@ class MainBridge:
         return True, "Flashing started."
 
     def write_config_to_network_chip(self, config: dict, client_name: str) -> (bool, str):
+        """
+        Launches a process writing a config to a client connected to the same network
+
+        :param config: Config to write
+        :param client_name: Client to receive new config
+        :return: (Whether starting the writing process was successful), (Status message)
+        """
         # Check if there is still a process running
         if self.__chip_config_flash_thread and self.__chip_config_flash_thread.is_alive():
             return False, "There is still a process running"
@@ -380,6 +387,13 @@ class MainBridge:
         return True, "Writing started."
 
     def write_config_to_chip(self, config: dict, serial_port: Optional[str]) -> (bool, str):
+        """
+        Writes the passed config to a client connected via USB
+
+        :param config: Config to write to the chip
+        :param serial_port: Serial Port to connect to
+        :return: (Whether starting writing process worked), (Status Message)
+        """
         if not serial_port:
             serial_port = "/dev/cu.SLAB_USBtoUART"
 
@@ -416,15 +430,32 @@ class MainBridge:
 
     @staticmethod
     def write_config(config: dict) -> bool:
+        """
+        Saves a config file to the disk to be present between reboots
+
+        :param config: Config to save
+        :return: Whether saving was successful
+        """
         return config_functions.write_config(config)
 
     @staticmethod
     def load_config_names() -> [str]:
+        """
+        Returns the names of all stored configs
+
+        :return: The names of all stored configs
+        """
         configs, config_names = config_functions.load_configs()
         return config_names
 
     @staticmethod
     def load_config(name: str) -> Optional[dict]:
+        """
+        Loads the selected config
+
+        :param name: Name of the config to be loaded
+        :return: Content of the config
+        """
         configs, _ = config_functions.load_configs()
         for config in configs:
             if config["name"] == name:
@@ -432,7 +463,7 @@ class MainBridge:
 
     @staticmethod
     def get_serial_ports() -> [str]:
-        """Returns all serial ports existing on the system"""
+        """Returns all serial ports existing on the host system"""
         return get_serial_ports()
 
     # region BRIDGE DATA
@@ -461,6 +492,12 @@ class MainBridge:
 
     # region CLIENT METHODS
     def get_client(self, name: str) -> Optional[SmarthomeClient]:
+        """
+        Returns the client to the given name if it exists
+
+        :param name: Name of the wanted client
+        :return: The client object if found, None otherwise
+        """
         with self.__lock:
             for client in self.__clients:
                 if client.get_name() == name:
@@ -468,6 +505,13 @@ class MainBridge:
         return None
 
     def __add_client(self, name: str, runtime_id: int) -> bool:
+        """
+        Adds a client to the system
+
+        :param name: Name of the client to add
+        :param runtime_id: Current runtime id of the client
+        :return: Whether adding the client was successful
+        """
         if self.get_client(name) is None:
             with self.__lock:
                 buf_client = SmarthomeClient(name, runtime_id)
@@ -483,12 +527,22 @@ class MainBridge:
 
     @staticmethod
     def __trigger_client(client: SmarthomeClient):
-        """Reports an activity signal from a client"""
+        """
+        Reports an activity signal from a client
+
+        :param client: Client to report the activity of
+        """
         print("Triggering Activity on Client: '{}'".format(client.get_name()))
         client.trigger_activity()
 
     def __get_or_create_client(self, name: str, runtime_id: int) -> Optional[SmarthomeClient]:
-        """Searches for a client with the name, creates it if necessary and returns the client"""
+        """
+        Searches for a client with the name, creates it if necessary and returns the client
+
+        :param name: Client to add or get
+        :param runtime_id: Current runtime id of the client
+        :return: The client object if possible, None if something went wrong
+        """
         local_client = self.get_client(name)
         if local_client is None:
             success = self.__add_client(name, runtime_id)

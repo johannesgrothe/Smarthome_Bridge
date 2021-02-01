@@ -33,12 +33,16 @@ class MQTTConnector(NetworkConnector):
 
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
-        self.__client.connect(self.__ip, self.__port, 60)
-        self.__client.loop_start()
-        self.__client.on_message = self.generate_callback(self.__message_queue)
-        self.__client.subscribe("smarthome/#")
-
-        self.__connected = self.__client.is_connected()
+        try:
+            self.__client.connect(self.__ip, self.__port, 60)
+            self.__client.loop_start()
+            self.__client.on_message = self.generate_callback(self.__message_queue)
+            self.__client.subscribe("smarthome/#")
+            # self.__connected = True
+            self.__connected = self.__client.is_connected()
+        except ConnectionRefusedError as err:
+            self.__connected = False
+            print(err)
 
     def __del__(self):
         self.__client.disconnect()

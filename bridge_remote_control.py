@@ -101,7 +101,16 @@ def send_api_request(url: str) -> (int, dict):
 
 
 def read_socket_data_until(client: socket, print_lines: bool, filter_for_sender: Optional[str] = None,
-                           exit_on_finish_code: bool = True) -> (bool, Optional[dict]):  # TODO: add exit success/failure codes
+                           exit_on_finish_code: bool = True) -> (bool, Optional[dict]):
+    """
+    Reads the socket data forever or untin a message with the status 0 is received
+
+    :param client: Socket Object for the conection
+    :param print_lines: Whether the received lines should be printed or not
+    :param filter_for_sender: Use to only handle messages from a specific sender
+    :param exit_on_finish_code: Whether to exit on status code 0
+    :return: (Whether method run through successfully), (Last request received)
+    """
     last_data_received: Optional[dict] = None
     try:
         while True:
@@ -329,9 +338,9 @@ if __name__ == '__main__':
                     sel_ser_port = select_option(bridge_serial_ports, "Serial Port for Upload", "Back")
                     if sel_ser_port == -1:
                         continue
-                    sel_port_str = bridge_serial_ports[sel_ser_port]
+                    sel_ser_port_str = bridge_serial_ports[sel_ser_port]
 
-                serial_port_option = f'%serial_port={sel_ser_port_str}' if sel_ser_port else ''
+                serial_port_option = f'&serial_port={sel_ser_port_str}' if sel_ser_port else ''
                 flash_path = f"/system/flash_software?branch_name={selected_branch_name}{serial_port_option}"
 
                 status, resp_data = send_api_command(f"{bridge_addr}:{api_port}{flash_path}")
