@@ -6,7 +6,7 @@ import time
 import json
 
 
-def connect_callback(client, userdata, flags, reason_code, properties):
+def connect_callback(client, userdata, flags, reason_code, properties=None):
     print("MQTT connected.")
 
 

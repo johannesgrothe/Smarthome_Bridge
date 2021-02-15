@@ -138,7 +138,7 @@ class MainBridge:
         if self.__sw_branch == "":
             self.__sw_branch = None
 
-        print(f"Bridge is running on {self.__sw_commit}@{self.__sw_branch}")
+        print(f"Bridge is running on: {self.__sw_commit}\n{' '*22}{self.__sw_branch}")
 
         # Set launch time
         self.__time_launched = datetime.now()
