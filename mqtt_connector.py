@@ -146,15 +146,14 @@ class MQTTConnector(NetworkConnector):
         return None, "no response awaited", None
 
     def send_broadcast(self, req: Request, timeout: int = 6) -> [Request]:
-        global mqtt_res_queue
 
         responses: [Request] = []
         json_str = json.dumps(req.get_body())
         self.__client.publish(req.get_path(), json_str)
         timeout_time = time.time() + timeout
         while time.time() < timeout_time:
-            if not mqtt_res_queue.empty():
-                res: Request = mqtt_res_queue.get()
+            if not self.__message_queue.empty():
+                res: Request = self.__message_queue.get()
                 # print("Got from Queue: {}".format(res.to_string()))
                 if res.get_path() == "smarthome/broadcast/res" and res.get_session_id() == req.get_session_id():
                     responses.append(res)
