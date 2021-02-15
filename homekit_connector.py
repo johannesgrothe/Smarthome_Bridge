@@ -111,7 +111,10 @@ class HomeKitConnector(HomeConnector):
 
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
-        self.__client.connect(self.__ip, self.__port, 60)
+        try:
+            self.__client.connect(self.__ip, self.__port, 15)
+        except OSError:
+            print("Could not connect to MQTT Server.")
         self.__client.loop_start()
         self.__client.on_message = self.__on_message
         self.__client.subscribe("homebridge/#")

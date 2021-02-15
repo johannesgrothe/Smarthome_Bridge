@@ -6,6 +6,14 @@ import time
 import json
 
 
+def connect_callback(client, userdata, flags, reason_code, properties):
+    print("MQTT connected.")
+
+
+def disconnect_callback():
+    print("MQTT disconnected.")
+
+
 class MQTTConnector(NetworkConnector):
     """Class to implement a MQTT connection module"""
 
@@ -34,11 +42,17 @@ class MQTTConnector(NetworkConnector):
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
-            self.__client.connect(self.__ip, self.__port, 60)
-            self.__client.loop_start()
             self.__client.on_message = self.generate_callback(self.__message_queue)
+            self.__client.on_disconnect = disconnect_callback
+            self.__client.on_connect = connect_callback
+
+            try:
+                self.__client.connect(self.__ip, self.__port, 10)
+            except OSError:
+                print("Could not connect to MQTT Server.")
+
+            self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
-            # self.__connected = True
             self.__connected = self.__client.is_connected()
         except ConnectionRefusedError as err:
             self.__connected = False
