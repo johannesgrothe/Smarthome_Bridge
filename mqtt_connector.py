@@ -10,7 +10,7 @@ def connect_callback(client, userdata, flags, reason_code, properties=None):
     print("MQTT connected.")
 
 
-def disconnect_callback():
+def disconnect_callback(client, userdata, reason_code, properties=None):
     print("MQTT disconnected.")
 
 
