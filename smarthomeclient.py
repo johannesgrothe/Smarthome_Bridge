@@ -1,5 +1,5 @@
 """Module for the SmarthomeClient Class"""
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 # Maximum timeout in seconds before the client is considered inactive
@@ -100,7 +100,7 @@ class SmarthomeClient:
 
     def is_active(self) -> bool:
         """Returns whether the client is still considered active"""
-        return self.__last_connected.timestamp() + max_timeout > datetime.now().timestamp()
+        return self.__last_connected + timedelta(seconds=max_timeout) > datetime.now()
 
     def update_runtime_id(self, runtime_id: bool):
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
