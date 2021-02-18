@@ -138,6 +138,8 @@ class MainBridge:
         if self.__sw_branch == "":
             self.__sw_branch = None
 
+        print(f"Bridge is running on: {self.__sw_commit}\n{' '*22}{self.__sw_branch}")
+
         # Set launch time
         self.__time_launched = datetime.now()
 
@@ -206,8 +208,8 @@ class MainBridge:
                                                   66)
                                ]))
         self.__add_connector(HomeConnectorType(1), {"name": "test_connector1",
-                                                    "ip": "192.168.178.111",
-                                                    "port": 1883})
+                                                    "ip": self.__mqtt_ip,
+                                                    "port": self.__mqtt_port})
 
     def handle_request(self, req: Request):
         """Receives a request from the watcher Thread and handles it"""
@@ -860,6 +862,7 @@ class BridgeSocketAPIThread(Thread):
 if __name__ == '__main__':
     # Argument-parser
     parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
+    parser.add_argument('--bridge_name', help='Network Name for the Bridge', type=str)
     parser.add_argument('--mqtt_ip', help='IP of the MQTT Broker', type=str)
     parser.add_argument('--mqtt_port', help='Port of the MQTT Broker', type=int)
     parser.add_argument('--mqtt_user', help='Username for the MQTT Broker', type=str)
@@ -871,20 +874,24 @@ if __name__ == '__main__':
 
     print("Launching Bridge")
 
+    buf_bridge_name: str = get_sender()
+    if ARGS.bridge_name:
+        buf_bridge_name = ARGS.bridge_name
+
     if ARGS.mqtt_port:
-        buf_mqtt_port = int(ARGS.mqtt_port)
+        buf_mqtt_port: int = ARGS.mqtt_port
     else:
         print("No Port selected.")
         sys.exit(21)
 
     if ARGS.mqtt_ip:
-        buf_mqtt_ip = ARGS.mqtt_ip
+        buf_mqtt_ip: str = ARGS.mqtt_ip
     else:
         print("No IP selected.")
         sys.exit(22)
 
     # Create Bridge
-    bridge = MainBridge(get_sender(), buf_mqtt_ip, buf_mqtt_port, None, None)
+    bridge = MainBridge(buf_bridge_name, buf_mqtt_ip, buf_mqtt_port, None, None)
 
     # Insert dummy data if wanted
     if ARGS.dummy_data:

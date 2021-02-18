@@ -8,7 +8,7 @@ from typing import Optional, Callable
 CallbackFunction = Optional[Callable[[str, int, str], None]]
 
 repo_name = "Smarthome_ESP32"
-repo_url = "git@github.com:A20GameCo/{}.git".format(repo_name)
+repo_url = "https://github.com/johannesgrothe/{}.git".format(repo_name)
 
 __general_exit_code = 0
 
@@ -40,7 +40,12 @@ __ram_usage_code = 14
 
 
 def get_serial_ports() -> [str]:
-    return os.popen(f"cd {repo_name};ls /dev/tty.*").read().strip("\n").split()
+    detected_ports = os.popen(f"ls /dev/tty*").read().strip("\n").split()
+    valid_ports = []
+    for port in detected_ports:
+        if "usb" in port.lower():
+            valid_ports.append(port)
+    return valid_ports
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
