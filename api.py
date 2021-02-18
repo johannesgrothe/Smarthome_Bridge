@@ -1,6 +1,7 @@
 import json
 
 from flask import Flask, redirect, url_for, request, jsonify, Response
+from jsonschema import validate
 from typing import Optional
 
 
@@ -16,6 +17,14 @@ def run_api(bridge, port: int):
 
     @app.route('/')
     def root():
+        """
+        Flask API response method
+
+        Input Schema: None
+        Output Schema: None
+
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, "/")
         res_text = "Use /info, /gadgets, /connectors or /clients".format(bridge.get_bridge_name())
         response = jsonify(res_text)
@@ -24,6 +33,14 @@ def run_api(bridge, port: int):
 
     @app.route('/gadgets', methods=['GET'])
     def get_all_gadgets():
+        """
+        Flask API response method
+
+        Input Schema: None
+        Output Schema: 'api_get_all_gadgets_response.json'
+
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, "/gadgets")
         gadget_list = bridge.get_all_gadgets()
 
@@ -196,13 +213,13 @@ def run_api(bridge, port: int):
                         status=res_code,
                         mimetype='application/json')
 
-    # @app.route('/gadgets/all', methods=['POST', 'GET'])
-    # def login():
-    #     if request.method == 'POST':
-    #         user = request.form['nm']
-    #         return redirect(url_for('success', name=user))
-    #     else:
-    #         user = request.args.get('nm')
-    #         return redirect(url_for('success', name=user))
+    @app.route('/gadgets/all/<yolo>/<blub>', methods=['POST', 'GET'])
+    def login():
+        if request.method == 'POST':
+            user = request.form['nm']
+            return redirect(url_for('success', name=user))
+        else:
+            user = request.args.get('nm')
+            return redirect(url_for('success', name=user))
 
     app.run(host='0.0.0.0', port=port)
