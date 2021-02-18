@@ -40,7 +40,12 @@ __ram_usage_code = 14
 
 
 def get_serial_ports() -> [str]:
-    return os.popen(f"ls /dev/tty.*").read().strip("\n").split()
+    detected_ports = os.popen(f"ls /dev/tty*").read().strip("\n").split()
+    valid_ports = []
+    for port in detected_ports:
+        if "usb" in port.lower():
+            valid_ports.append(port)
+    return valid_ports
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
