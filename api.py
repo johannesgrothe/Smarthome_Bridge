@@ -19,10 +19,11 @@ def run_api(bridge, port: int):
     def root():
         """
         Flask API response method
-
+        Category: Clients
+        Title: Root
+        Description: Sends back some example paths to get actual information from
         Input Schema: None
         Output Schema: None
-
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, "/")
@@ -35,10 +36,11 @@ def run_api(bridge, port: int):
     def get_all_gadgets():
         """
         Flask API response method
-
-        Input Schema: None
-        Output Schema: 'api_get_all_gadgets_response.json'
-
+        Category: Clients
+        Title: Read Gadget Information
+        Description: Reads information for all the gadgets from the bridge
+        Input Schema: 'api_get_all_gadgets_response.json'
+        Output Schema: None
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, "/gadgets")
@@ -58,6 +60,15 @@ def run_api(bridge, port: int):
 
     @app.route('/clients', methods=['GET'])
     def get_all_clients():
+        """
+        Flask API response method
+        Category: Clients
+        Title: Read Client Information
+        Description: Reads information for all the clients from the bridge
+        Input Schema: None
+        Output Schema: None
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, "/clients")
         client_list = bridge.get_all_clients()
 
@@ -75,6 +86,15 @@ def run_api(bridge, port: int):
 
     @app.route('/info', methods=['GET'])
     def get_info():
+        """
+        Flask API response method
+        Category: Bridge
+        Title: Read Bridge Information
+        Description: Reads information for the bridge
+        Input Schema: None
+        Output Schema: None
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, "/info")
         bridge_name = bridge.get_bridge_name()
         gadget_list = bridge.get_all_gadgets()
@@ -95,6 +115,15 @@ def run_api(bridge, port: int):
 
     @app.route('/connectors', methods=['GET'])
     def get_all_connectors():
+        """
+        Flask API response method
+        Category: Connectors
+        Title: Read Connector Information
+        Description: Reads information for all the connectors configured on the bridge
+        Input Schema: None
+        Output Schema: None
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, "/connectors")
         connector_list = bridge.get_all_connectors()
 
@@ -112,6 +141,15 @@ def run_api(bridge, port: int):
 
     @app.route('/clients/<client_name>/restart', methods=['POST'])
     def restart_client(client_name):
+        """
+        Category: Clients
+        Title: Restart Client
+        Description: Restarts the client specified in the url parameter
+        Input Schema: None
+        Output Schema: None
+        Param <client_name>: Name of the client that should be rebooted.
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, f"/clients/{client_name}/restart")
         gadget = bridge.get_client(client_name)
         if gadget is None:
@@ -128,6 +166,15 @@ def run_api(bridge, port: int):
 
     @app.route('/system/flash_software', methods=['POST'])
     def flash_software():
+        """
+        Category: Clients
+        Title: Flash Software
+        Description: Flashes the newest software commit of the selected branch to the chip connected to the selected serial port
+        Output Schema: None
+        Param 'branch_name': Software-branch shat should be flashed to the chip
+        Param 'serial_port': Serial port the chip is connected to
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, "/system/flash_software")
         branch_name = request.args.get('branch_name')
         serial_port = request.args.get('serial_port')
@@ -153,16 +200,42 @@ def run_api(bridge, port: int):
 
     @app.route('/system/configs', methods=['GET'])
     def get_config_names():
+        """
+        Category: Bridge
+        Title: Read Bridge Configs
+        Description: Reads the names of the stored client configs from the bridge
+        Input Schema: None
+        Output Schema: None
+        :return: Response to the request
+        """
         config_names = bridge.load_config_names()
         return jsonify({"config_names": config_names})
 
     @app.route('/system/configs/<config_name>', methods=['GET'])
     def get_config(config_name: str):
+        """
+        Category: Bridge
+        Title: Read Config
+        Description: Reads the config with the selected name from the bridge
+        Input Schema: None
+        Output Schema: None
+        Param <config_name>: Name of the config to read
+        :return: Response to the request
+        """
         config_data = bridge.load_config(config_name)
         return jsonify({"config_data": config_data})
 
     @app.route('/clients/<client_name>/write_config', methods=['POST'])
     def write_config_to_network(client_name: str):
+        """
+        Category: Client
+        Title: Write Config not Network Client
+        Description: Writes the config contained in the request body to the selected client
+        Input Schema: None
+        Output Schema: None
+        Param <client_name>: Name of the client to write the config to
+        :return: Response to the request
+        """
         json_payload = request.json
         config = json_payload
 
@@ -188,6 +261,15 @@ def run_api(bridge, port: int):
 
     @app.route('/system/write_config', methods=['POST'])
     def write_config_to_serial():
+        """
+        Category: Client
+        Title: Write Config not Serial Client
+        Description: Writes the config contained in the request body to the client connected via serial
+        Input Schema: None
+        Output Schema: None
+        Param 'serial_port': Can be set to manually select the serial port the client is connected to
+        :return: Response to the request
+        """
         serial_port = request.args.get('serial_port')
 
         json_payload = request.json
@@ -213,13 +295,13 @@ def run_api(bridge, port: int):
                         status=res_code,
                         mimetype='application/json')
 
-    @app.route('/gadgets/all/<yolo>/<blub>', methods=['POST', 'GET'])
-    def login():
-        if request.method == 'POST':
-            user = request.form['nm']
-            return redirect(url_for('success', name=user))
-        else:
-            user = request.args.get('nm')
-            return redirect(url_for('success', name=user))
-
-    app.run(host='0.0.0.0', port=port)
+    # @app.route('/gadgets/all/<yolo>/<blub>', methods=['POST', 'GET'])
+    # def login():
+    #     if request.method == 'POST':
+    #         user = request.form['nm']
+    #         return redirect(url_for('success', name=user))
+    #     else:
+    #         user = request.args.get('nm')
+    #         return redirect(url_for('success', name=user))
+    #
+    # app.run(host='0.0.0.0', port=port)
