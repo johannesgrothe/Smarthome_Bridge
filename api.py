@@ -66,7 +66,7 @@ def run_api(bridge, port: int):
         Title: Read Client Information
         Description: Reads information for all the clients from the bridge
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'api_get_all_clients_response.json'
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, "/clients")
@@ -92,7 +92,7 @@ def run_api(bridge, port: int):
         Title: Read Bridge Information
         Description: Reads information for the bridge
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'api_get_info_response.json'
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, "/info")
@@ -161,6 +161,14 @@ def run_api(bridge, port: int):
 
     @app.route('/system/get_serial_ports', methods=['GET'])
     def get_serial_ports():
+        """
+        Category: Bridge
+        Title: Read Serial Ports
+        Description: Reads all of the available serial ports to the bridge
+        Input Schema: None
+        Output Schema: None
+        :return: Response to the request
+        """
         bridge.add_streaming_message("API", __new_request_received, f"/system/serial_ports")
         return jsonify({"serial_ports": bridge.get_serial_ports()})
 
@@ -218,7 +226,7 @@ def run_api(bridge, port: int):
         Title: Read Config
         Description: Reads the config with the selected name from the bridge
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'client_config.json'
         Param <config_name>: Name of the config to read
         :return: Response to the request
         """
@@ -231,7 +239,7 @@ def run_api(bridge, port: int):
         Category: Client
         Title: Write Config not Network Client
         Description: Writes the config contained in the request body to the selected client
-        Input Schema: None
+        Input Schema: 'client_config.json'
         Output Schema: None
         Param <client_name>: Name of the client to write the config to
         :return: Response to the request
@@ -265,7 +273,7 @@ def run_api(bridge, port: int):
         Category: Client
         Title: Write Config not Serial Client
         Description: Writes the config contained in the request body to the client connected via serial
-        Input Schema: None
+        Input Schema: 'client_config.json'
         Output Schema: None
         Param 'serial_port': Can be set to manually select the serial port the client is connected to
         :return: Response to the request
@@ -295,7 +303,7 @@ def run_api(bridge, port: int):
                         status=res_code,
                         mimetype='application/json')
 
-    # @app.route('/gadgets/all/<yolo>/<blub>', methods=['POST', 'GET'])
+    # @app.route('/gadgets/all/<yolo>/<xxx>', methods=['POST', 'GET'])
     # def login():
     #     if request.method == 'POST':
     #         user = request.form['nm']

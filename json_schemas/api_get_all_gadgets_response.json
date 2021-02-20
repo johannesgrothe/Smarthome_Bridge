@@ -29,10 +29,12 @@
                   "type": "integer"
                 },
                 "step": {
-                  "type": "integer"
+                  "type": "integer",
+                  "minimum": 0
                 },
                 "type": {
-                  "type": "integer"
+                  "type": "integer",
+                  "minimum": 0
                 },
                 "value": {
                   "type": "integer"

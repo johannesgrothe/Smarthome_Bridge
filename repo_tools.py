@@ -123,6 +123,8 @@ def read_api_specs(in_file: str) -> Optional[dict]:
 
 
 def export_api_doc(api_spec: dict, out_file: str) -> bool:
+    if not os.path.isdir("temp"):
+        os.mkdir("temp")
     try:
         with open(out_file, 'w') as file:
             file.write("# API Specification\n")
@@ -206,9 +208,11 @@ def shorten_json_schema(in_schema: dict):
     elif in_schema["type"] == "bool":
         return "<bool>"
     elif in_schema["type"] == "integer":
+        if "minimum" in in_schema and in_schema["minimum"] >= 0:
+            return "<uint>"
         return "<int>"
     elif in_schema["type"] == "array":
-        data = shorten_json_schema(in_schema["items"]) if "items" in in_schema else "???"
+        data = shorten_json_schema(in_schema["items"]) if "items" in in_schema else "<???>"
         return [data]
     elif in_schema["type"] == "object":
         buf_data = {}
@@ -227,4 +231,4 @@ def generate_api_doc(in_file: str, out_file: str) -> bool:
 
 
 if __name__ == "__main__":
-    generate_api_doc("api.py", "api_doc.md")
+    generate_api_doc("api.py", os.path.join("temp", "api_doc.md"))

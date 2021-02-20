@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bridge_name": {
+      "type": "string"
+    },
+    "software_commit": {
+      "type": "string"
+    },
+    "software_branch": {
+      "type": "string"
+    },
+    "running_since": {
+      "type": "string"
+    },
+    "gadget_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "connector_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "client_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
