@@ -1,32 +1,43 @@
 import json
+import os
 
 from flask import Flask, redirect, url_for, request, jsonify, Response
 from jsonschema import validate, ValidationError
-from typing import Optional
-
 
 # https://pythonbasics.org/flask-http-methods/
 
 __new_request_received = 1
+__schema_data = {}
 
 
-def generate_valid_response(json_body, json_schema_file) -> Response:
+def load_schemas() -> dict:
+    schema_data = {}
+    for f_name in os.listdir('json_schemas'):
+        if f_name.endswith('.json'):
+            with open(f_name, 'r') as file:
+                schema_data = json.load(file)
+                schema_data[f_name] = schema_data
+    return schema_data
+
+
+def generate_valid_response(json_body, json_schema_name) -> Response:
+    global __schema_data
+
     try:
-        with open(json_schema_file, 'r') as file:
-            json_schema = json.load(file)
-            validate(json_body, json_schema)
-            response = jsonify(json_body)
+        json_schema = __schema_data[json_schema_name]
+        validate(json_body, json_schema)
+        response = jsonify(json_body)
 
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
-    except FileNotFoundError:
-        print(f"Json Schema'{json_schema_file}' was not found")
+    except KeyError:
+        print(f"Json Schema'{json_schema_name}' was not found")
         response = {"status": f"Internal Server Error while validating response: "
                               f"Validation failed. Please file a bug report."}
 
     except ValidationError:
-        print(f"Validating response with '{json_schema_file}' failed.")
+        print(f"Validating response with '{json_schema_name}' failed.")
         response = {"status": f"Internal Server Error while validating response: "
                               f"Validation schema not found. Please file a bug report."}
 
@@ -41,6 +52,9 @@ def generate_valid_response(json_body, json_schema_file) -> Response:
 
 def run_api(bridge, port: int):
     """Methods that launches the rest api to read, write and update gadgets via HTTP"""
+    global __schema_data
+
+    __schema_data = load_schemas()
 
     app = Flask(__name__)
 
