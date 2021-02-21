@@ -14,13 +14,13 @@ def load_schemas() -> dict:
     schema_data = {}
     for f_name in os.listdir('json_schemas'):
         if f_name.endswith('.json'):
-            with open(f_name, 'r') as file:
-                schema_data = json.load(file)
-                schema_data[f_name] = schema_data
+            with open(os.path.join("json_schemas", f_name), 'r') as file:
+                buf_schema_data = json.load(file)
+                schema_data[f_name] = buf_schema_data
     return schema_data
 
 
-def generate_valid_response(json_body, json_schema_name) -> Response:
+def generate_valid_response(json_body: dict, json_schema_name: str, status_code: int = 200) -> Response:
     global __schema_data
 
     try:
@@ -28,26 +28,22 @@ def generate_valid_response(json_body, json_schema_name) -> Response:
         validate(json_body, json_schema)
         response = jsonify(json_body)
 
+        response.status_code = status_code
+
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
     except KeyError:
-        print(f"Json Schema'{json_schema_name}' was not found")
+        print(f"Json Schema '{json_schema_name}' was not found")
         response = {"status": f"Internal Server Error while validating response: "
                               f"Validation failed. Please file a bug report."}
 
     except ValidationError:
         print(f"Validating response with '{json_schema_name}' failed.")
-        response = {"status": f"Internal Server Error while validating response: "
-                              f"Validation schema not found. Please file a bug report."}
+        response = {"status": f"Internal Server Error while validating response: Validation schema not found. "
+                              f"Please file a bug report."}
 
-    res_code = 500
-    response = Response(json.dumps(response),
-                        status=res_code,
-                        mimetype='application/json')
-
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
+    return generate_valid_response(response, 'default_message.json', status_code=500)
 
 
 def run_api(bridge, port: int):
@@ -55,6 +51,7 @@ def run_api(bridge, port: int):
     global __schema_data
 
     __schema_data = load_schemas()
+    print(f"Loaded {len(__schema_data)} schemas.")
 
     app = Flask(__name__)
 
@@ -66,14 +63,14 @@ def run_api(bridge, port: int):
         Title: Root
         Description: Sends back some example paths to get actual information from
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'default_message.json'
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, "/")
-        res_text = "Use /info, /gadgets, /connectors or /clients".format(bridge.get_bridge_name())
-        response = jsonify(res_text)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
+        res_data = {"status": "Use /info, /gadgets, /connectors or /clients to get bridge info and consult the api "
+                              "documentation on 'https://github.com/johannesgrothe/Smarthome_Bridge/wiki/api'"}
+
+        return generate_valid_response(res_data, "default_message.json")
 
     @app.route('/gadgets', methods=['GET'])
     def get_all_gadgets():
@@ -121,9 +118,7 @@ def run_api(bridge, port: int):
         buf_res = {"clients": out_client_list,
                    "client_count": len(out_client_list)}
 
-        response = jsonify(buf_res)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
+        return generate_valid_response(buf_res, 'api_get_all_clients_response.json')
 
     @app.route('/info', methods=['GET'])
     def get_info():
@@ -150,9 +145,7 @@ def run_api(bridge, port: int):
                    "connector_count": len(connector_list),
                    "client_count": len(client_list)}
 
-        response = jsonify(buf_res)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
+        return generate_valid_response(buf_res, 'api_get_info_response.json')
 
     @app.route('/connectors', methods=['GET'])
     def get_all_connectors():
@@ -162,7 +155,7 @@ def run_api(bridge, port: int):
         Title: Read Connector Information
         Description: Reads information for all the connectors configured on the bridge
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'api_get_connectors_response.json'
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, "/connectors")
@@ -176,9 +169,7 @@ def run_api(bridge, port: int):
         buf_res = {"connectors": out_gadget_list,
                    "connector_count": len(out_gadget_list)}
 
-        response = jsonify(buf_res)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
+        return generate_valid_response(buf_res, 'api_get_connectors_response.json')
 
     @app.route('/clients/<client_name>/restart', methods=['POST'])
     def restart_client(client_name):
@@ -187,18 +178,22 @@ def run_api(bridge, port: int):
         Title: Restart Client
         Description: Restarts the client specified in the url parameter
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'default_message.json'
         Param <client_name>: Name of the client that should be rebooted.
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, f"/clients/{client_name}/restart")
         gadget = bridge.get_client(client_name)
         if gadget is None:
-            return Response('{"status": "Gadget name was not found"}', status=404, mimetype='application/json')
+            return generate_valid_response({"status": "Gadget name was not found"},
+                                           "default_message.json",
+                                           status_code=404)
         success = bridge.restart_client(gadget)
         if success:
-            return Response('{"status": "Reboot was successful"}', status=200, mimetype='application/json')
-        return Response('{"status": "Error triggering reboot on client"}', status=400, mimetype='application/json')
+            return generate_valid_response({"status": "Reboot was successful"}, "default_message.json")
+        return generate_valid_response({"status": "Error triggering reboot on client"},
+                                       "default_message.json",
+                                       status_code=400)
 
     @app.route('/system/get_serial_ports', methods=['GET'])
     def get_serial_ports():
@@ -207,11 +202,13 @@ def run_api(bridge, port: int):
         Title: Read Serial Ports
         Description: Reads all of the available serial ports to the bridge
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'api_get_serial_ports_response.json'
         :return: Response to the request
         """
         bridge.add_streaming_message("API", __new_request_received, f"/system/serial_ports")
-        return jsonify({"serial_ports": bridge.get_serial_ports()})
+        serial_ports = bridge.get_serial_ports()
+        return generate_valid_response({"serial_port_count": len(serial_ports), "serial_ports": serial_ports},
+                                       'api_get_serial_ports_response.json')
 
     @app.route('/system/flash_software', methods=['POST'])
     def flash_software():
@@ -219,7 +216,8 @@ def run_api(bridge, port: int):
         Category: Clients
         Title: Flash Software
         Description: Flashes the newest software commit of the selected branch to the chip connected to the selected serial port
-        Output Schema: None
+        Input Schema: None
+        Output Schema: 'default_message.json'
         Param 'branch_name': Software-branch shat should be flashed to the chip
         Param 'serial_port': Serial port the chip is connected to
         :return: Response to the request
@@ -236,16 +234,13 @@ def run_api(bridge, port: int):
         suc_resp = f"Flashing software from '{str_branch}' on port '{str_port}'started."
         suc_resp += f"Connect to port {bridge.get_socket_api_port()} to view progress."
 
-        response: dict = {"status": suc_resp}
-        res_code = 200
-
         if not success:
-            response = {"status": f"Error flashing software from '{str_branch}' on port '{str_port}': {status}"}
-            res_code = 400
+            return generate_valid_response({"status": f"Error flashing software from '{str_branch}' on "
+                                                      f"port '{str_port}': {status}"},
+                                           'default_message.json',
+                                           status_code=400)
 
-        return Response(json.dumps(response),
-                        status=res_code,
-                        mimetype='application/json')
+        return generate_valid_response({"status": suc_resp}, 'default_message.json')
 
     @app.route('/system/configs', methods=['GET'])
     def get_config_names():
@@ -254,11 +249,11 @@ def run_api(bridge, port: int):
         Title: Read Bridge Configs
         Description: Reads the names of the stored client configs from the bridge
         Input Schema: None
-        Output Schema: None
+        Output Schema: 'api_get_config_names_response.json'
         :return: Response to the request
         """
         config_names = bridge.load_config_names()
-        return jsonify({"config_names": config_names})
+        return generate_valid_response({"config_names": config_names}, 'api_get_config_names_response.json')
 
     @app.route('/system/configs/<config_name>', methods=['GET'])
     def get_config(config_name: str):
@@ -267,12 +262,12 @@ def run_api(bridge, port: int):
         Title: Read Config
         Description: Reads the config with the selected name from the bridge
         Input Schema: None
-        Output Schema: 'client_config.json'
+        Output Schema: 'api_get_config_data_response.json'
         Param <config_name>: Name of the config to read
         :return: Response to the request
         """
         config_data = bridge.load_config(config_name)
-        return jsonify({"config_data": config_data})
+        return generate_valid_response({"config_data": config_data}, 'api_get_config_data_response.json')
 
     @app.route('/clients/<client_name>/write_config', methods=['POST'])
     def write_config_to_network(client_name: str):
@@ -352,5 +347,5 @@ def run_api(bridge, port: int):
     #     else:
     #         user = request.args.get('nm')
     #         return redirect(url_for('success', name=user))
-    #
-    # app.run(host='0.0.0.0', port=port)
+
+    app.run(host='0.0.0.0', port=port)

@@ -227,8 +227,8 @@ def shorten_json_schema(in_schema: dict):
 
     if s_type == "string":
         return "<string>"
-    elif s_type == "bool":
-        return "<bool>"
+    elif s_type == "boolean":
+        return "<boolean>"
     elif s_type.startswith("Optional"):
         if "integer" in s_type:
             if "minimum" in in_schema and in_schema["minimum"] >= 0:
