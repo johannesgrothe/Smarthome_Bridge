@@ -276,32 +276,30 @@ def run_api(bridge, port: int):
         Title: Write Config not Network Client
         Description: Writes the config contained in the request body to the selected client
         Input Schema: 'client_config.json'
-        Output Schema: None
+        Output Schema: 'default_message.json'
         Param <client_name>: Name of the client to write the config to
         :return: Response to the request
         """
         json_payload = request.json
         config = json_payload
 
-        res_code = 200
-        response = {"status": f"Writing config to client '{client_name}' was successful."}
-
         if config:
-
             success, status = bridge.write_config_to_network_chip(config, client_name)
 
             if not success:
                 response = {"status": f"Error writing config to client '{client_name}': {status}"}
-                res_code = 400
+                return generate_valid_response(response,
+                                               'default_message.json',
+                                               status_code=500)
         else:
             response = {"status": f"No config selected."}
-            res_code = 400
+            return generate_valid_response(response,
+                                           'default_message.json',
+                                           status_code=500)
 
-        response_str = json.dumps(response)
-
-        return Response(response_str,
-                        status=res_code,
-                        mimetype='application/json')
+        response = {"status": f"Writing config to client '{client_name}' was successful."}
+        return generate_valid_response(response,
+                                       'default_message.json')
 
     @app.route('/system/write_config', methods=['POST'])
     def write_config_to_serial():
@@ -310,7 +308,7 @@ def run_api(bridge, port: int):
         Title: Write Config not Serial Client
         Description: Writes the config contained in the request body to the client connected via serial
         Input Schema: 'client_config.json'
-        Output Schema: None
+        Output Schema: 'default_message.json'
         Param 'serial_port': Can be set to manually select the serial port the client is connected to
         :return: Response to the request
         """
@@ -319,25 +317,23 @@ def run_api(bridge, port: int):
         json_payload = request.json
         config = json_payload
 
-        res_code = 200
-        response: dict = {"status": f"Writing config on port '{serial_port}' was successful."}
-
         if config:
-
             success, status = bridge.write_config_to_chip(config, serial_port)
 
             if not success:
                 response = {"status": f"Error writing config on port '{serial_port}': {status}"}
-                res_code = 400
+                return generate_valid_response(response,
+                                               'default_message.json',
+                                               status_code=500)
         else:
             response = {"status": f"No config selected."}
-            res_code = 400
+            return generate_valid_response(response,
+                                           'default_message.json',
+                                           status_code=500)
 
-        response_str = json.dumps(response)
-
-        return Response(response_str,
-                        status=res_code,
-                        mimetype='application/json')
+        response: dict = {"status": f"Writing config on port '{serial_port}' was successful."}
+        return generate_valid_response(response,
+                                       'default_message.json')
 
     # @app.route('/gadgets/all/<yolo>/<xxx>', methods=['POST', 'GET'])
     # def login():
