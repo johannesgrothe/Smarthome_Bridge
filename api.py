@@ -126,7 +126,7 @@ def run_api(bridge, port: int):
         Flask API response method
         Category: System
         Title: Read Bridge Information
-        Description: Reads information for the bridge
+        Description: Reads information about the bridge
         Input Schema: None
         Output Schema: 'api_get_info_response.json'
         :return: Response to the request
@@ -200,7 +200,7 @@ def run_api(bridge, port: int):
         """
         Category: System
         Title: Read Serial Ports
-        Description: Reads all of the available serial ports to the bridge
+        Description: Reads all of the serial ports available to the bridge
         Input Schema: None
         Output Schema: 'api_get_serial_ports_response.json'
         :return: Response to the request
