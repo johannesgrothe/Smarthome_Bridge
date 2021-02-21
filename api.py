@@ -59,7 +59,7 @@ def run_api(bridge, port: int):
     def root():
         """
         Flask API response method
-        Category: Clients
+        Category: System
         Title: Root
         Description: Sends back some example paths to get actual information from
         Input Schema: None
@@ -76,7 +76,7 @@ def run_api(bridge, port: int):
     def get_all_gadgets():
         """
         Flask API response method
-        Category: Clients
+        Category: Gadgets
         Title: Read Gadget Information
         Description: Reads information for all the gadgets from the bridge
         Input Schema: 'api_get_all_gadgets_response.json'
@@ -124,7 +124,7 @@ def run_api(bridge, port: int):
     def get_info():
         """
         Flask API response method
-        Category: Bridge
+        Category: System
         Title: Read Bridge Information
         Description: Reads information for the bridge
         Input Schema: None
@@ -198,7 +198,7 @@ def run_api(bridge, port: int):
     @app.route('/system/get_serial_ports', methods=['GET'])
     def get_serial_ports():
         """
-        Category: Bridge
+        Category: System
         Title: Read Serial Ports
         Description: Reads all of the available serial ports to the bridge
         Input Schema: None
@@ -245,7 +245,7 @@ def run_api(bridge, port: int):
     @app.route('/system/configs', methods=['GET'])
     def get_config_names():
         """
-        Category: Bridge
+        Category: System
         Title: Read Bridge Configs
         Description: Reads the names of the stored client configs from the bridge
         Input Schema: None
@@ -258,7 +258,7 @@ def run_api(bridge, port: int):
     @app.route('/system/configs/<config_name>', methods=['GET'])
     def get_config(config_name: str):
         """
-        Category: Bridge
+        Category: System
         Title: Read Config
         Description: Reads the config with the selected name from the bridge
         Input Schema: None
@@ -272,8 +272,8 @@ def run_api(bridge, port: int):
     @app.route('/clients/<client_name>/write_config', methods=['POST'])
     def write_config_to_network(client_name: str):
         """
-        Category: Client
-        Title: Write Config not Network Client
+        Category: Clients
+        Title: Write Config to Network Client
         Description: Writes the config contained in the request body to the selected client
         Input Schema: 'client_config.json'
         Output Schema: 'default_message.json'
@@ -284,18 +284,27 @@ def run_api(bridge, port: int):
         config = json_payload
 
         if config:
-            success, status = bridge.write_config_to_network_chip(config, client_name)
+            try:
+                validate(config, __schema_data['client_config.json'])
+                success, status = bridge.write_config_to_network_chip(config, client_name)
+            except ValidationError:
+                success = False
+                status = "Config schema validation failed."
+            except KeyError:
+                return generate_valid_response({"status": "Encountered error while trying to validate: missing scheme"},
+                                               'client_config.json',
+                                               status_code=500)
 
             if not success:
                 response = {"status": f"Error writing config to client '{client_name}': {status}"}
                 return generate_valid_response(response,
                                                'default_message.json',
-                                               status_code=500)
+                                               status_code=400)
         else:
             response = {"status": f"No config selected."}
             return generate_valid_response(response,
                                            'default_message.json',
-                                           status_code=500)
+                                           status_code=400)
 
         response = {"status": f"Writing config to client '{client_name}' was successful."}
         return generate_valid_response(response,
@@ -304,8 +313,8 @@ def run_api(bridge, port: int):
     @app.route('/system/write_config', methods=['POST'])
     def write_config_to_serial():
         """
-        Category: Client
-        Title: Write Config not Serial Client
+        Category: Clients
+        Title: Write Config to Serial Client
         Description: Writes the config contained in the request body to the client connected via serial
         Input Schema: 'client_config.json'
         Output Schema: 'default_message.json'
@@ -318,18 +327,27 @@ def run_api(bridge, port: int):
         config = json_payload
 
         if config:
-            success, status = bridge.write_config_to_chip(config, serial_port)
+            try:
+                validate(config, __schema_data['client_config.json'])
+                success, status = bridge.write_config_to_chip(config, serial_port)
+            except ValidationError:
+                success = False
+                status = "Config schema validation failed."
+            except KeyError:
+                return generate_valid_response({"status": "Encountered error while trying to validate: missing scheme"},
+                                               'client_config.json',
+                                               status_code=500)
 
             if not success:
                 response = {"status": f"Error writing config on port '{serial_port}': {status}"}
                 return generate_valid_response(response,
                                                'default_message.json',
-                                               status_code=500)
+                                               status_code=400)
         else:
             response = {"status": f"No config selected."}
             return generate_valid_response(response,
                                            'default_message.json',
-                                           status_code=500)
+                                           status_code=400)
 
         response: dict = {"status": f"Writing config on port '{serial_port}' was successful."}
         return generate_valid_response(response,

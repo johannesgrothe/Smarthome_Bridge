@@ -127,7 +127,15 @@ def export_api_doc(api_spec: dict, out_file: str) -> bool:
         os.mkdir("temp")
     try:
         with open(out_file, 'w') as file:
-            file.write("# API Specification\n")
+
+            file.writelines(["# Smarthome Bridge API Specification\n",
+                            "## General Info\n",
+                             "### Timestamps\n",
+                             "All timestamps are delivered in the `%Y-%m-%d %H:%M:%S`-format\n",
+                             "### Json Schemas\n",
+                             "All Json representations in this documentation are generated from the json schemas "
+                             "used for checking the actual incoming and outgoing requests. You can see them here: ",
+                             "https://github.com/johannesgrothe/Smarthome_Bridge/tree/master/json_schemas\n"])
 
             for category in api_spec:
                 file.write(f"## {category}\n")
