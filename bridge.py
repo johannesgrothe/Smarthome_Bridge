@@ -159,7 +159,7 @@ class MainBridge:
 
         self.__streaming_message_queue = []
 
-        print("Setting up Network...")  # TODO: implement timeout
+        print("Setting up Network...")
         self.__network_gadget = MQTTConnector(self.__bridge_name,
                                               self.__mqtt_ip,
                                               self.__mqtt_port,
@@ -762,11 +762,12 @@ class BridgeMQTTThread(Thread):
 
     def __init__(self, parent: MainBridge, connector: MQTTConnector):
         super().__init__()
-        print("Starting Bridge MQTT Thread")
+        print("Creating Bridge MQTT Thread")
         self.__parent_object = parent
         self.__mqtt_connector = connector
 
     def run(self):
+        print("Starting Bridge MQTT Thread")
         while True:
             buf_req: Optional[Request] = self.__mqtt_connector.get_request()
             if buf_req:
@@ -778,10 +779,11 @@ class BridgeAPIThread(Thread):
 
     def __init__(self, parent: MainBridge):
         super().__init__()
-        print("Starting Bridge API Thread")
+        print("Creating Bridge API Thread")
         self.__parent_object = parent
 
     def run(self):
+        print("Starting Bridge API Thread")
         buf_api_port = self.__parent_object.get_api_port()
 
         if buf_api_port == 0:
@@ -846,10 +848,11 @@ class BridgeSocketAPIThread(Thread):
 
     def __init__(self, parent: MainBridge):
         super().__init__()
-        print("Starting Bridge Websocket API Thread")
+        print("Creating Bridge Websocket API Thread")
         self.__parent_object = parent
 
     def run(self):
+        print("Starting Bridge Websocket API Thread")
         buf_api_port = self.__parent_object.get_socket_api_port()
 
         if buf_api_port == 0:

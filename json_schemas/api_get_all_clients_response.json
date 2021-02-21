@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "client_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "clients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "boot_mode": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "last_connected": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sw_branch": {
+            "type": ["string", "null"]
+          },
+          "sw_uploaded": {
+            "type": ["string", "null"]
+          },
+          "sw_version": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  }
+}

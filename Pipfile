@@ -8,6 +8,8 @@ flask = {version="*"}
 paho_mqtt = {version="*"}
 pyserial = {version="*"}
 requests = {version="*"}
+pysimplegui = {version="*"}
+jsonschema = {version="*"}
 
 [dev-packages]
 

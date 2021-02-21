@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "maxLength": 30
+    },
+    "description": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "wifi_ssid": {
+          "type": "string"
+        },
+        "wifi_pw": {
+          "type": "string"
+        },
+        "mqtt_ip": {
+          "type": "string",
+          "maxLength": 15,
+          "minLength": 7
+        },
+        "mqtt_port": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mqtt_user": {
+          "type": ["string", "null"]
+        },
+        "mqtt_pw": {
+          "type": ["string", "null"]
+        },
+        "irrecv_pin": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "irsend_pin": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "radio_recv_pin": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "radio_send_pin": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "network_mode": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "gadgets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ports": {
+            "type": "object",
+            "patternProperties": {
+              "^port[0-9]+$": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "codes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
