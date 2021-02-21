@@ -1,13 +1,42 @@
 import json
 
 from flask import Flask, redirect, url_for, request, jsonify, Response
-from jsonschema import validate
+from jsonschema import validate, ValidationError
 from typing import Optional
 
 
 # https://pythonbasics.org/flask-http-methods/
 
 __new_request_received = 1
+
+
+def generate_valid_response(json_body, json_schema_file) -> Response:
+    try:
+        with open(json_schema_file, 'r') as file:
+            json_schema = json.load(file)
+            validate(json_body, json_schema)
+            response = jsonify(json_body)
+
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+
+    except FileNotFoundError:
+        print(f"Json Schema'{json_schema_file}' was not found")
+        response = {"status": f"Internal Server Error while validating response: "
+                              f"Validation failed. Please file a bug report."}
+
+    except ValidationError:
+        print(f"Validating response with '{json_schema_file}' failed.")
+        response = {"status": f"Internal Server Error while validating response: "
+                              f"Validation schema not found. Please file a bug report."}
+
+    res_code = 500
+    response = Response(json.dumps(response),
+                        status=res_code,
+                        mimetype='application/json')
+
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
 def run_api(bridge, port: int):
@@ -54,9 +83,7 @@ def run_api(bridge, port: int):
         buf_res = {"gadgets": out_gadget_list,
                    "gadget_count": len(out_gadget_list)}
 
-        response = jsonify(buf_res)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
+        return generate_valid_response(buf_res, 'api_get_all_gadgets_response.json')
 
     @app.route('/clients', methods=['GET'])
     def get_all_clients():

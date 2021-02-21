@@ -200,21 +200,50 @@ def export_api_doc(api_spec: dict, out_file: str) -> bool:
         return False
 
 
+def extract_type(type_data):
+    if isinstance(type_data, str):
+        return type_data
+
+    elif isinstance(type_data, list):
+        if len(type_data) == 1:
+            return type_data[0]
+        elif "null" in type_data:
+            buf_data = type_data.copy()
+            buf_data.remove("null")
+            return f"Optional<{extract_type(buf_data)}>"
+        else:
+            buf_str = ""
+            for elem in type_data:
+                buf_str += elem + ", "
+            buf_str.strip().strip(",")
+            return buf_str
+
+
 def shorten_json_schema(in_schema: dict):
     if "type" not in in_schema:
         return "<err>"
-    if in_schema["type"] == "string":
+
+    s_type = extract_type(in_schema["type"])
+
+    if s_type == "string":
         return "<string>"
-    elif in_schema["type"] == "bool":
+    elif s_type == "bool":
         return "<bool>"
-    elif in_schema["type"] == "integer":
+    elif s_type.startswith("Optional"):
+        if "integer" in s_type:
+            if "minimum" in in_schema and in_schema["minimum"] >= 0:
+                s_type = s_type.replace("integer", "uint")
+            else:
+                s_type = s_type.replace("integer", "int")
+        return s_type
+    elif s_type == "integer":
         if "minimum" in in_schema and in_schema["minimum"] >= 0:
             return "<uint>"
         return "<int>"
-    elif in_schema["type"] == "array":
+    elif s_type == "array":
         data = shorten_json_schema(in_schema["items"]) if "items" in in_schema else "<???>"
         return [data]
-    elif in_schema["type"] == "object":
+    elif s_type == "object":
         buf_data = {}
         if "properties" in in_schema:
             for prop in in_schema["properties"]:
