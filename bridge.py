@@ -6,21 +6,19 @@ import sys
 import os
 import time
 import config_functions
-from threading import Thread
 import threading
 from datetime import datetime
-from chip_flasher import flash_chip, get_serial_ports
+from chip_flasher import get_serial_ports
+from bridge_threads import *
+from tools import system_tools, git_tools
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
-from network_connector import NetworkConnector
 from serial_connector import SerialConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
-import api
-import socket_api
 import client_control_methods
 
 
@@ -79,6 +77,18 @@ class MainBridge:
     # Bridge software commit branch
     __sw_branch: Optional[str]
 
+    # Git version of the system
+    __git_version: Optional[str]
+
+    # Platformio version of the system
+    __pio_version: Optional[str]
+
+    # Python version of the system
+    __python_version: Optional[str]
+
+    # Pipenv version of the system
+    __pipenv_version: Optional[str]
+
     # Time the bridge was launched
     __time_launched: datetime
 
@@ -128,17 +138,27 @@ class MainBridge:
         self.__received_requests = 0
 
         # Setting the value for the software commit hash
-        self.__sw_commit = os.popen("git rev-parse HEAD").read().strip("\n")
-        if self.__sw_commit == "":
-            self.__sw_commit = None
+        self.__sw_commit = git_tools.get_git_commit_hash()
 
         # Setting the value for the software branch
-        self.__sw_branch = os.popen("git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)")\
-            .read().strip("\n")
-        if self.__sw_branch == "":
-            self.__sw_branch = None
+        self.__sw_branch = git_tools.get_git_branch()
 
         print(f"Bridge is running on: {self.__sw_commit}\n{' '*22}{self.__sw_branch}")
+
+        self.__git_version = system_tools.read_git_version()
+
+        self.__pio_version = system_tools.read_pio_version()
+
+        self.__python_version = system_tools.read_python_version()
+
+        self.__pipenv_version = system_tools.read_pipenv_version()
+
+        print(f"External tools: "
+              f"Python: {self.__python_version}\n{' '*16}"
+              f"Pipenv: {self.__pipenv_version}\n{' '*16}"
+              f"Pipenv: {self.__pio_version}\n{' '*16}"
+              f"Platformio: {self.__pio_version}\n{' '*16}"
+              f"Git: {self.__git_version}")
 
         # Set launch time
         self.__time_launched = datetime.now()
@@ -490,6 +510,26 @@ class MainBridge:
         with self.__lock:
             return self.__sw_branch
 
+    def get_host_pio_version(self) -> Optional[str]:
+        """Returns the platformio version found on the host machine"""
+        with self.__lock:
+            return self.__pio_version
+
+    def get_host_python_version(self) -> Optional[str]:
+        """Returns the python version found on the host machine"""
+        with self.__lock:
+            return self.__python_version
+
+    def get_host_pipenv_version(self) -> Optional[str]:
+        """Returns the pipenv version found on the host machine"""
+        with self.__lock:
+            return self.__pipenv_version
+
+    def get_host_git_version(self) -> Optional[str]:
+        """Returns the git version found on the host machine"""
+        with self.__lock:
+            return self.__git_version
+
     # endregion
 
     # region CLIENT METHODS
@@ -754,112 +794,6 @@ class MainBridge:
             if self.__streaming_message_queue:
                 return self.__streaming_message_queue.pop(0)
             return None
-
-
-class BridgeMQTTThread(Thread):
-    __parent_object: MainBridge
-    __mqtt_connector: MQTTConnector
-
-    def __init__(self, parent: MainBridge, connector: MQTTConnector):
-        super().__init__()
-        print("Creating Bridge MQTT Thread")
-        self.__parent_object = parent
-        self.__mqtt_connector = connector
-
-    def run(self):
-        print("Starting Bridge MQTT Thread")
-        while True:
-            buf_req: Optional[Request] = self.__mqtt_connector.get_request()
-            if buf_req:
-                self.__parent_object.handle_request(buf_req)
-
-
-class BridgeAPIThread(Thread):
-    __parent_object: MainBridge
-
-    def __init__(self, parent: MainBridge):
-        super().__init__()
-        print("Creating Bridge API Thread")
-        self.__parent_object = parent
-
-    def run(self):
-        print("Starting Bridge API Thread")
-        buf_api_port = self.__parent_object.get_api_port()
-
-        if buf_api_port == 0:
-            print("API port not configured")
-            return
-
-        print("Launching API")
-        api.run_api(self.__parent_object, buf_api_port)
-
-
-class ChipConfigFlasherThread(Thread):
-    __streaming_callback = None
-    __config: dict
-    __client_name: str
-    __sender: str
-    __network: NetworkConnector
-
-    def __init__(self, sender: str, network: NetworkConnector, config: dict, client_name: str, callback=None):
-        super().__init__()
-        print("Chip Software Flasher Thread")
-        self.__config = config
-        self.__streaming_callback = callback
-        self.__sender = sender
-        self.__network = network
-        self.__client_name = client_name
-
-    def run(self):
-        print("Starting config flasher thread")
-        client_control_methods.write_config(self.__client_name,
-                                            self.__config,
-                                            self.__sender,
-                                            self.__network,
-                                            self.__streaming_callback)
-        print("Flashing done.")
-
-
-class ChipSWFlasherThread(Thread):
-    __streaming_callback = None
-    __branch: str
-    __force_reset: bool
-    __upload_port: Optional[str]
-
-    def __init__(self, branch: str, force_reset: bool, serial_port: Optional[str] = None, callback=None):
-        super().__init__()
-        print("Chip Software Flasher Thread")
-        self.__branch = branch
-        self.__force_reset = force_reset
-        self.__upload_port = serial_port
-        self.__streaming_callback = callback
-
-    def run(self):
-        print("Starting chip flasher Thread")
-        flash_chip(self.__branch,
-                   self.__force_reset,
-                   self.__upload_port,
-                   self.__streaming_callback)
-        print("Flashing done.")
-
-
-class BridgeSocketAPIThread(Thread):
-    __parent_object: MainBridge
-
-    def __init__(self, parent: MainBridge):
-        super().__init__()
-        print("Creating Bridge Websocket API Thread")
-        self.__parent_object = parent
-
-    def run(self):
-        print("Starting Bridge Websocket API Thread")
-        buf_api_port = self.__parent_object.get_socket_api_port()
-
-        if buf_api_port == 0:
-            print("Websocket API port not configured")
-            return
-
-        socket_api.run_socket_api(self.__parent_object, buf_api_port)
 
 
 if __name__ == '__main__':

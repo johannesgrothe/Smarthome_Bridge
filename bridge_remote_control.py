@@ -5,7 +5,7 @@ import sys
 import requests
 import json
 from typing import Optional
-import git_tools
+from tools import git_tools
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]

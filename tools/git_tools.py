@@ -1,5 +1,21 @@
 import sys
 import os
+from typing import Optional
+
+
+def get_git_branch() -> Optional[str]:
+    branch_data = os.popen(f"git branch").read().split("\n")
+    for branch_name in branch_data:
+        if branch_name.strip().startswith('*'):
+            return branch_name.strip('*').strip()
+    return None
+
+
+def get_git_commit_hash() -> Optional[str]:
+    commit_hash = os.popen("git rev-parse HEAD").read().strip("\n")
+    if commit_hash == "":
+        return None
+    return commit_hash
 
 
 def check_for_update() -> int:
@@ -39,5 +55,5 @@ def update(verbose: bool = False) -> bool:
 
 
 if __name__ == "__main__":
-    print(check_for_update())
-    print(execute_update())
+    print(get_git_branch())
+    print(get_git_commit_hash())
