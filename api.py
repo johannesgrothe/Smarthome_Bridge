@@ -143,7 +143,11 @@ def run_api(bridge, port: int):
                    "running_since": bridge.get_time_launched().strftime("%Y-%m-%d %H:%M:%S"),
                    "gadget_count": len(gadget_list),
                    "connector_count": len(connector_list),
-                   "client_count": len(client_list)}
+                   "client_count": len(client_list),
+                   "platformio_version": bridge.get_host_pio_version(),
+                   "python_version": bridge.get_host_python_version(),
+                   "pipenv_version": bridge.get_host_pipenv_version(),
+                   "git_version": bridge.get_host_git_version()}
 
         return generate_valid_response(buf_res, 'api_get_info_response.json')
 

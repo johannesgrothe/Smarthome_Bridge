@@ -1,15 +1,27 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
+  "required": [
+    "bridge_name",
+    "software_commit",
+    "software_branch",
+    "running_since",
+    "gadget_count",
+    "connector_count",
+    "client_count",
+    "platformio_version",
+    "git_version",
+    "python_version",
+    "pipenv_version"],
   "properties": {
     "bridge_name": {
       "type": "string"
     },
     "software_commit": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "software_branch": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "running_since": {
       "type": "string"
@@ -25,6 +37,18 @@
     "client_count": {
       "type": "integer",
       "minimum": 0
+    },
+    "platformio_version": {
+      "type": ["string", "null"]
+    },
+    "git_version": {
+      "type": ["string", "null"]
+    },
+    "python_version": {
+      "type": ["string", "null"]
+    },
+    "pipenv_version": {
+      "type": ["string", "null"]
     }
   }
 }

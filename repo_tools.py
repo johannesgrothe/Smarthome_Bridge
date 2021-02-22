@@ -138,9 +138,11 @@ def export_api_doc(api_spec: dict, out_file: str) -> bool:
                              "https://github.com/johannesgrothe/Smarthome_Bridge/tree/master/json_schemas\n"])
 
             for category in api_spec:
+                file.write("***\n")
                 file.write(f"## {category}\n")
 
                 for title in api_spec[category]:
+                    file.write("***\n")
                     file.write(f"### {title}\n")
 
                     path_data = api_spec[category][title]
