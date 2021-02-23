@@ -68,6 +68,8 @@ def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
 class MainBridge:
     """Main Bridge for the Smarthome Environment"""
 
+    # region ATTRIBUTES
+
     # Name of the bridge
     __bridge_name: str
 
@@ -126,6 +128,8 @@ class MainBridge:
 
     # Config Flashing
     __chip_config_flash_thread = None
+
+    # endregion
 
     def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int,
                  mqtt_username: Optional[str], mqtt_pw: Optional[str]):
@@ -533,6 +537,7 @@ class MainBridge:
     # endregion
 
     # region CLIENT METHODS
+
     def get_client(self, name: str) -> Optional[SmarthomeClient]:
         """
         Returns the client to the given name if it exists
@@ -632,6 +637,7 @@ class MainBridge:
     # endregion
 
     # region CHARACTERISTIC METHODS
+
     def update_characteristic_on_gadget(self, gadget_name: str, characteristic: CharacteristicIdentifier,
                                         value: int) -> (CharacteristicUpdateStatus, Gadget):
         """Updates a single characteristic of the selected gadget"""
@@ -692,6 +698,7 @@ class MainBridge:
     # endregion
 
     # region GADGET METHODS
+
     def get_gadget(self, gadget_name: str) -> Optional[Gadget]:
         """Returns the data for the selected gadget"""
         with self.__lock:
@@ -726,6 +733,7 @@ class MainBridge:
     # endregion
 
     # region CONNECTOR METHODS
+
     def get_all_connectors(self):
         """Returns the data for all connectors"""
         with self.__lock:
@@ -748,6 +756,7 @@ class MainBridge:
     # endregion
 
     # region API
+
     def set_api_port(self, port: int):
         """Sets the port for the REST API"""
         with self.__lock:

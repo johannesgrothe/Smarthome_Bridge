@@ -1,4 +1,4 @@
-from network_connector import NetworkConnector, Request
+from network_connector import NetworkConnector, Request, Req_Response
 from typing import Optional
 from queue import Queue
 import paho.mqtt.client as mqtt
@@ -108,7 +108,7 @@ class MQTTConnector(NetworkConnector):
             return self.__message_queue.get()
         return None
 
-    def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
+    def send_request(self, req: Request, timeout: int = 6) -> Req_Response:
         """
         Sends a request and waits for a response by default.
 

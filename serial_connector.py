@@ -1,4 +1,4 @@
-from network_connector import NetworkConnector, Request
+from network_connector import NetworkConnector, Request, Req_Response
 from typing import Optional
 import serial
 import re
@@ -114,7 +114,7 @@ class SerialConnector(NetworkConnector):
                     return responses
         return responses
 
-    def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
+    def send_request(self, req: Request, timeout: int = 6) -> Req_Response:
         """Sends a request on the serial port and waits for the answer"""
 
         self.__send_serial(req)
@@ -124,11 +124,8 @@ class SerialConnector(NetworkConnector):
             res = self.__read_serial(2 if remaining_time > 2 else remaining_time)
             if res and res.get_session_id() == req.get_session_id():
                 res_ack = res.get_ack()
-                res_status_msg = res.get_status_msg()
-                if res_status_msg is None:
-                    res_status_msg = "no status message received"
-                return res_ack, res_status_msg, res
-        return None, "no response received", None
+                return res_ack, res
+        return None, None
 
     def monitor(self):
         self.__read_serial(0, True)
