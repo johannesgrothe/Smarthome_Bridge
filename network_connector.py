@@ -30,6 +30,8 @@ class NetworkConnector:
 
     def get_request(self) -> Optional[Request]:
         """Returns a request if there is one"""
+        
+        self.__receive()
 
         if not self._message_queue.empty():
             return self._message_queue.get()
@@ -40,7 +42,6 @@ class NetworkConnector:
         if received_request:
             req_payload = received_request.get_payload()
             if "package_index" in req_payload and "split_payload" in req_payload:
-                print("received split request")
                 id_str = str(received_request.get_session_id())
                 p_index = req_payload["package_index"]
                 split_payload = req_payload["split_payload"]
@@ -51,12 +52,12 @@ class NetworkConnector:
                         buf_json["start_req"] = received_request
                         buf_json["last_index"] = l_index
                         buf_json["payload_bits"] = []
-                        for i in range(l_index):
+                        for i in range(l_index + 1):
                             buf_json["payload_bits"].append(None)
                         buf_json["payload_bits"][0] = split_payload
                         self.__part_data[id_str] = buf_json
                     else:
-                        print("Received first block of splitted request without last_index")
+                        print("Received first block of split request without last_index")
                 else:
                     if id_str in self.__part_data:
                         req_data = self.__part_data[id_str]
@@ -70,6 +71,7 @@ class NetworkConnector:
                                     break
                                 end_data += str_data
                             try:
+                                end_data = end_data.replace("$*$", '"')
                                 json_data = json.loads(end_data)
                                 first_req: Request = req_data["start_req"]
 
@@ -105,12 +107,11 @@ class NetworkConnector:
 
                 if not self._message_queue.empty():
                     res: Request = self._message_queue.get()
-                    # print("Got from Queue: {}".format(res.to_string()))
+                    print("Got from Queue: {}".format(res.to_string()))
+                    print(res.get_session_id() == req.get_session_id())
+                    print(req.get_sender() != res.get_sender())
                     if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
                         res_ack = res.get_ack()
-                        res_status_msg = res.get_status_msg()
-                        if res_status_msg is None:
-                            res_status_msg = "no status message received"
 
                         # Put checked requests back in queue
                         while not checked_requests_list.empty():
@@ -149,12 +150,8 @@ class NetworkConnector:
 
         payload_str = json.dumps(req.get_payload())
 
-        print(payload_str)
-
         # Make string ready to be contained in json itself
         payload_str = payload_str.replace('"', "$*$")
-
-        print(payload_str)
 
         payload_len = len(payload_str)
         parts = []
@@ -169,9 +166,6 @@ class NetworkConnector:
 
         last_index = len(parts) - 1
 
-        print(parts)
-        print(last_index)
-
         for payload_part in parts:
 
             out_dict = {"package_index": package_index, "split_payload": payload_part}
@@ -185,8 +179,10 @@ class NetworkConnector:
                               out_dict)
             if package_index == last_index:
                 res_ack, res = self.send_request(out_req, timeout)
+
                 print("ANSWER TO SPLIT REQ")
-                print(res.to_string())
+                print(res.to_string() if res is not None else "None")
+
                 return res_ack, res
             else:
                 self.send_request(out_req, 0)

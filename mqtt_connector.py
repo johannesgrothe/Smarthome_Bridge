@@ -25,6 +25,8 @@ class MQTTConnector(NetworkConnector):
     __mqtt_username: Optional[str]
     __mqtt_password: Optional[str]
 
+    __buf_queue: Queue
+
     def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str] = None,
                  mqtt_pw: Optional[str] = None):
         super().__init__()
@@ -35,10 +37,12 @@ class MQTTConnector(NetworkConnector):
         self.__mqtt_username = mqtt_user
         self.__mqtt_password = mqtt_pw
 
+        self.__buf_queue = Queue()
+
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
-            self.__client.on_message = self.generate_callback(self._message_queue)
+            self.__client.on_message = self.generate_callback(self.__buf_queue)
             self.__client.on_disconnect = disconnect_callback
             self.__client.on_connect = connect_callback
 
@@ -90,7 +94,7 @@ class MQTTConnector(NetworkConnector):
                                   body["sender"],
                                   body["receiver"],
                                   body["payload"])
-                print("Received: {}".format(inc_req.to_string()))
+                # print("Received: {}".format(inc_req.to_string()))
 
                 request_queue.put(inc_req)
 
@@ -101,7 +105,9 @@ class MQTTConnector(NetworkConnector):
         return buf_callback
 
     def _receive_data(self) -> Optional[Request]:
-        pass
+        if not self.__buf_queue.empty():
+            return self.__buf_queue.get()
+        return None
 
     def _send_data(self, req: Request):
         self.__client.publish(req.get_path(), str(req.get_body()))
