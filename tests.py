@@ -58,6 +58,12 @@ class SampleTest(unittest.TestCase):
 
 
 def mqtt_test() -> bool:
+    # Start Responder
+    responder = MQTTTestEchoClient(BROKER_IP,
+                                   BROKER_PORT,
+                                   BROKER_USER,
+                                   BROKER_PW)
+
     connector = MQTTConnector("tester",
                               BROKER_IP,
                               BROKER_PORT,
@@ -65,7 +71,6 @@ def mqtt_test() -> bool:
                               BROKER_PW)
 
     # if not connector.connected():
-    #     print("MQTT isn't connected")
     #     return False
 
     out_payload = {"test": "main", "value": 55.6}
@@ -85,6 +90,12 @@ def mqtt_test() -> bool:
 
 
 def mqtt_test_split() -> bool:
+    # Start Responder
+    responder = MQTTTestEchoClient(BROKER_IP,
+                                   BROKER_PORT,
+                                   BROKER_USER,
+                                   BROKER_PW)
+
     connector = MQTTConnector("tester",
                               BROKER_IP,
                               BROKER_PORT,
@@ -92,7 +103,6 @@ def mqtt_test_split() -> bool:
                               BROKER_PW)
 
     # if not connector.connected():
-    #     print("MQTT isn't connected")
     #     return False
 
     out_payload = {"test": "main long test",
@@ -121,15 +131,6 @@ if __name__ == '__main__':
     BROKER_USER = None
     BROKER_PW = None
 
-    # Start Responder
-    responder = MQTTTestEchoClient(BROKER_IP,
-                                   BROKER_PORT,
-                                   BROKER_USER,
-                                   BROKER_PW)
-
-    # unittest.main()
-
-    print(mqtt_test_split())
+    unittest.main()
 
     print("All Tests Passed.")
-    responder.quit()

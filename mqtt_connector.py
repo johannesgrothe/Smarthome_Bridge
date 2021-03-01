@@ -54,11 +54,7 @@ class MQTTConnector(NetworkConnector):
             self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
 
-            # self._connected = self.__client.is_connected()
-            self._connected = True
-
         except ConnectionRefusedError as err:
-            self._connected = False
             print(err)
 
     def __del__(self):
@@ -125,6 +121,9 @@ class MQTTConnector(NetworkConnector):
                 if res.get_path() == "smarthome/broadcast/res" and res.get_session_id() == req.get_session_id():
                     responses.append(res)
         return responses
+
+    def connected(self) -> bool:
+        return self.__client.is_connected()
 
 
 if __name__ == '__main__':

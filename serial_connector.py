@@ -13,6 +13,7 @@ class SerialConnector(NetworkConnector):
     __own_name: str
     __baud_rate: int
     __port: str
+    __connected: bool
 
     def __init__(self, own_name: str, port: str, baudrate: int):
         super().__init__()
@@ -21,7 +22,7 @@ class SerialConnector(NetworkConnector):
         self.__port = port
         try:
             self.__client = serial.Serial(port=self.__port, baudrate=self.__baud_rate, timeout=1)
-            self._connected = True
+            self.__connected = True
         except serial.serialutil.SerialException:
             pass
 
@@ -135,6 +136,9 @@ class SerialConnector(NetworkConnector):
 
     def monitor(self):
         self.__read_serial(0, True)
+
+    def connected(self) -> bool:
+        return self.__connected
 
 
 if __name__ == '__main__':

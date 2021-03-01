@@ -10,8 +10,6 @@ Req_Response = tuple[Optional[bool], Optional[Request]]
 class NetworkConnector:
     """Class to implement an network interface prototype"""
 
-    _connected: bool
-
     _message_queue: Queue
 
     __part_data: dict
@@ -30,7 +28,7 @@ class NetworkConnector:
 
     def get_request(self) -> Optional[Request]:
         """Returns a request if there is one"""
-        
+
         self.__receive()
 
         if not self._message_queue.empty():
@@ -48,10 +46,7 @@ class NetworkConnector:
                 if p_index == 0:
                     if "last_index" in req_payload:
                         l_index = req_payload["last_index"]
-                        buf_json = {}
-                        buf_json["start_req"] = received_request
-                        buf_json["last_index"] = l_index
-                        buf_json["payload_bits"] = []
+                        buf_json = {"start_req": received_request, "last_index": l_index, "payload_bits": []}
                         for i in range(l_index + 1):
                             buf_json["payload_bits"].append(None)
                         buf_json["payload_bits"][0] = split_payload
@@ -63,7 +58,6 @@ class NetworkConnector:
                         req_data = self.__part_data[id_str]
                         req_data["payload_bits"][p_index] = split_payload
                         if p_index >= req_data["last_index"]:
-                            print(req_data["payload_bits"])
                             end_data = ""
                             for str_data in req_data["payload_bits"]:
                                 if str_data is None:
@@ -107,9 +101,6 @@ class NetworkConnector:
 
                 if not self._message_queue.empty():
                     res: Request = self._message_queue.get()
-                    print("Got from Queue: {}".format(res.to_string()))
-                    print(res.get_session_id() == req.get_session_id())
-                    print(req.get_sender() != res.get_sender())
                     if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
                         res_ack = res.get_ack()
 
@@ -180,9 +171,6 @@ class NetworkConnector:
             if package_index == last_index:
                 res_ack, res = self.send_request(out_req, timeout)
 
-                print("ANSWER TO SPLIT REQ")
-                print(res.to_string() if res is not None else "None")
-
                 return res_ack, res
             else:
                 self.send_request(out_req, 0)
@@ -190,4 +178,5 @@ class NetworkConnector:
         return False, None
 
     def connected(self) -> bool:
-        return self._connected
+        print("!!Not implemented!!")
+        return False
