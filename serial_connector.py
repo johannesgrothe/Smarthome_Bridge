@@ -21,7 +21,7 @@ class SerialConnector(NetworkConnector):
         self.__port = port
         try:
             self.__client = serial.Serial(port=self.__port, baudrate=self.__baud_rate, timeout=1)
-            self.__connected = True
+            self._connected = True
         except serial.serialutil.SerialException:
             pass
 
@@ -98,6 +98,12 @@ class SerialConnector(NetworkConnector):
                 return None
             if (timeout > 0) and (time.time() > timeout_time):
                 return None
+
+    def _send_data(self, req: Request):
+        self.__send_serial(req)
+
+    def _receive_data(self) -> Optional[Request]:
+        return self.__read_serial()
 
     def send_broadcast(self, req: Request, timeout: int = 6, responses_awaited: int = 0) -> [Request]:
         """Sends a broadcast and waits for answers"""

@@ -1,7 +1,9 @@
 import unittest
-from mqtt_connector import MQTTConnector
 from serial_connector import SerialConnector
 from time import sleep
+
+from mqtt_echo_client import MQTTTestEchoClient
+from mqtt_connector import MQTTConnector, Request
 
 
 def test_mqtt_connector():
@@ -48,17 +50,86 @@ class SampleTest(unittest.TestCase):
                                   None)
         self.assertTrue(not connector.connected())
 
-    def test_mqtt_connector_2(self):
-        connector = MQTTConnector("tester",
-                                  "192.168.178.111",
-                                  1883,
-                                  None,
-                                  None)
-        sleep(1)
-        self.assertTrue(connector.connected())
+    def test_mqtt_connector_messages(self):
+        self.assertTrue(mqtt_test())
+
+    def test_mqtt_connector_messages_split(self):
+        self.assertTrue(mqtt_test_split())
+
+
+def mqtt_test() -> bool:
+    connector = MQTTConnector("tester",
+                              BROKER_IP,
+                              BROKER_PORT,
+                              BROKER_USER,
+                              BROKER_PW)
+
+    # if not connector.connected():
+    #     print("MQTT isn't connected")
+    #     return False
+
+    out_payload = {"test": "main", "value": 55.6}
+    out_req = Request("smarthome/test", 1334544, "tester", responder.get_name(), out_payload)
+
+    res_ack, in_req = connector.send_request(out_req, timeout=2)
+
+    if in_req is None:
+        return False
+
+    in_payload = in_req.get_payload()
+
+    if in_payload != out_payload:
+        return False
+
+    return True
+
+
+def mqtt_test_split() -> bool:
+    connector = MQTTConnector("tester",
+                              BROKER_IP,
+                              BROKER_PORT,
+                              BROKER_USER,
+                              BROKER_PW)
+
+    # if not connector.connected():
+    #     print("MQTT isn't connected")
+    #     return False
+
+    out_payload = {"test": "main long test",
+                   "value": 55.6,
+                   "more_data": 12223222332423}
+    out_req = Request("smarthome/test", 1334544, "tester", responder.get_name(), out_payload)
+
+    res_ack, in_req = connector.send_request_split(out_req, timeout=2, part_max_size=15)
+
+    if in_req is None:
+        return False
+
+    in_payload = in_req.get_payload()
+
+    if in_payload != out_payload:
+        return False
+
+    return True
 
 
 if __name__ == '__main__':
-    # test_mqtt_connector()
-    # test_serial_connector()
-    unittest.main()
+
+    # Data for the MQTT Broker
+    BROKER_IP = "192.168.178.111"
+    BROKER_PORT = 1883
+    BROKER_USER = None
+    BROKER_PW = None
+
+    # Start Responder
+    responder = MQTTTestEchoClient(BROKER_IP,
+                                   BROKER_PORT,
+                                   BROKER_USER,
+                                   BROKER_PW)
+
+    # unittest.main()
+
+    print(mqtt_test_split())
+
+    print("All Tests Passed.")
+    responder.quit()
