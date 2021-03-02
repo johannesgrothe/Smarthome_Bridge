@@ -1,4 +1,4 @@
-from network_connector import NetworkConnector, Request
+from network_connector import NetworkConnector, Request, Req_Response
 from typing import Optional
 import serial
 import re
@@ -13,6 +13,7 @@ class SerialConnector(NetworkConnector):
     __own_name: str
     __baud_rate: int
     __port: str
+    __connected: bool
 
     def __init__(self, own_name: str, port: str, baudrate: int):
         super().__init__()
@@ -99,39 +100,17 @@ class SerialConnector(NetworkConnector):
             if (timeout > 0) and (time.time() > timeout_time):
                 return None
 
-    def send_broadcast(self, req: Request, timeout: int = 6, responses_awaited: int = 0) -> [Request]:
-        """Sends a broadcast and waits for answers"""
-        responses: [Request] = []
-
+    def _send_data(self, req: Request):
         self.__send_serial(req)
-        timeout_time = time.time() + timeout
-        while time.time() < timeout_time:
-            remaining_time = timeout_time - time.time()
-            incoming_req = self.__read_serial(2 if remaining_time > 2 else remaining_time)
-            if incoming_req and incoming_req.get_path() == "smarthome/broadcast/res" and incoming_req.get_session_id() == req.get_session_id():
-                responses.append(incoming_req)
-                if 0 < responses_awaited <= len(responses):
-                    return responses
-        return responses
 
-    def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
-        """Sends a request on the serial port and waits for the answer"""
-
-        self.__send_serial(req)
-        timeout_time = time.time() + 6
-        while time.time() < timeout_time:
-            remaining_time = timeout_time - time.time()
-            res = self.__read_serial(2 if remaining_time > 2 else remaining_time)
-            if res and res.get_session_id() == req.get_session_id():
-                res_ack = res.get_ack()
-                res_status_msg = res.get_status_msg()
-                if res_status_msg is None:
-                    res_status_msg = "no status message received"
-                return res_ack, res_status_msg, res
-        return None, "no response received", None
+    def _receive_data(self) -> Optional[Request]:
+        return self.__read_serial()
 
     def monitor(self):
         self.__read_serial(0, True)
+
+    def connected(self) -> bool:
+        return self.__connected
 
 
 if __name__ == '__main__':

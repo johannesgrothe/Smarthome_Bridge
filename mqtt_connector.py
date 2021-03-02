@@ -1,4 +1,4 @@
-from network_connector import NetworkConnector, Request
+from network_connector import NetworkConnector, Request, Req_Response
 from typing import Optional
 from queue import Queue
 import paho.mqtt.client as mqtt
@@ -22,13 +22,13 @@ class MQTTConnector(NetworkConnector):
     __ip: str
     __port: int
 
-    __message_queue: Queue
-
     __mqtt_username: Optional[str]
     __mqtt_password: Optional[str]
 
-    def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int,
-                 mqtt_user: Optional[str] = None, mqtt_pw: Optional[str] = None):
+    __buf_queue: Queue
+
+    def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str] = None,
+                 mqtt_pw: Optional[str] = None):
         super().__init__()
         self.__own_name = own_name
         self.__client = mqtt.Client(self.__own_name)
@@ -37,12 +37,12 @@ class MQTTConnector(NetworkConnector):
         self.__mqtt_username = mqtt_user
         self.__mqtt_password = mqtt_pw
 
-        self.__message_queue = Queue()
+        self.__buf_queue = Queue()
 
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
-            self.__client.on_message = self.generate_callback(self.__message_queue)
+            self.__client.on_message = self.generate_callback(self.__buf_queue)
             self.__client.on_disconnect = disconnect_callback
             self.__client.on_connect = connect_callback
 
@@ -53,9 +53,8 @@ class MQTTConnector(NetworkConnector):
 
             self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
-            self.__connected = self.__client.is_connected()
+
         except ConnectionRefusedError as err:
-            self.__connected = False
             print(err)
 
     def __del__(self):
@@ -91,7 +90,7 @@ class MQTTConnector(NetworkConnector):
                                   body["sender"],
                                   body["receiver"],
                                   body["payload"])
-                print("Received: {}".format(inc_req.to_string()))
+                # print("Received: {}".format(inc_req.to_string()))
 
                 request_queue.put(inc_req)
 
@@ -101,49 +100,13 @@ class MQTTConnector(NetworkConnector):
         # Return closured callback
         return buf_callback
 
-    def get_request(self) -> Optional[Request]:
-        """Returns a request if there is one"""
-
-        if not self.__message_queue.empty():
-            return self.__message_queue.get()
+    def _receive_data(self) -> Optional[Request]:
+        if not self.__buf_queue.empty():
+            return self.__buf_queue.get()
         return None
 
-    def send_request(self, req: Request, timeout: int = 6) -> (Optional[bool], Optional[Request]):
-        """
-        Sends a request and waits for a response by default.
-
-        Returns the Ack-Status of the response, the status message of the response and the response itself.
-        """
-
+    def _send_data(self, req: Request):
         self.__client.publish(req.get_path(), str(req.get_body()))
-        if timeout > 0:
-            timeout_time = time.time() + timeout
-            checked_requests_list = Queue()
-            while time.time() < timeout_time:
-                if not self.__message_queue.empty():
-                    res: Request = self.__message_queue.get()
-                    # print("Got from Queue: {}".format(res.to_string()))
-                    if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
-                        res_ack = res.get_ack()
-                        res_status_msg = res.get_status_msg()
-                        if res_status_msg is None:
-                            res_status_msg = "no status message received"
-
-                        # Put checked requests back in queue
-                        while not checked_requests_list.empty():
-                            self.__message_queue.put(checked_requests_list.get())
-
-                        return res_ack, res_status_msg, res
-
-                    # Save request to put it back in queue later
-                    checked_requests_list.put(res)
-
-            # Put checked requests back in queue
-            while not checked_requests_list.empty():
-                self.__message_queue.put(checked_requests_list.get())
-            return None, "no response received", None
-
-        return None, "no response awaited", None
 
     def send_broadcast(self, req: Request, timeout: int = 6) -> [Request]:
 
@@ -152,12 +115,15 @@ class MQTTConnector(NetworkConnector):
         self.__client.publish(req.get_path(), json_str)
         timeout_time = time.time() + timeout
         while time.time() < timeout_time:
-            if not self.__message_queue.empty():
-                res: Request = self.__message_queue.get()
+            if not self._message_queue.empty():
+                res: Request = self._message_queue.get()
                 # print("Got from Queue: {}".format(res.to_string()))
                 if res.get_path() == "smarthome/broadcast/res" and res.get_session_id() == req.get_session_id():
                     responses.append(res)
         return responses
+
+    def connected(self) -> bool:
+        return self.__client.is_connected()
 
 
 if __name__ == '__main__':
