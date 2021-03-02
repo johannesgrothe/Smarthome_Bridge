@@ -106,34 +106,6 @@ class SerialConnector(NetworkConnector):
     def _receive_data(self) -> Optional[Request]:
         return self.__read_serial()
 
-    def send_broadcast(self, req: Request, timeout: int = 6, responses_awaited: int = 0) -> [Request]:
-        """Sends a broadcast and waits for answers"""
-        responses: [Request] = []
-
-        self.__send_serial(req)
-        timeout_time = time.time() + timeout
-        while time.time() < timeout_time:
-            remaining_time = timeout_time - time.time()
-            incoming_req = self.__read_serial(2 if remaining_time > 2 else remaining_time)
-            if incoming_req and incoming_req.get_path() == "smarthome/broadcast/res" and incoming_req.get_session_id() == req.get_session_id():
-                responses.append(incoming_req)
-                if 0 < responses_awaited <= len(responses):
-                    return responses
-        return responses
-
-    def send_request(self, req: Request, timeout: int = 6) -> Req_Response:
-        """Sends a request on the serial port and waits for the answer"""
-
-        self.__send_serial(req)
-        timeout_time = time.time() + 6
-        while time.time() < timeout_time:
-            remaining_time = timeout_time - time.time()
-            res = self.__read_serial(2 if remaining_time > 2 else remaining_time)
-            if res and res.get_session_id() == req.get_session_id():
-                res_ack = res.get_ack()
-                return res_ack, res
-        return None, None
-
     def monitor(self):
         self.__read_serial(0, True)
 
