@@ -5,6 +5,12 @@ from time import sleep
 from mqtt_echo_client import MQTTTestEchoClient
 from mqtt_connector import MQTTConnector, Request
 
+# Data for the MQTT Broker
+BROKER_IP = "192.168.178.111"
+BROKER_PORT = 1883
+BROKER_USER = None
+BROKER_PW = None
+
 
 def test_mqtt_connector():
     connector = MQTTConnector("tester",
@@ -37,7 +43,7 @@ def test_serial_connector():
         print("NOT Connected!")
 
 
-class SampleTest(unittest.TestCase):
+class BridgeUnitTest(unittest.TestCase):
     # return True or False
     def base_test(self):
         self.assertTrue(True)
@@ -124,12 +130,6 @@ def mqtt_test_split() -> bool:
 
 
 if __name__ == '__main__':
-
-    # Data for the MQTT Broker
-    BROKER_IP = "192.168.178.111"
-    BROKER_PORT = 1883
-    BROKER_USER = None
-    BROKER_PW = None
 
     unittest.main()
 

@@ -375,6 +375,9 @@ if __name__ == '__main__':
                 if flash_mode == -1:
                     continue
 
+                # Configs stored on the bridge
+                bridge_configs = read_configs_from_bridge()
+
                 config_index = select_option(["Custom Config"] + bridge_configs, "Config", "Back")
                 config_to_flash = None
 
