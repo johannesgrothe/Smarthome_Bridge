@@ -1,4 +1,5 @@
 import unittest
+import json
 from mqtt_connector import MQTTConnector, Request
 
 # Data for the MQTT Broker
@@ -27,12 +28,21 @@ if __name__ == '__main__':
                              BROKER_USER,
                              BROKER_PW)
 
-    k_req = Request("smarthome/test",
-                    12345678,
-                    "tester",
-                    "YoloChip14",
-                    {"yolokopter": 1234, "tester": "longteststringfortestingpurposes"})
+    with open("../configs/testconfig.json", "r") as file_h:
+        config_data = json.load(file_h)
 
-    k_gadget.send_request_split(k_req,
-                                20,
-                                0)
+        k_req = Request("smarthome/config/write",
+                        12345678,
+                        "tester",
+                        "YoloChip14",
+                        {"type": "complete",
+                         "reset_config": True,
+                         "reset_gadgets": True,
+                         "config": config_data})
+
+        success, resp = k_gadget.send_request_split(k_req,
+                                                    50,
+                                                    5)
+        print(resp)
+
+        print(success)

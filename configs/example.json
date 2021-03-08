@@ -20,7 +20,7 @@
   },
   "gadgets": [
     {
-      "type": "lamp_neopixel_basic",
+      "type": 1,
       "name": "yolokoptergadget",
       "ports": {
         "port0": 2,
