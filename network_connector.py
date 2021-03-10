@@ -3,6 +3,7 @@ from request import Request
 from typing import Optional
 from queue import Queue
 from datetime import datetime, timedelta
+from time import sleep
 
 Req_Response = tuple[Optional[bool], Optional[Request]]
 
@@ -155,7 +156,7 @@ class NetworkConnector:
             parts.append(payload_part)
             start = end
 
-        last_index = len(parts) - 1
+        last_index = len(parts)
 
         for payload_part in parts:
 
@@ -175,6 +176,7 @@ class NetworkConnector:
             else:
                 self.send_request(out_req, 0)
             package_index += 1
+            sleep(0.1)
         return False, None
 
     def connected(self) -> bool:

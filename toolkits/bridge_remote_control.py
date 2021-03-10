@@ -310,11 +310,15 @@ if __name__ == '__main__':
 
         print("Clients loaded:")
         for client_data in bridge_clients:
-            client_names.append(client_data["name"])
-            client_pattern = " -> {} | Commit: {} | Branch: {} | {}"
+            c_name = client_data["name"]
+            c_commit = client_data["sw_version"][:7]
+            c_branch = client_data["sw_branch"]
+
+            client_names.append(c_name)
+            client_pattern = " -> {}  |  Commit: {}  |  Branch: {}  |  {}"
             print(client_pattern.format(client_data["name"] + " " * (max_name_len - len(client_data["name"])),
-                                        client_data["sw_version"],
-                                        client_data["sw_branch"] + " " * (max_branch_name_len - len(client_data["name"])),
+                                        c_commit,
+                                        c_branch + " " * (max_branch_name_len - len(c_branch)),
                                         ("Active" if client_data["is_active"] else "Inactive")
                                         )
                   )
@@ -374,6 +378,9 @@ if __name__ == '__main__':
                 flash_mode = select_option(CONFIG_FLASH_OPTIONS, "Chip Connection", "Back")
                 if flash_mode == -1:
                     continue
+
+                # Configs stored on the bridge
+                bridge_configs = read_configs_from_bridge()
 
                 config_index = select_option(["Custom Config"] + bridge_configs, "Config", "Back")
                 config_to_flash = None
