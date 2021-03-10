@@ -252,8 +252,6 @@ class MainBridge:
             if local_client.needs_update():
                 self.__ask_for_update(local_client)
 
-        # TODO: add time sync
-
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
 
