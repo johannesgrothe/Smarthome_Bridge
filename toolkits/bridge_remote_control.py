@@ -178,6 +178,12 @@ def socket_connector(port: int, host: str, exit_on_failure: False) -> (bool, Opt
     return buf_res, last_data_received
 
 
+def format_string_len(in_data: str, length: int) -> str:
+    if not isinstance(in_data, str):
+        in_data = str(in_data)
+    return in_data + " " * (length - len(in_data))
+
+
 if __name__ == '__main__':
     # Argument-parser
     parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
@@ -273,9 +279,11 @@ if __name__ == '__main__':
         print(" -> Gadgets: {}".format(bridge_data["gadget_count"]))
 
         bridge_clients: [dict] = []
+        client_max_name_len = 0
+        client_max_branch_name_len = 0
 
-        max_name_len = 0
-        max_branch_name_len = 0
+        bridge_gadgets: [dict] = []
+        gadget_max_name_len = 0
 
         status, client_data = send_api_request(f"{bridge_addr}:{api_port}/clients")
 
@@ -296,18 +304,19 @@ if __name__ == '__main__':
                 name_len = len(buf_client["name"])
                 branch_len = len(buf_client["sw_branch"])
 
-                if name_len > max_name_len:
-                    max_name_len = name_len
+                if name_len > client_max_name_len:
+                    client_max_name_len = name_len
 
-                if branch_len > max_branch_name_len:
-                    max_branch_name_len = branch_len
+                if branch_len > client_max_branch_name_len:
+                    client_max_branch_name_len = branch_len
 
                 bridge_clients.append(buf_client)
             except KeyError:
-                print("A gadget could not be loaded")
+                print("A client property could not be loaded")
 
         client_names: [str] = []
 
+        print()
         print("Clients loaded:")
         for client_data in bridge_clients:
             c_name = client_data["name"]
@@ -316,12 +325,61 @@ if __name__ == '__main__':
 
             client_names.append(c_name)
             client_pattern = " -> {}  |  Commit: {}  |  Branch: {}  |  {}"
-            print(client_pattern.format(client_data["name"] + " " * (max_name_len - len(client_data["name"])),
-                                        c_commit,
-                                        c_branch + " " * (max_branch_name_len - len(c_branch)),
-                                        ("Active" if client_data["is_active"] else "Inactive")
-                                        )
-                  )
+            print(client_pattern.format(
+                format_string_len(client_data["name"], client_max_name_len),
+                c_commit,
+                format_string_len(c_branch, client_max_branch_name_len),
+                ("Active" if client_data["is_active"] else "Inactive")
+            ))
+
+        status, gadget_data = send_api_request(f"{bridge_addr}:{api_port}/gadgets")
+
+        if status != 200:
+            print("Could not load gadgets from the bridge.")
+            sys.exit(5)
+
+        for gadget_data in gadget_data["gadgets"]:
+            try:
+                buf_gadget = {"type": gadget_data["type"],
+                              "name": gadget_data["name"],
+                              "characteristics": gadget_data["characteristics"]}
+
+                name_len = len(buf_gadget["name"])
+
+                if name_len > gadget_max_name_len:
+                    gadget_max_name_len = name_len
+
+                bridge_gadgets.append(buf_gadget)
+            except KeyError:
+                print("A gadget property could not be loaded")
+
+        print()
+        print("Gadgets loaded:")
+        for gadget_data in bridge_gadgets:
+            print(" -> {} - Type: {}".format(
+                format_string_len(gadget_data["name"], gadget_max_name_len),
+                format_string_len(gadget_data["type"], 2)
+            ))
+            for characteristic_data in gadget_data["characteristics"]:
+                characteristic_display = ""
+                value_display = characteristic_data["value"]
+
+                if characteristic_data["min"] == 0 and characteristic_data["max"] == 1:
+                    if characteristic_data["value"] == 1:
+                        value_display = "On"
+                    else:
+                        value_display = "Off"
+
+                characteristic_display = "{} | {} | {}".format(
+                    format_string_len(characteristic_data["min"], 3),
+                    format_string_len(value_display, 3),
+                    format_string_len(characteristic_data["max"], 3)
+                )
+
+                print("       {} : {}".format(
+                    format_string_len(characteristic_data["type"], 2),
+                    characteristic_display
+                ))
 
         keep_running = True
 
