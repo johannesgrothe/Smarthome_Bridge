@@ -18,10 +18,11 @@ def select_option(input_list: [str], category: Optional[str] = None, back_option
     """Presents every elem from the list and lets the user select one"""
 
     if category is None:
-        # print("Please select:")
-        pass
+        print("Please select:")
     else:
-        print("Please select a {}:".format(category))
+        print("Please select {} {}:".format(
+            'an' if category[0].lower() in ['a', 'e', 'i', 'o', 'u'] else 'a',
+            category))
     max_i = 0
     for i in range(len(input_list)):
         print("    {}: {}".format(i, input_list[i]))
@@ -385,7 +386,7 @@ if __name__ == '__main__':
 
         while keep_running:
             print()
-            task_option = select_option(BRIDGE_FUNCTIONS, "what to do", "Quit")
+            task_option = select_option(BRIDGE_FUNCTIONS, None, "Quit")
 
             if task_option == 0:
                 # Write software to chip
