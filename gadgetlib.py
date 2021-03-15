@@ -51,6 +51,20 @@ def str_to_gadget_ident(g_str: str) -> GadgetIdentifier:
     return switcher.get(g_str, "None")
 
 
+def gadget_ident_to_str(ident_str: GadgetIdentifier) -> str:
+    switcher = {
+        GadgetIdentifier.lamp_neopixel_basic: "lamp_neopixel_basic",
+        GadgetIdentifier.lamp_basic: "lamp_basic",
+        GadgetIdentifier.fan_westinghouse_ir: "fan_westinghouse_ir",
+        GadgetIdentifier.lamp_westinghouse_ir: "lamp_westinghouse_ir",
+        GadgetIdentifier.sh_doorbell_basic: "sh_doorbell_basic",
+        GadgetIdentifier.sh_wallswitch_basic: "sh_wallswitch_basic",
+        GadgetIdentifier.sh_sensor_motion_hr501: "sh_sensor_motion_hr501",
+        GadgetIdentifier.sh_sensor_temperature_dht: "sh_sensor_temperature_dht"
+    }
+    return switcher.get(ident_str, "None")
+
+
 class GadgetMethod(enum.Enum):
     """A number identifier for every gadget method"""
 
@@ -98,6 +112,20 @@ def str_to_gadget_method(g_str: str) -> GadgetMethod:
 
     }
     return switcher.get(g_str, "None")
+
+
+def characteristic_ident_to_str(characteristic: CharacteristicIdentifier) -> str:
+    switcher = {
+        CharacteristicIdentifier.err_type: "err",
+        CharacteristicIdentifier.status: "status",
+        CharacteristicIdentifier.fanSpeed: "fanSpeed",
+        CharacteristicIdentifier.brightness: "brightness",
+        CharacteristicIdentifier.hue: "hue",
+        CharacteristicIdentifier.saturation: "saturation",
+        CharacteristicIdentifier.temperature: "temperature",
+        CharacteristicIdentifier.humidity: "humidity"
+    }
+    return switcher.get(characteristic, "err")
 
 
 if __name__ == '__main__':

@@ -4,6 +4,8 @@ import argparse
 import sys
 import requests
 import json
+import gadgetlib
+from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
 
@@ -357,10 +359,17 @@ if __name__ == '__main__':
         print()
         print("Gadgets loaded:")
         for gadget_data in bridge_gadgets:
-            print(" -> {} - Type: {}".format(
+            print(" -> {} <{}>".format(
                 format_string_len(gadget_data["name"], gadget_max_name_len),
-                format_string_len(gadget_data["type"], 2)
+                gadgetlib.gadget_ident_to_str(GadgetIdentifier(gadget_data["type"]))
             ))
+
+            characteristic_max_len = 0
+            for characteristic_data in gadget_data["characteristics"]:
+                name = gadgetlib.characteristic_ident_to_str(CharacteristicIdentifier(characteristic_data["type"]))
+                if len(name) > characteristic_max_len:
+                    characteristic_max_len = len(name)
+
             for characteristic_data in gadget_data["characteristics"]:
                 characteristic_display = ""
                 value_display = characteristic_data["value"]
@@ -377,8 +386,10 @@ if __name__ == '__main__':
                     format_string_len(characteristic_data["max"], 3)
                 )
 
+                char_ident = CharacteristicIdentifier(characteristic_data["type"])
+
                 print("       {} : {}".format(
-                    format_string_len(characteristic_data["type"], 2),
+                    format_string_len(gadgetlib.characteristic_ident_to_str(char_ident), characteristic_max_len),
                     characteristic_display
                 ))
 
