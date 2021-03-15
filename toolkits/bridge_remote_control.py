@@ -273,6 +273,7 @@ if __name__ == '__main__':
         # Configs found locally
         local_configs = []
 
+        print()
         print("Connected to bridge '{}'".format(bridge_data["bridge_name"]))
         print(" -> Running since: {}".format(bridge_data["running_since"]))
         print(" -> Software Branch: {}".format(bridge_data["software_branch"]))
@@ -392,6 +393,7 @@ if __name__ == '__main__':
                     format_string_len(gadgetlib.characteristic_ident_to_str(char_ident), characteristic_max_len),
                     characteristic_display
                 ))
+            print()
 
         keep_running = True
 
