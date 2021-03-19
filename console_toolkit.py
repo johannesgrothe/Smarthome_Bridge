@@ -6,7 +6,7 @@ import random
 import os
 import sys
 from request import Request
-from gadgetlib import GadgetIdentifier, str_to_gadget_ident, str_to_gadget_method
+from gadgetlib import GadgetIdentifier, str_to_gadget_identifier, str_to_gadget_method
 from typing import Optional
 
 import client_control_methods
@@ -237,7 +237,7 @@ def load_config() -> Optional[dict]:
                 print("[×] Illegal gadget config: missing 'name' or 'type'")
                 return None
             if isinstance(gadget_data["type"], str):
-                buf_type = str_to_gadget_ident(gadget_data["type"])
+                buf_type = str_to_gadget_identifier(gadget_data["type"])
                 if buf_type == GadgetIdentifier.err_type:
                     print("[×] Illegal gadget config: unknown type '{}'".format(type))
                     return None

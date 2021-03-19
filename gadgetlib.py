@@ -35,7 +35,7 @@ class CharacteristicUpdateStatus(enum.IntEnum):
     update_successful = 4
 
 
-def str_to_gadget_ident(g_str: str) -> GadgetIdentifier:
+def str_to_gadget_identifier(g_str: str) -> GadgetIdentifier:
     """Translates a string identifier to a number identifier"""
 
     switcher = {
@@ -51,7 +51,7 @@ def str_to_gadget_ident(g_str: str) -> GadgetIdentifier:
     return switcher.get(g_str, "None")
 
 
-def gadget_ident_to_str(ident_str: GadgetIdentifier) -> str:
+def gadget_identifier_to_str(ident_str: GadgetIdentifier) -> str:
     switcher = {
         GadgetIdentifier.lamp_neopixel_basic: "lamp_neopixel_basic",
         GadgetIdentifier.lamp_basic: "lamp_basic",
@@ -114,7 +114,7 @@ def str_to_gadget_method(g_str: str) -> GadgetMethod:
     return switcher.get(g_str, "None")
 
 
-def characteristic_ident_to_str(characteristic: CharacteristicIdentifier) -> str:
+def characteristic_identifier_to_str(characteristic: CharacteristicIdentifier) -> str:
     switcher = {
         CharacteristicIdentifier.err_type: "err",
         CharacteristicIdentifier.status: "status",
