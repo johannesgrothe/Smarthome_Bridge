@@ -8,10 +8,10 @@
         "lamp_basic",
         "fan_westinghouse_ir",
         "lamp_westinghouse_ir",
-        "sh_doorbell_basic",
-        "sh_wallswitch_basic",
-        "sh_sensor_motion_hr501",
-        "sh_sensor_temperature_dht"
+        "doorbell_basic",
+        "wallswitch_basic",
+        "sensor_motion_hr501",
+        "sensor_temperature_dht"
       ]
     },
     "characteristic_identifier": {

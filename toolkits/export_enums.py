@@ -84,7 +84,8 @@ def gen_cpp_enums(data: dict, out_file: str):
 
         file.writelines([
             '// Translates a enum identifier to a string identifier\n',
-            f'static {enum_type_name} get{enum_type_name}FromInt(int in_ident):\n',
+            f'static {enum_type_name} get{enum_type_name}FromInt(int in_ident)',
+            ' {\n'
             f'  if (in_ident < 1 || in_ident > {enum_type_name}Count)',
             ' {\n',
             f'    return {enum_type_name}::{enum_data[0]};\n',
@@ -103,14 +104,14 @@ def gen_cpp_enums(data: dict, out_file: str):
             enum_data = data[enum_name]
 
             file.write('\n\n')
-            file.write(f'# region {enum_name.upper()}\n\n')
+            file.write(f'// region {enum_name.upper()}\n\n')
             file.write(f'// {enum_data["description"]}\n')
             file.write('enum class {}'.format(snake_to_camel_case(enum_name)))
             file.write(' {\n')
             index = 0
 
             for elem in enum_data["elements"]:
-                file.write(f'    {elem} = {index}\n')
+                file.write(f'    {elem} = {index}{"," if index < len(enum_data["elements"]) - 1 else ""}\n')
                 index += 1
 
             file.write('};\n\n')
@@ -118,7 +119,7 @@ def gen_cpp_enums(data: dict, out_file: str):
             file.write(f'#define {snake_to_camel_case(enum_name)}Count {len(enum_data["elements"]) - 1}\n')
             file.write('\n')
             gen_int_to_enum(enum_name, enum_data["elements"], file)
-            file.write(f'\n# endregion\n')
+            file.write(f'\n// endregion\n')
 
         file.write('\n')
 

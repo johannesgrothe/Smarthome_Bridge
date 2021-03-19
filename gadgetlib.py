@@ -12,10 +12,10 @@ class GadgetIdentifier(enum.IntEnum):
     lamp_basic = 2
     fan_westinghouse_ir = 3
     lamp_westinghouse_ir = 4
-    sh_doorbell_basic = 5
-    sh_wallswitch_basic = 6
-    sh_sensor_motion_hr501 = 7
-    sh_sensor_temperature_dht = 8
+    doorbell_basic = 5
+    wallswitch_basic = 6
+    sensor_motion_hr501 = 7
+    sensor_temperature_dht = 8
 
 
 def gadget_identifier_to_str(in_ident: GadgetIdentifier) -> str:
@@ -26,10 +26,10 @@ def gadget_identifier_to_str(in_ident: GadgetIdentifier) -> str:
         GadgetIdentifier.lamp_basic: "lamp_basic",
         GadgetIdentifier.fan_westinghouse_ir: "fan_westinghouse_ir",
         GadgetIdentifier.lamp_westinghouse_ir: "lamp_westinghouse_ir",
-        GadgetIdentifier.sh_doorbell_basic: "sh_doorbell_basic",
-        GadgetIdentifier.sh_wallswitch_basic: "sh_wallswitch_basic",
-        GadgetIdentifier.sh_sensor_motion_hr501: "sh_sensor_motion_hr501",
-        GadgetIdentifier.sh_sensor_temperature_dht: "sh_sensor_temperature_dht"
+        GadgetIdentifier.doorbell_basic: "doorbell_basic",
+        GadgetIdentifier.wallswitch_basic: "wallswitch_basic",
+        GadgetIdentifier.sensor_motion_hr501: "sensor_motion_hr501",
+        GadgetIdentifier.sensor_temperature_dht: "sensor_temperature_dht"
     }
     return switcher.get(in_ident, "err_type")
 
@@ -42,10 +42,10 @@ def str_to_gadget_identifier(in_ident: str) -> GadgetIdentifier:
         "lamp_basic": GadgetIdentifier.lamp_basic,
         "fan_westinghouse_ir": GadgetIdentifier.fan_westinghouse_ir,
         "lamp_westinghouse_ir": GadgetIdentifier.lamp_westinghouse_ir,
-        "sh_doorbell_basic": GadgetIdentifier.sh_doorbell_basic,
-        "sh_wallswitch_basic": GadgetIdentifier.sh_wallswitch_basic,
-        "sh_sensor_motion_hr501": GadgetIdentifier.sh_sensor_motion_hr501,
-        "sh_sensor_temperature_dht": GadgetIdentifier.sh_sensor_temperature_dht
+        "doorbell_basic": GadgetIdentifier.doorbell_basic,
+        "wallswitch_basic": GadgetIdentifier.wallswitch_basic,
+        "sensor_motion_hr501": GadgetIdentifier.sensor_motion_hr501,
+        "sensor_temperature_dht": GadgetIdentifier.sensor_temperature_dht
     }
     return switcher.get(in_ident, GadgetIdentifier.err_type)
 
