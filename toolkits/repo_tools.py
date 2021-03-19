@@ -61,7 +61,7 @@ def read_api_specs(in_file: str) -> Optional[dict]:
                     if input_file:
                         schema_f_name = input_file[0]
                         try:
-                            with open(os.path.join("json_schemas", schema_f_name), 'r') as schema_file:
+                            with open(os.path.join("../json_schemas", schema_f_name), 'r') as schema_file:
                                 data = schema_file.read()
 
                             schema_json = json.loads(data)
@@ -81,7 +81,7 @@ def read_api_specs(in_file: str) -> Optional[dict]:
                     if input_file:
                         schema_f_name = input_file[0]
                         try:
-                            with open(os.path.join("json_schemas", schema_f_name), 'r') as schema_file:
+                            with open(os.path.join("../json_schemas", schema_f_name), 'r') as schema_file:
                                 data = schema_file.read()
 
                             schema_json = json.loads(data)
@@ -123,8 +123,8 @@ def read_api_specs(in_file: str) -> Optional[dict]:
 
 
 def export_api_doc(api_spec: dict, out_file: str) -> bool:
-    if not os.path.isdir("temp"):
-        os.mkdir("temp")
+    if not os.path.isdir("../temp"):
+        os.mkdir("../temp")
     try:
         with open(out_file, 'w') as file:
 
@@ -270,4 +270,4 @@ def generate_api_doc(in_file: str, out_file: str) -> bool:
 
 
 if __name__ == "__main__":
-    generate_api_doc("api.py", os.path.join("temp", "api_doc.md"))
+    generate_api_doc("../api.py", os.path.join("temp", "api_doc.md"))
