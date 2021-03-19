@@ -56,6 +56,7 @@ def gen_python_enums(data: dict, out_file: str):
             file.write(f'class {snake_to_camel_case(enum_name)}(enum.IntEnum):\n')
             file.write(f'    """{enum_data["description"]}"""\n')
             index = 0
+
             for elem in enum_data["elements"]:
                 file.write(f'    {elem} = {index}\n')
                 index += 1
@@ -68,7 +69,49 @@ def gen_python_enums(data: dict, out_file: str):
         file.write('\n')
 
 
+def gen_cpp_enums(data: dict, out_file: str):
+    def gen_int_to_enum(enum_name: str, enum_data: dict, file):
+        enum_type_name = snake_to_camel_case(enum_name)
+
+        file.writelines([
+            '// Translates a enum identifier to a string identifier\n',
+            f'static {enum_type_name} get{enum_type_name}FromInt(int in_ident):\n',
+            f'  if (in_ident < 1 || in_ident > {enum_type_name}Count)',
+            ' {\n',
+            f'    return {enum_type_name}::{enum_data[0]};\n',
+            '  }\n',
+            f'  return {enum_type_name}(in_ident);\n'
+            '}\n'
+        ])
+
+    with open("../temp/" + out_file, 'w') as file:
+        file.writelines(['#pragma once'])
+
+        for enum_name in data:
+            file.write('\n\n')
+            file.write(f'# region {enum_name.upper()}\n\n')
+            enum_data = data[enum_name]
+            file.write(f'// {enum_data["description"]}\n')
+            file.write('enum class {}'.format(snake_to_camel_case(enum_name)))
+            file.write(' {\n')
+            index = 0
+
+            for elem in enum_data["elements"]:
+                file.write(f'    {elem} = {index}\n')
+                index += 1
+
+            file.write('};\n\n')
+            file.write(f'// Count of the values in {snake_to_camel_case(enum_name)}\n')
+            file.write(f'#define {snake_to_camel_case(enum_name)}Count {len(enum_data["elements"]) - 1}\n')
+            file.write("\n")
+            gen_int_to_enum(enum_name, enum_data["elements"], file)
+            file.write(f'\n# endregion\n')
+
+        file.write('\n')
+
+
 if __name__ == "__main__":
     with open('enum_data.json', 'r') as f:
         json_data = json.load(f)
         gen_python_enums(json_data["data"], "gadgetlib.py")
+        gen_cpp_enums(json_data["data"], "gadget_enums.h")
