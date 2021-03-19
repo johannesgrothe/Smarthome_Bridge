@@ -362,12 +362,12 @@ if __name__ == '__main__':
         for gadget_data in bridge_gadgets:
             print(" -> {} <{}>".format(
                 format_string_len(gadget_data["name"], gadget_max_name_len),
-                gadgetlib.gadget_ident_to_str(GadgetIdentifier(gadget_data["type"]))
+                gadgetlib.gadget_identifier_to_str(GadgetIdentifier(gadget_data["type"]))
             ))
 
             characteristic_max_len = 0
             for characteristic_data in gadget_data["characteristics"]:
-                name = gadgetlib.characteristic_ident_to_str(CharacteristicIdentifier(characteristic_data["type"]))
+                name = gadgetlib.characteristic_identifier_to_str(CharacteristicIdentifier(characteristic_data["type"]))
                 if len(name) > characteristic_max_len:
                     characteristic_max_len = len(name)
 
@@ -390,7 +390,7 @@ if __name__ == '__main__':
                 char_ident = CharacteristicIdentifier(characteristic_data["type"])
 
                 print("       {} : {}".format(
-                    format_string_len(gadgetlib.characteristic_ident_to_str(char_ident), characteristic_max_len),
+                    format_string_len(gadgetlib.characteristic_identifier_to_str(char_ident), characteristic_max_len),
                     characteristic_display
                 ))
             print()

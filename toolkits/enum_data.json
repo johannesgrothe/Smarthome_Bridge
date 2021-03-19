@@ -1,0 +1,64 @@
+{
+  "data": {
+    "gadget_identifier": {
+      "description": "A number identifier for every gadget type",
+      "elements": [
+        "err_type",
+        "lamp_neopixel_basic",
+        "lamp_basic",
+        "fan_westinghouse_ir",
+        "lamp_westinghouse_ir",
+        "doorbell_basic",
+        "wallswitch_basic",
+        "sensor_motion_hr501",
+        "sensor_temperature_dht"
+      ]
+    },
+    "characteristic_identifier": {
+      "description": "A number identifier for every characteristic type",
+      "elements": [
+        "err_type",
+        "status",
+        "fanSpeed",
+        "brightness",
+        "hue",
+        "saturation",
+        "temperature",
+        "humidity"
+      ]
+    },
+    "characteristic_update_status": {
+      "description": "The return type for the characteristic update",
+      "elements": [
+        "general_error",
+        "unknown_characteristic",
+        "update_failed",
+        "no_update_needed",
+        "update_successful"
+      ]
+    },
+    "gadget_method": {
+      "description": "A number identifier for every gadget method",
+      "elements": [
+        "err_type",
+        "turnOn",
+        "turnOff",
+        "toggleStatus",
+        "brightnessUp",
+        "brightnessDown",
+        "volumeUp",
+        "volumeDown",
+        "mute",
+        "unmute",
+        "toggleMute",
+        "mode0",
+        "mode1",
+        "mode2",
+        "mode3",
+        "mode4",
+        "modeUp",
+        "modeDown"
+      ]
+    }
+  }
+}
