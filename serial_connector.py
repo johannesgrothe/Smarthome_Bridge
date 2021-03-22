@@ -4,7 +4,7 @@ import serial
 import re
 import time
 import json
-
+from jsonschema import validate, ValidationError
 
 class SerialConnector(NetworkConnector):
     """Class to implement a MQTT connection module"""
@@ -53,6 +53,13 @@ class SerialConnector(NetworkConnector):
                     return None
             try:
                 json_body = json.loads(req_dict["b"])
+
+                try:
+                    validate(body, request_schema)
+                except ValidationError:
+                    print("Could not decode Request, Possible Reasons:"
+                          "Missing key(s) in request, Illegal Values for keys")
+                    return None
 
                 out_req = Request(path=req_dict["p"],
                                   session_id=json_body["session_id"],
