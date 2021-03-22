@@ -12,6 +12,7 @@ class NetworkConnector:
     """Class to implement an network interface prototype"""
 
     _message_queue: Queue
+    _request_validation_schema: dict
 
     __part_data: dict
 
@@ -19,6 +20,8 @@ class NetworkConnector:
         self._connected = False
         self._message_queue = Queue()
         self.__part_data = {}
+        with open("json_schemas/request_basic_structure.json", "r") as f:
+            self._request_validation_schema = json.load(f)
 
     def _send_data(self, req: Request):
         print(f"Not implemented: '_send_data'")

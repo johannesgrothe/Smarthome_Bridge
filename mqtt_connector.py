@@ -4,6 +4,7 @@ from queue import Queue
 import paho.mqtt.client as mqtt
 import time
 import json
+from jsonschema import validate, ValidationError
 
 
 def connect_callback(client, userdata, flags, reason_code, properties=None):
@@ -42,7 +43,7 @@ class MQTTConnector(NetworkConnector):
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
-            self.__client.on_message = self.generate_callback(self.__buf_queue)
+            self.__client.on_message = self.generate_callback(self.__buf_queue, self._request_validation_schema)
             self.__client.on_disconnect = disconnect_callback
             self.__client.on_connect = connect_callback
 
@@ -61,7 +62,7 @@ class MQTTConnector(NetworkConnector):
         self.__client.disconnect()
 
     @staticmethod
-    def generate_callback(request_queue: Queue):
+    def generate_callback(request_queue: Queue, request_schema: dict):
         """Generates a callback with captured queue"""
 
         def buf_callback(client, userdata, message):
@@ -80,9 +81,10 @@ class MQTTConnector(NetworkConnector):
                 print("Couldn't decode json: '{}'".format(json_str))
                 return
 
-            if not ("session_id" in body and "sender" in body and "receiver" in body and "payload" in body):
-                print("Missing key(s) in request")
-                return
+            try:
+                validate(body, request_schema)
+            except ValidationError:
+                print("Could not decode Request, Possible Reasons: Missing key(s) in request, Illegal Values for keys")
 
             try:
                 inc_req = Request(topic,
@@ -106,7 +108,7 @@ class MQTTConnector(NetworkConnector):
         return None
 
     def _send_data(self, req: Request):
-        self.__client.publish(req.get_path(), str(req.get_body()))
+        self.__client.publish(req.get_path(), json.dumps(req.get_body()))
 
     def send_broadcast(self, req: Request, timeout: int = 6) -> [Request]:
 
