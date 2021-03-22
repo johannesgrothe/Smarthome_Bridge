@@ -49,14 +49,6 @@ def get_sender() -> str:
     return socket.gethostname()
 
 
-def check_dict_for_keys(check_dict: dict, key_list: [str]) -> bool:
-    """Checks if all given keys are included in the dict"""
-    for key in key_list:
-        if key not in check_dict:
-            return False
-    return True
-
-
 def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
     """Checks if every of the given keys are present and adds the missing keys with a None value"""
     buf_dict = check_dict
@@ -278,6 +270,7 @@ class MainBridge:
                 local_client = self.__get_or_create_client_from_request(req)
                 if local_client.needs_update():
                     self.__ask_for_update(local_client)
+            return
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
@@ -357,28 +350,18 @@ class MainBridge:
 
                 print("Update finished.")
 
-                return
+            return
 
         # Receive gadget characteristic update from client
         if req.get_path() == "smarthome/remotes/gadget/update":
-            if "name" not in req_pl:
-                print("No name in characteristic update message")
-                return
+            if self.__verify_payload('bridge_gadget_update_request.json', req.get_payload()):
 
-            if "characteristic" not in req_pl:
-                print("No characteristic in characteristic update message")
-                return
+                print("Received update for characteristic '{}' from '{}'".format(req_pl["name"],
+                                                                                 req_pl["characteristic"]))
 
-            if "value" not in req_pl:
-                print("No value in characteristic update message")
-                return
-
-            print("Received update for characteristic '{}' from '{}'".format(req_pl["name"],
-                                                                             req_pl["characteristic"]))
-
-            self.update_characteristic_from_client(req_pl["name"],
-                                                   CharacteristicIdentifier(req_pl["characteristic"]),
-                                                   req_pl["value"])
+                self.update_characteristic_from_client(req_pl["name"],
+                                                       CharacteristicIdentifier(req_pl["characteristic"]),
+                                                       req_pl["value"])
             return
 
     def flash_software(self, branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> (bool, str):

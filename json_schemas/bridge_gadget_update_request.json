@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": [
+    "name",
+    "characteristic",
+    "value"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "characteristic": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "value": {
+      "type": "integer"
+    }
+  }
+}
