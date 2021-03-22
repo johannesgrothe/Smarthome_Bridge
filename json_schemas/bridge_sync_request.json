@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": [
+    "runtime_id",
+    "gadgets",
+    "port_mapping",
+    "boot_mode"
+  ],
+  "properties": {
+    "runtime_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "port_mapping": {
+      "type": "object",
+      "patternProperties": {
+        "[0-9]+": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "boot_mode": {
+      "type": "integer"
+    },
+    "sw_uploaded": {
+      "type": "string"
+    },
+    "sw_commit": {
+      "type": "string"
+    },
+    "sw_branch": {
+      "type": "string"
+    },
+    "gadgets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "characteristics"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "characteristics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "type",
+                "min",
+                "max",
+                "step",
+                "val"
+              ],
+              "properties": {
+                "type": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "min": {
+                  "type": "integer"
+                },
+                "max": {
+                  "type": "integer"
+                },
+                "step": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "value": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
