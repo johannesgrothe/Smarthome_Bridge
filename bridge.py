@@ -11,6 +11,7 @@ from datetime import datetime
 from chip_flasher import get_serial_ports
 from bridge_threads import *
 from tools import system_tools, git_tools
+from jsonschema import validate, ValidationError
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
 from serial_connector import SerialConnector
@@ -93,6 +94,9 @@ class MainBridge:
 
     # Time the bridge was launched
     __time_launched: datetime
+
+    # Json schemas used to verify the requests
+    __req_json_schemas: dict
 
     # MQTT
     __mqtt_port: int
@@ -193,6 +197,8 @@ class MainBridge:
                                                        connector=self.__network_gadget)
         self.__mqtt_callback_thread.start()
 
+        self.__load_json_schemas()
+
         self.__lock = threading.Lock()
         print("Ok.")
 
@@ -235,6 +241,22 @@ class MainBridge:
                                                     "ip": self.__mqtt_ip,
                                                     "port": self.__mqtt_port})
 
+    def __load_json_schemas(self):
+        self.__req_json_schemas = {}
+        relevant_files = [file for file in os.listdir('json_schemas')
+                          if os.path.isfile(file) and not file.startswith('api')]
+        for filename in relevant_files:
+            with open(os.path.join('json_schemas', filename)) as f:
+                data = json.load(f)
+                self.__req_json_schemas[filename] = data
+
+    def __verify_payload(self, schema: str, payload: dict) -> bool:
+        try:
+            validate(payload, self.__req_json_schemas[schema])
+        except ValidationError:
+            return False
+        return True
+
     def handle_request(self, req: Request):
         """Receives a request from the watcher Thread and handles it"""
         self.__received_requests += 1
@@ -248,9 +270,10 @@ class MainBridge:
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/heartbeat":
-            local_client = self.__get_or_create_client_from_request(req)
-            if local_client.needs_update():
-                self.__ask_for_update(local_client)
+            if self.__verify_payload('bridge_heartbeat_request.json', req.get_payload()):
+                local_client = self.__get_or_create_client_from_request(req)
+                if local_client.needs_update():
+                    self.__ask_for_update(local_client)
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
