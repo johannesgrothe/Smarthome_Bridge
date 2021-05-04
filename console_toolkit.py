@@ -333,7 +333,7 @@ if __name__ == '__main__':
         if ARGS.serial_port:
             serial_port = ARGS.serial_port
         else:
-            serial_port = '/dev/cu.SLAB_USBtoUART'
+            serial_port = '/dev/cu.usbserial-0001'
 
         if ARGS.serial_baudrate:
             serial_baudrate = ARGS.serial_baudrate
@@ -342,6 +342,7 @@ if __name__ == '__main__':
 
         try:
             network_gadget = SerialConnector(get_sender(), serial_port, serial_baudrate)
+            print("Connected to serial port {}@{}".format(serial_port, serial_baudrate))
         except (FileNotFoundError, serial.serialutil.SerialException) as e:
             print("Unable to connect to serial port '{}'".format(serial_port))
             sys.exit(1)

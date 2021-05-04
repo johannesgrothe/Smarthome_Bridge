@@ -123,7 +123,7 @@ class SerialConnector(NetworkConnector):
 if __name__ == '__main__':
     import sys
 
-    port = '/dev/cu.SLAB_USBtoUART'
+    port = '/dev/cu.usbserial-0001'
     baudrate = 115200
     try:
         network_gadget = SerialConnector("TesTeR", port, baudrate)

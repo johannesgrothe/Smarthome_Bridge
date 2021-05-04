@@ -11,6 +11,7 @@ from datetime import datetime
 from chip_flasher import get_serial_ports
 from bridge_threads import *
 from tools import system_tools, git_tools
+from jsonschema import validate, ValidationError
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
 from serial_connector import SerialConnector
@@ -31,7 +32,7 @@ def get_connected_chip_id(network: SerialConnector, sender: str) -> Optional[str
         {}
     )
 
-    responses = network.send_broadcast(broadcast_req, 5, 1)
+    responses = network.send_broadcast(broadcast_req, 5)
 
     if responses:
         return responses[0].get_sender()
@@ -46,14 +47,6 @@ def gen_req_id() -> int:
 def get_sender() -> str:
     """Returns the name used as sender (local hostname)"""
     return socket.gethostname()
-
-
-def check_dict_for_keys(check_dict: dict, key_list: [str]) -> bool:
-    """Checks if all given keys are included in the dict"""
-    for key in key_list:
-        if key not in check_dict:
-            return False
-    return True
 
 
 def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
@@ -93,6 +86,9 @@ class MainBridge:
 
     # Time the bridge was launched
     __time_launched: datetime
+
+    # Json schemas used to verify the requests
+    __req_json_schemas: dict
 
     # MQTT
     __mqtt_port: int
@@ -193,6 +189,8 @@ class MainBridge:
                                                        connector=self.__network_gadget)
         self.__mqtt_callback_thread.start()
 
+        self.__load_json_schemas()
+
         self.__lock = threading.Lock()
         print("Ok.")
 
@@ -235,6 +233,26 @@ class MainBridge:
                                                     "ip": self.__mqtt_ip,
                                                     "port": self.__mqtt_port})
 
+    def __load_json_schemas(self):
+        self.__req_json_schemas = {}
+        relevant_files = [file for file in os.listdir('json_schemas')
+                          if os.path.isfile(os.path.join('json_schemas', file))
+                          and not file.startswith('api')
+                          and file.endswith('json')]
+        for filename in relevant_files:
+            with open(os.path.join('json_schemas', filename)) as f:
+                data = json.load(f)
+                self.__req_json_schemas[filename] = data
+        return
+
+    def __verify_payload(self, schema: str, payload: dict) -> bool:
+        try:
+            validate(payload, self.__req_json_schemas[schema])
+        except ValidationError:
+            print("Payload verification failed")
+            return False
+        return True
+
     def handle_request(self, req: Request):
         """Receives a request from the watcher Thread and handles it"""
         self.__received_requests += 1
@@ -248,113 +266,102 @@ class MainBridge:
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/heartbeat":
-            local_client = self.__get_or_create_client_from_request(req)
-            if local_client.needs_update():
-                self.__ask_for_update(local_client)
+            if self.__verify_payload('bridge_heartbeat_request.json', req.get_payload()):
+                local_client = self.__get_or_create_client_from_request(req)
+                if local_client.needs_update():
+                    self.__ask_for_update(local_client)
+            return
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
+            if self.__verify_payload('bridge_sync_request.json', req.get_payload()):
 
-            local_client = self.__get_or_create_client_from_request(req)
+                local_client = self.__get_or_create_client_from_request(req)
 
-            all_keys_existing = check_dict_for_keys(req_pl, ["runtime_id", "gadgets", "port_mapping", "boot_mode"])
-            if not all_keys_existing:
-                print("Request is missing keys")
+                req_pl = fill_with_nones(req_pl, ["sw_uploaded", "sw_commit", "sw_branch"])
 
-            req_pl = fill_with_nones(req_pl, ["sw_uploaded", "sw_commit", "sw_branch"])
+                if not isinstance(req_pl["gadgets"], list):
+                    print("Gadget config in sync response was no list")
+                    return
 
-            if not isinstance(req_pl["gadgets"], list):
-                print("Gadget config in sync response was no list")
-                return
+                print("Received sync data from '{}'".format(local_client.get_name()))
 
-            print("Received sync data from '{}'".format(local_client.get_name()))
+                updated_gadgets: [str] = []
 
-            updated_gadgets: [str] = []
+                # Go over all gadgets and create or update them
+                for list_gadget in req_pl["gadgets"]:
 
-            # Go over all gadgets and create or update them
-            for list_gadget in req_pl["gadgets"]:
+                    # If a gadget fails, it fails. That's why theres a giant try block.
+                    try:
+                        g_name = list_gadget["name"]
+                        g_type = GadgetIdentifier(list_gadget["type"])
+                        g_characteristics = []
+                        for characteristic in list_gadget["characteristics"]:
+                            # Create new characteristic
+                            new_c = Characteristic(CharacteristicIdentifier(characteristic["type"]),
+                                                   characteristic["min"],
+                                                   characteristic["max"],
+                                                   characteristic["step"],
+                                                   characteristic["value"])
+                            # Save it
+                            g_characteristics.append(new_c)
 
-                # If a gadget fails, it fails. That's why theres a giant try block.
-                try:
-                    g_name = list_gadget["name"]
-                    g_type = GadgetIdentifier(list_gadget["type"])
-                    g_characteristics = []
-                    for characteristic in list_gadget["characteristics"]:
-                        # Create new characteristic
-                        new_c = Characteristic(CharacteristicIdentifier(characteristic["type"]),
-                                               characteristic["min"],
-                                               characteristic["max"],
-                                               characteristic["step"],
-                                               characteristic["value"])
-                        # Save it
-                        g_characteristics.append(new_c)
+                        # Get the gadget if there is already one in existence with the correct name
+                        buf_gadget: Optional[Gadget] = self.get_gadget(g_name)
+                        if buf_gadget is not None:
+                            # Update existing gadget
+                            print("Updating '{}'".format(buf_gadget.get_name()))
+                            buf_gadget.update_gadget_info(g_type,
+                                                          req.get_sender(),
+                                                          req_pl["runtime_id"],
+                                                          g_characteristics)
+                        else:
+                            # Create new gadget since there is no gadget with selected name
+                            print("Creating new '{}'".format(g_name))
+                            buf_gadget = Gadget(g_name,
+                                                g_type,
+                                                req.get_sender(),
+                                                req_pl["runtime_id"],
+                                                g_characteristics)
+                            self.add_gadget(buf_gadget)
 
-                    # Get the gadget if there is already one in existence with the correct name
-                    buf_gadget: Optional[Gadget] = self.get_gadget(g_name)
-                    if buf_gadget is not None:
-                        # Update existing gadget
-                        print("Updating '{}'".format(buf_gadget.get_name()))
-                        buf_gadget.update_gadget_info(g_type,
-                                                      req.get_sender(),
-                                                      req_pl["runtime_id"],
-                                                      g_characteristics)
-                    else:
-                        # Create new gadget since there is no gadget with selected name
-                        print("Creating new '{}'".format(g_name))
-                        buf_gadget = Gadget(g_name,
-                                            g_type,
-                                            req.get_sender(),
-                                            req_pl["runtime_id"],
-                                            g_characteristics)
-                        self.add_gadget(buf_gadget)
+                        # Save name of gadget to skip deletion
+                        updated_gadgets.append(buf_gadget.get_name())
 
-                    # Save name of gadget to skip deletion
-                    updated_gadgets.append(buf_gadget.get_name())
+                    except KeyError as e:
+                        print("Error syncing gadget:")
+                        print(e)
 
-                except KeyError as e:
-                    print("Error syncing gadget:")
-                    print(e)
+                deleted_gadgets = 0
 
-            deleted_gadgets = 0
+                for gadget in self.__gadgets:
+                    if gadget.get_host_client() == req.get_sender():
+                        if gadget.get_name() not in updated_gadgets:
+                            self.delete_gadget(gadget)
+                            deleted_gadgets += 1
 
-            for gadget in self.__gadgets:
-                if gadget.get_host_client() == req.get_sender():
-                    if gadget.get_name() not in updated_gadgets:
-                        self.delete_gadget(gadget)
-                        deleted_gadgets += 1
+                print("Updated {} Gadgets".format(len(updated_gadgets)))
+                print("Deleted {} Gadgets".format(deleted_gadgets))
 
-            print("Updated {} Gadgets".format(len(updated_gadgets)))
-            print("Deleted {} Gadgets".format(deleted_gadgets))
+                # Report update to client
+                local_client.update_data(req_pl["sw_uploaded"], req_pl["sw_commit"],
+                                         req_pl["sw_branch"], req_pl["port_mapping"],
+                                         req_pl["boot_mode"])
 
-            # Report update to client
-            local_client.update_data(req_pl["sw_uploaded"], req_pl["sw_commit"],
-                                     req_pl["sw_branch"], req_pl["port_mapping"],
-                                     req_pl["boot_mode"])
-
-            print("Update finished.")
+                print("Update finished.")
 
             return
 
         # Receive gadget characteristic update from client
         if req.get_path() == "smarthome/remotes/gadget/update":
-            if "name" not in req_pl:
-                print("No name in characteristic update message")
-                return
+            if self.__verify_payload('bridge_gadget_update_request.json', req.get_payload()):
 
-            if "characteristic" not in req_pl:
-                print("No characteristic in characteristic update message")
-                return
+                print("Received update for characteristic '{}' from '{}'".format(req_pl["name"],
+                                                                                 req_pl["characteristic"]))
 
-            if "value" not in req_pl:
-                print("No value in characteristic update message")
-                return
-
-            print("Received update for characteristic '{}' from '{}'".format(req_pl["name"],
-                                                                             req_pl["characteristic"]))
-
-            self.update_characteristic_from_client(req_pl["name"],
-                                                   CharacteristicIdentifier(req_pl["characteristic"]),
-                                                   req_pl["value"])
+                self.update_characteristic_from_client(req_pl["name"],
+                                                       CharacteristicIdentifier(req_pl["characteristic"]),
+                                                       req_pl["value"])
             return
 
     def flash_software(self, branch: str = "master", serial_port: str = "/dev/cu.SLAB_USBtoUART") -> (bool, str):
