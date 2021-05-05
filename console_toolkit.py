@@ -5,6 +5,7 @@ import socket
 import random
 import os
 import sys
+import logging
 from request import Request
 from gadgetlib import GadgetIdentifier, str_to_gadget_identifier, str_to_gadget_method
 from typing import Optional
@@ -312,6 +313,11 @@ def upload_gadget(client_name: str, upl_gadget: dict) -> (bool, Optional[str]):
 
 
 if __name__ == '__main__':
+
+    # logging.basicConfig(filename='output.log', level=logging.INFO)
+    logging.basicConfig(filename='logs/output.log',
+                        level=logging.INFO,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     network_gadget = None
 

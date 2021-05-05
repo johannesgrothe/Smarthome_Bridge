@@ -40,3 +40,4 @@ Smarthome_ESP32
 !/configs/example.json
 *.lock
 temp
+/logs/

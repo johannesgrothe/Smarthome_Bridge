@@ -1,31 +1,39 @@
 import json
+import logging
 from request import Request
 from typing import Optional
 from queue import Queue
 from datetime import datetime, timedelta
 from time import sleep
+from abc import abstractmethod, ABC, ABCMeta
 
 Req_Response = tuple[Optional[bool], Optional[Request]]
 
 
-class NetworkConnector:
+class NetworkConnector(metaclass=ABCMeta):
     """Class to implement an network interface prototype"""
 
-    _message_queue: Queue
+    _logger: logging.Logger
+    _message_queue: Queue  # TODO: Make private
     _request_validation_schema: dict
 
     __part_data: dict
 
     def __init__(self):
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.info(self.__class__.__name__)
+
         self._connected = False
         self._message_queue = Queue()
         self.__part_data = {}
         with open("json_schemas/request_basic_structure.json", "r") as f:
             self._request_validation_schema = json.load(f)
 
+    @abstractmethod
     def _send_data(self, req: Request):
         print(f"Not implemented: '_send_data'")
 
+    @abstractmethod
     def _receive_data(self) -> Optional[Request]:
         print(f"Not implemented: '_receive_data'")
         return None
@@ -33,13 +41,12 @@ class NetworkConnector:
     def get_request(self) -> Optional[Request]:
         """Returns a request if there is one"""
 
-        self.__receive()
-
         if not self._message_queue.empty():
             return self._message_queue.get()
         return None
 
-    def __receive(self):
+    def _receive(self):
+        """Tries to receive a new request from the network and adds it to the queue"""
         received_request = self._receive_data()
         if received_request:
             req_payload = received_request.get_payload()
@@ -182,6 +189,7 @@ class NetworkConnector:
             sleep(0.1)
         return False, None
 
+    @abstractmethod
     def connected(self) -> bool:
         print("!!Not implemented!!")
         return False

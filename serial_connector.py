@@ -1,4 +1,5 @@
-from network_connector import NetworkConnector, Request, Req_Response
+from network_connector import Request
+from network_connector_threaded import ThreadedNetworkConnector
 from typing import Optional
 import serial
 import re
@@ -6,7 +7,8 @@ import time
 import json
 from jsonschema import validate, ValidationError
 
-class SerialConnector(NetworkConnector):
+
+class SerialConnector(ThreadedNetworkConnector):
     """Class to implement a MQTT connection module"""
 
     __client: serial.Serial
@@ -15,16 +17,17 @@ class SerialConnector(NetworkConnector):
     __port: str
     __connected: bool
 
-    def __init__(self, own_name: str, port: str, baudrate: int):
+    def __init__(self, own_name: str, port: str, baud_rate: int):
         super().__init__()
         self.__own_name = own_name
-        self.__baud_rate = baudrate
+        self.__baud_rate = baud_rate
         self.__port = port
         try:
             self.__client = serial.Serial(port=self.__port, baudrate=self.__baud_rate, timeout=1)
             self.__connected = True
         except serial.serialutil.SerialException:
             pass
+        self._start_thread()
 
     def __del__(self):
         try:
@@ -34,8 +37,7 @@ class SerialConnector(NetworkConnector):
         print(f"Closing Serial Connection to '{self.__port}@{self.__baud_rate}'")
         pass
 
-    @staticmethod
-    def __decode_line(line) -> Optional[Request]:
+    def __decode_line(self, line) -> Optional[Request]:
         """Decodes a line and extracts a request if there is any"""
 
         if line[:3] == "!r_":
@@ -43,22 +45,22 @@ class SerialConnector(NetworkConnector):
             req_dict = {}
             for elem_type, val in elems:
                 if elem_type in req_dict:
-                    print("Double key in request: '{}'".format(elem_type))
+                    self._logger.warning("Double key in request: '{}'".format(elem_type))
                     return None
                 else:
                     req_dict[elem_type] = val
             for key in ["p", "b"]:
                 if key not in req_dict:
-                    print("Missig key in request: '{}'".format(key))
+                    self._logger.warning("Missing key in request: '{}'".format(key))
                     return None
             try:
                 json_body = json.loads(req_dict["b"])
 
                 try:
-                    validate(body, request_schema)
+                    validate(json_body, self._request_validation_schema)
                 except ValidationError:
-                    print("Could not decode Request, Possible Reasons:"
-                          "Missing key(s) in request, Illegal Values for keys")
+                    self._logger.warning("Could not decode Request, Possible Reasons:"
+                                         "Missing key(s) in request, Illegal Values for keys")
                     return None
 
                 out_req = Request(path=req_dict["p"],
@@ -71,17 +73,6 @@ class SerialConnector(NetworkConnector):
             except ValueError:
                 return None
         return None
-
-    def __send_serial(self, req: Request) -> bool:
-        """Sends a request on the serial port"""
-
-        json_str = json.dumps(req.get_body())
-
-        req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
-                                              json_str)
-        # print("Sending '{}'".format(req_line[:-1]))
-        self.__client.write(req_line.encode())
-        return True
 
     def __read_serial(self, timeout: int = 0, monitor_mode: bool = False) -> Optional[Request]:
         """Tries to read a line from the serial port"""
@@ -108,7 +99,15 @@ class SerialConnector(NetworkConnector):
                 return None
 
     def _send_data(self, req: Request):
-        self.__send_serial(req)
+        """Sends a request on the serial port"""
+
+        json_str = json.dumps(req.get_body())
+
+        req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
+                                              json_str)
+        # print("Sending '{}'".format(req_line[:-1]))
+        self.__client.write(req_line.encode())
+        return True
 
     def _receive_data(self) -> Optional[Request]:
         return self.__read_serial()
@@ -120,7 +119,7 @@ class SerialConnector(NetworkConnector):
         return self.__connected
 
 
-if __name__ == '__main__':
+def main():
     import sys
 
     port = '/dev/cu.usbserial-0001'
@@ -138,3 +137,7 @@ if __name__ == '__main__':
                       {"yolo": "blub"})
 
     network_gadget.send_request(buf_req)
+
+
+if __name__ == '__main__':
+    main()
