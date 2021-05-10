@@ -18,12 +18,14 @@ class ThreadedNetworkConnector(NetworkConnector, ABC):
 
     def __del__(self):
         self.__thread_running = False
+        self._logger.info("destr")
         self.__receive_thread.join()
 
     def _start_thread(self):
-        self.__receive_thread.run()
+        self.__receive_thread.start()
 
     def __receive_thread(self):
-        self._logger.info("Launching Receive Thread")
+        self._logger.info("Launching receive thread")
         while self.__thread_running:
             self._receive()
+        self._logger.info("Shutting down receive thread")

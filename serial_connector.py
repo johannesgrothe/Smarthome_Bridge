@@ -8,6 +8,11 @@ import json
 from jsonschema import validate, ValidationError
 
 
+class SerialConnectionFailedException(Exception):
+    def __init__(self):
+        super().__init__()
+
+
 class SerialConnector(ThreadedNetworkConnector):
     """Class to implement a MQTT connection module"""
 
@@ -24,12 +29,15 @@ class SerialConnector(ThreadedNetworkConnector):
         self.__port = port
         try:
             self.__client = serial.Serial(port=self.__port, baudrate=self.__baud_rate, timeout=1)
-            self.__connected = True
-        except serial.serialutil.SerialException:
-            pass
+        except (FileNotFoundError, serial.serialutil.SerialException) as e:
+            raise SerialConnectionFailedException
+        self.__connected = True
+
         self._start_thread()
 
     def __del__(self):
+        self._logger.info("destr33")
+        super().__del__()
         try:
             self.__client.close()
         except AttributeError:
@@ -78,25 +86,24 @@ class SerialConnector(ThreadedNetworkConnector):
         """Tries to read a line from the serial port"""
 
         timeout_time = time.time() + timeout
-        while True:
-            try:
-                ser_bytes = self.__client.readline().decode()
-                # if ser_bytes.startswith("!"):
-                # print("   -> {}".format(ser_bytes[:-1]))
-                if monitor_mode:
-                    print(ser_bytes[:-1])
-                else:
-                    if ser_bytes.startswith("Backtrace: 0x"):
-                        print("Client crashed with {}".format(ser_bytes[:-1]))
-                        return None
-                    read_buf_req = self.__decode_line(ser_bytes)
-                    if read_buf_req:
-                        return read_buf_req
-            except (FileNotFoundError, serial.serialutil.SerialException):
-                print("Lost connection to serial port")
-                return None
-            if (timeout > 0) and (time.time() > timeout_time):
-                return None
+        try:
+            ser_bytes = self.__client.readline().decode()
+            # if ser_bytes.startswith("!"):
+            # print("   -> {}".format(ser_bytes[:-1]))
+            if monitor_mode:
+                print(ser_bytes[:-1])
+            else:
+                if ser_bytes.startswith("Backtrace: 0x"):
+                    print("Client crashed with {}".format(ser_bytes[:-1]))
+                    return None
+                read_buf_req = self.__decode_line(ser_bytes)
+                if read_buf_req:
+                    return read_buf_req
+        except (FileNotFoundError, serial.serialutil.SerialException):
+            print("Lost connection to serial port")
+            return None
+        if (timeout > 0) and (time.time() > timeout_time):
+            return None
 
     def _send_data(self, req: Request):
         """Sends a request on the serial port"""

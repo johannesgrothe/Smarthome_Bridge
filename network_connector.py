@@ -21,13 +21,15 @@ class NetworkConnector(metaclass=ABCMeta):
 
     def __init__(self):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._logger.info(self.__class__.__name__)
 
         self._connected = False
         self._message_queue = Queue()
         self.__part_data = {}
         with open("json_schemas/request_basic_structure.json", "r") as f:
             self._request_validation_schema = json.load(f)
+
+    def __del__(self):
+        pass
 
     @abstractmethod
     def _send_data(self, req: Request):

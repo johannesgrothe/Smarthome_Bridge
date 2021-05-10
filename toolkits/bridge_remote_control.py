@@ -5,15 +5,30 @@ import sys
 import requests
 import json
 import gadgetlib
+import logging
+import random
+from abc import ABCMeta
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
+from serial_connector import SerialConnector
+from mqtt_connector import MQTTConnector
+from network_connector import NetworkConnector, Request
+from chip_flasher import get_serial_ports
+
+TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
+
+
+def gen_req_id() -> int:
+    """Generates a random Request ID"""
+
+    return random.randint(0, 1000000)
 
 
 def select_option(input_list: [str], category: Optional[str] = None, back_option: Optional[str] = None) -> int:
@@ -187,18 +202,120 @@ def format_string_len(in_data: str, length: int) -> str:
     return in_data + " " * (length - len(in_data))
 
 
+class ToolkitException(Exception):
+    def __init__(self):
+        super().__init__("ToolkitException")
+
+
+class DirectConnectionToolkit(metaclass=ABCMeta):
+    _client: Optional[NetworkConnector]
+    _client_name = Optional[str]
+
+    def __init__(self):
+        self._client = None
+
+    def __del__(self):
+        if self._client:
+            self._client.__del__()
+
+    def run(self):
+        self._client_name = self.connect_to_client()
+
+    def connect_to_client(self) -> Optional[str]:
+        """Scans for clients and lets the user select one if needed and possible."""
+
+        client_id = None
+
+        print("Please make sure your chip can receive serial requests")
+        client_list = self.scan_for_clients()
+
+        if len(client_list) == 0:
+            print("No client answered to broadcast")
+        elif len(client_list) > 1:
+            client_id = select_option(client_list, "client to connect to")
+        else:
+            client_id = client_list[0]
+            print("Connected to '{}'".format(client_id))
+        return client_id
+
+    def scan_for_clients(self) -> [str]:
+        """Sends a broadcast and waits for clients to answer"""
+
+        client_names = []
+        req = Request("smarthome/broadcast/req",
+                      gen_req_id(),
+                      TOOLKIT_NETWORK_NAME,
+                      None,
+                      {})
+
+        responses = self._client.send_broadcast(req)
+
+        for broadcast_res in responses:
+            client_names.append(broadcast_res.get_sender())
+
+        return client_names
+
+
+class DirectSerialConnectionToolkit(DirectConnectionToolkit):
+
+    _serial_port: str
+
+    def __init__(self, serial_port: str):
+        super().__init__()
+        self._serial_port = serial_port
+        self._client = SerialConnector(TOOLKIT_NETWORK_NAME,
+                                       self._serial_port,
+                                       115200)
+
+    def __del__(self):
+        super().__del__()
+
+
+class DirectMqttConnectionToolkit(DirectConnectionToolkit):
+    _mqtt_ip: str
+    _mqtt_port: int
+    _mqtt_username: Optional[str]
+    _mqtt_password: Optional[str]
+
+    def __init__(self, ip: str, port: int, username: Optional[str], password: Optional[str]):
+        super().__init__()
+        self._mqtt_ip = ip
+        self._mqtt_port = port
+        self._mqtt_username = username
+        self._mqtt_password = password
+
+        self._client = MQTTConnector("ConsoleToolkit",
+                                     self._mqtt_ip,
+                                     self._mqtt_port,
+                                     self._mqtt_username,
+                                     self._mqtt_password)
+        pass
+
+    def __del__(self):
+        super().__del__()
+
+
 if __name__ == '__main__':
     # Argument-parser
     parser = argparse.ArgumentParser(description='Script to upload configs to the controller')
     parser.add_argument('--connection_mode',
                         help='Use "bridge" to connect to bridge or "direct" to connect to chip directly',
                         type=str)
-    parser.add_argument('--bridge_socket_port', help='Port of the Socket Server', type=int)
-    parser.add_argument('--bridge_api_port', help='Port of the Socket Server', type=int)
-    parser.add_argument('--bridge_addr', help='Address of the Socket Server', type=str)
+    parser.add_argument('--bridge_socket_port', help='[Bridge] Port of the Socket Server', type=int)
+    parser.add_argument('--bridge_api_port', help='[Bridge] Port of the Socket Server', type=int)
+    parser.add_argument('--bridge_addr', help='[Bridge] Address of the Socket Server', type=str)
+    parser.add_argument('--serial_port', help='[Direct] Name of the serial port to use', type=str)
+    parser.add_argument('--mqtt_ip', help='[Direct] IP of the MQTT broker', type=str)
+    parser.add_argument('--mqtt_port', help='[Direct] Port of the MQTT broker', type=int)
+    parser.add_argument('--mqtt_user', help='[Direct] Username to access the MQTT broker', type=str)
+    parser.add_argument('--mqtt_pw', help='[Direct] Password to access the MQTT broker', type=str)
+    parser.add_argument('--debug', help='Activates the Debug Logger', action='store_true')
     ARGS = parser.parse_args()
 
     print("Launching...")
+
+    if ARGS.debug:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     if ARGS.connection_mode:
         connection_mode = ARGS.connection_mode
@@ -542,7 +659,70 @@ if __name__ == '__main__':
                 sys.exit(0)
 
     elif connection_mode == "direct":
-        print("Local connection not yet supported")
-        sys.exit(1)
+        toolkit_instance: DirectConnectionToolkit
+        if ARGS.serial_port:
+            print("Using serial port provided by program argument")
+            try:
+                toolkit_instance = DirectSerialConnectionToolkit(ARGS.serial_port)
+            except ToolkitException:
+                sys.exit(1)
+
+        elif ARGS.mqtt_ip:
+            print("Using mqtt config provided by program argument")
+            username = None
+            password = None
+            if ARGS.mqtt_user:
+                username = ARGS.mqtt_user
+            if ARGS.mqtt_pw:
+                password = ARGS.mqtt_pw
+            try:
+                toolkit_instance = DirectMqttConnectionToolkit(
+                    ARGS.mqtt_ip,
+                    ARGS.mqtt_port,
+                    username,
+                    password
+                )
+            except ToolkitException:
+                sys.exit(1)
+        else:
+            print("How do you want to connect to the Client?")
+            connection_type = select_option(["serial", "mqtt"], "how to connect to the Client", "Quit")
+            if connection_type == -1:
+                sys.exit(0)
+            if connection_type == 0:  # Serial
+                serial_ports = get_serial_ports()
+                serial_port_index = connection_type = select_option(serial_ports, "Serial Port", "Quit")
+                if serial_port_index == -1:
+                    sys.exit(0)
+                serial_port = serial_ports[serial_port_index]
+
+                try:
+                    toolkit_instance = DirectSerialConnectionToolkit(serial_port)
+                except ToolkitException:
+                    sys.exit(1)
+            elif connection_type == 1:  # MQTT
+                ip = input("Please enter the IP Address of the MQTT Broker\n")
+                port = int(input("Please enter the Port of the MQTT Broker\n"))
+
+                username = input("Please enter the Username of the MQTT Broker. Leave Empty if there isn't any.\n")
+
+                if username:
+                    password = input("Please enter the Password of the MQTT Broker. Leave Empty if there isn't any.\n")
+                    if not password:
+                        password = None
+                else:
+                    username = None
+                    password = None
+
+                try:
+                    toolkit_instance = DirectMqttConnectionToolkit(ip, port, username, password)
+                except ToolkitException:
+                    sys.exit(1)
+
+        try:
+            toolkit_instance.run()
+            toolkit_instance.__del__()
+        except ToolkitException:
+            sys.exit(1)
 
     print("Quitting...")

@@ -89,7 +89,7 @@ def get_sender() -> str:
     return socket.gethostname()
 
 
-def scan_for_clients() -> [str]:
+def scan_for_clients(network_gadget) -> [str]:
     """Sends a broadcast and waits for clients to answer\
      Needs a global NetworkConnector named 'network_gadget'"""
 
@@ -189,14 +189,14 @@ def select_config() -> Optional[dict]:
     return valid_configs[cfg_i]
 
 
-def connect_to_client() -> Optional[str]:
+def connect_to_client(network_gadget) -> Optional[str]:
     """Scans for clients and lets the user select one if needed and possible.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
     client_id = None
 
     print("Please make sure your chip can receive serial requests")
-    client_list = scan_for_clients()
+    client_list = scan_for_clients(network_gadget)
 
     if len(client_list) == 0:
         print("No client answered to broadcast")
@@ -312,11 +312,14 @@ def upload_gadget(client_name: str, upl_gadget: dict) -> (bool, Optional[str]):
                                                 network_gadget)
 
 
-if __name__ == '__main__':
+def main():
+    # TODO: Turn console toolkit into a class
 
-    # logging.basicConfig(filename='output.log', level=logging.INFO)
-    logging.basicConfig(filename='logs/output.log',
-                        level=logging.INFO,
+    # logging.basicConfig(filename='logs/output.log',
+    #                     level=logging.INFO,
+    #                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     network_gadget = None
@@ -351,12 +354,12 @@ if __name__ == '__main__':
             print("Connected to serial port {}@{}".format(serial_port, serial_baudrate))
         except (FileNotFoundError, serial.serialutil.SerialException) as e:
             print("Unable to connect to serial port '{}'".format(serial_port))
-            sys.exit(1)
+            return False
 
         if ARGS.monitor_mode:
             if network_gadget is not None:
                 network_gadget.monitor()
-                sys.exit(0)
+                return True
 
     else:
         if ARGS.mqtt_port:
@@ -367,7 +370,7 @@ if __name__ == '__main__':
                 mqtt_port = int(var)
             except ValueError:
                 print("Illegal Port")
-                sys.exit(1)
+                return False
 
         if ARGS.mqtt_ip:
             mqtt_ip = ARGS.mqtt_ip
@@ -378,13 +381,13 @@ if __name__ == '__main__':
             network_gadget = MQTTConnector(get_sender(), mqtt_ip, mqtt_port)
         except (FileNotFoundError, serial.serialutil.SerialException) as e:
             print("Unable to connect to mqtt server '{}:{}'".format(mqtt_ip, mqtt_port))
-            sys.exit(1)
+            return False
 
-    CLIENT_NAME = connect_to_client()
+    CLIENT_NAME = connect_to_client(network_gadget)
 
     if not CLIENT_NAME:
         print("Could not establish a connection to a client")
-        sys.exit(1)
+        return False
 
     print()
 
@@ -417,7 +420,7 @@ if __name__ == '__main__':
 
     if CONFIG_FILE is None:
         print("No config could be loaded")
-        sys.exit(1)
+        return False
     else:
         print("Config '{}' was loaded".format(CONFIG_FILE["name"]))
     print()
@@ -466,3 +469,7 @@ if __name__ == '__main__':
         print("[✓] Rebooting client was successful")
     else:
         print("[×] Rebooting failed, please reboot manually if necessary")
+
+
+if __name__ == '__main__':
+    main()

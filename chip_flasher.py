@@ -40,6 +40,7 @@ __ram_usage_code = 14
 
 
 def get_serial_ports() -> [str]:
+    """Returns a list of all serial ports available to the system"""
     detected_ports = os.popen(f"ls /dev/tty*").read().strip("\n").split()
     valid_ports = []
     for port in detected_ports:
