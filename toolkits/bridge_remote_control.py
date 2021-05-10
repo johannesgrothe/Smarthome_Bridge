@@ -7,6 +7,8 @@ import json
 import gadgetlib
 import logging
 import random
+import time
+from jsonschema import validate, ValidationError
 from abc import ABCMeta
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
@@ -17,12 +19,48 @@ from network_connector import NetworkConnector, Request
 from chip_flasher import get_serial_ports
 
 TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
+TOOLKIT_DIRECT_TASK_OPTIONS = ["Overwrite EEPROM", "Write Config"]
 
 CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
+
+
+def ask_for_continue(message: str) -> bool:
+    """Asks the user if he wishes to continue."""
+    while True:
+        print(f"{message} [y/n]")
+        res = input().strip().lower()
+        if res == "y":
+            return True
+        elif res == "n":
+            return False
+        print("Illegal Input, please try again.")
+
+
+def enter_file_path() -> Optional[str]:
+    """Asks the User to enter a file path. Returns None if the input is no valid file path."""
+    print("Please enter the path to the file or drag it into the terminal window:")
+    f_path = input()
+    if not f_path or not os.path.isfile(f_path):
+        return None
+    return f_path
+
+
+def load_config(path: str) -> Optional[dict]:
+    """Loads a config from the disk and validates it. Returns None on Error."""
+    try:
+        json_schema: dict = {}
+        with open(os.path.join("json_schemas", "client_config.json")) as file_h:
+            json_schema = json.load(file_h)
+        with open(path) as file_h:
+            config_data = json.load(file_h)
+            validate(config_data, json_schema)
+            return config_data
+    except (OSError, IOError, ValidationError):
+        return None
 
 
 def gen_req_id() -> int:
@@ -209,24 +247,61 @@ class ToolkitException(Exception):
 
 class DirectConnectionToolkit(metaclass=ABCMeta):
     _client: Optional[NetworkConnector]
-    _client_name = Optional[str]
+    _client_name: Optional[str]
 
     def __init__(self):
         self._client = None
+        self._client_name = None
 
     def __del__(self):
         if self._client:
             self._client.__del__()
 
     def run(self):
-        self._client_name = self.connect_to_client()
+        # Wait for all chips to be alive
+        time.sleep(5)
+
+        while True:
+            print("Please make sure your chip can receive serial requests")
+            while not self._client_name:
+                self._client_name = self.connect_to_client()
+                if not self._client_name:
+                    response = ask_for_continue("Could not find any gadget. Try again?")
+                    if not response:
+                        return
+
+            print("Connected to '{}'".format(self._client_name))
+
+            task_option = TOOLKIT_DIRECT_TASK_OPTIONS[select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do")]
+            if task_option == "Reset EEPROM":
+                print("Option not yet implemented")
+                continue
+            elif task_option == "Write Config":
+                config_path: Optional[str]
+                config_data: Optional[dict] = None
+                while not config_data:
+                    config_path = enter_file_path()
+                    if not config_path:
+                        response = ask_for_continue("Entered invalid config path. Try again?")
+                        if not response:
+                            return
+                        continue
+
+                    config_data = load_config(config_path)
+                    if not config_data:
+                        response = ask_for_continue("Config file could either not be loaded, isn no valid json file or"
+                                                    "no valid config. Try again?")
+                        if not response:
+                            return
+                        continue
+
+                print(f"Loaded config '{config_data['name']}'")
 
     def connect_to_client(self) -> Optional[str]:
         """Scans for clients and lets the user select one if needed and possible."""
 
         client_id = None
 
-        print("Please make sure your chip can receive serial requests")
         client_list = self.scan_for_clients()
 
         if len(client_list) == 0:
@@ -235,7 +310,6 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
             client_id = select_option(client_list, "client to connect to")
         else:
             client_id = client_list[0]
-            print("Connected to '{}'".format(client_id))
         return client_id
 
     def scan_for_clients(self) -> [str]:
@@ -315,7 +389,8 @@ if __name__ == '__main__':
     print("Launching...")
 
     if ARGS.debug:
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        print("Activated Debug Logging")
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     if ARGS.connection_mode:
         connection_mode = ARGS.connection_mode
@@ -557,10 +632,8 @@ if __name__ == '__main__':
 
                 if last_data["status"] == 0:  # TODO: make use of new status codes
                     print("Flashing Software was successful")
-                elif last_data["status"] != 0:
-                    print("Flashing Software failed")
                 else:
-                    print("[Script Error] Problem in flashing status detection")
+                    print("Flashing Software failed")
 
             elif task_option == 1:
                 # Write config to chip

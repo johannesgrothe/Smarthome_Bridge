@@ -88,13 +88,14 @@ class SerialConnector(ThreadedNetworkConnector):
         timeout_time = time.time() + timeout
         try:
             ser_bytes = self.__client.readline().decode()
-            # if ser_bytes.startswith("!"):
-            # print("   -> {}".format(ser_bytes[:-1]))
+            message = ser_bytes[:-1]
+            if message:
+                self._logger.debug(f"Received: {message}")
             if monitor_mode:
-                print(ser_bytes[:-1])
+                print(message)
             else:
-                if ser_bytes.startswith("Backtrace: 0x"):
-                    print("Client crashed with {}".format(ser_bytes[:-1]))
+                if message.startswith("Backtrace: 0x"):
+                    print("Client crashed with {}".format(message))
                     return None
                 read_buf_req = self.__decode_line(ser_bytes)
                 if read_buf_req:
@@ -112,7 +113,7 @@ class SerialConnector(ThreadedNetworkConnector):
 
         req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
                                               json_str)
-        # print("Sending '{}'".format(req_line[:-1]))
+        self._logger.debug("Sending: {}".format(req_line[:-1]))
         self.__client.write(req_line.encode())
         return True
 
