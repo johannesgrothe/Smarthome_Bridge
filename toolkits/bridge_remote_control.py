@@ -272,11 +272,34 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
 
             print("Connected to '{}'".format(self._client_name))
 
-            task_option = TOOLKIT_DIRECT_TASK_OPTIONS[select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do")]
-            if task_option == "Reset EEPROM":
-                print("Option not yet implemented")
+            task_option = select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do", "Quit")
+
+            if task_option == -1:
+                break
+
+            elif task_option == 0:  # Overwrite EEPROM
+                print("Requesting EEPROM to be overwritten...")
+
+                reset_req = Request("smarthome/config/reset",
+                                    gen_req_id(),
+                                    TOOLKIT_NETWORK_NAME,
+                                    self._client_name,
+                                    {"reset_option": "erase"})
+
+                (ack, res) = self._client.send_request_split(reset_req)
+
+                if ack is None:
+                    print("Received no Response to Reset Request")
+                    continue
+
+                if ack is False:
+                    print("Failed to reset EEPROM")
+                    continue
+
+                print("Config was successfully erased")
                 continue
-            elif task_option == "Write Config":
+
+            elif task_option == 1:  # Write Config
                 config_path: Optional[str]
                 config_data: Optional[dict] = None
                 while not config_data:
@@ -285,7 +308,8 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
                         response = ask_for_continue("Entered invalid config path. Try again?")
                         if not response:
                             return
-                        continue
+                        else:
+                            continue
 
                     config_data = load_config(config_path)
                     if not config_data:
@@ -293,15 +317,34 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
                                                     "no valid config. Try again?")
                         if not response:
                             return
-                        continue
+                        else:
+                            continue
 
                 print(f"Loaded config '{config_data['name']}'")
+
+                config_req = Request("smarthome/config/write",
+                                     gen_req_id(),
+                                     TOOLKIT_NETWORK_NAME,
+                                     self._client_name,
+                                     {"config": config_data})
+
+                (ack, res) = self._client.send_request(config_req)
+
+                if ack is None:
+                    print("Received no Response to Reset Request")
+                    continue
+
+                if ack is False:
+                    print("Failed to reset EEPROM")
+                    continue
+
+                print("Config was successfully erased")
+                continue
 
     def connect_to_client(self) -> Optional[str]:
         """Scans for clients and lets the user select one if needed and possible."""
 
         client_id = None
-
         client_list = self.scan_for_clients()
 
         if len(client_list) == 0:

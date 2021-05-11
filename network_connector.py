@@ -109,9 +109,6 @@ class NetworkConnector(metaclass=ABCMeta):
             timeout_time = datetime.now() + timedelta(seconds=timeout)
             checked_requests_list = Queue()
             while datetime.now() < timeout_time:
-
-                self.__receive()
-
                 if not self._message_queue.empty():
                     res: Request = self._message_queue.get()
                     if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
