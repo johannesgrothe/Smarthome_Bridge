@@ -12,7 +12,7 @@
       "type": "string"
     },
     "receiver": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "session_id": {
       "type": "integer",

@@ -1,4 +1,7 @@
-from network_connector import NetworkConnector, Request, Req_Response
+import logging
+
+from network_connector import NetworkConnector, Request
+from network_connector_threaded import ThreadedNetworkConnector
 from typing import Optional
 from queue import Queue
 import paho.mqtt.client as mqtt
@@ -7,15 +10,7 @@ import json
 from jsonschema import validate, ValidationError
 
 
-def connect_callback(client, userdata, flags, reason_code, properties=None):
-    print("MQTT connected.")
-
-
-def disconnect_callback(client, userdata, reason_code, properties=None):
-    print("MQTT disconnected.")
-
-
-class MQTTConnector(NetworkConnector):
+class MQTTConnector(ThreadedNetworkConnector):
     """Class to implement a MQTT connection module"""
 
     __client: mqtt.Client
@@ -43,9 +38,11 @@ class MQTTConnector(NetworkConnector):
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
-            self.__client.on_message = self.generate_callback(self.__buf_queue, self._request_validation_schema)
-            self.__client.on_disconnect = disconnect_callback
-            self.__client.on_connect = connect_callback
+            self.__client.on_message = self.generate_callback(self.__buf_queue,
+                                                              self._request_validation_schema,
+                                                              self._logger)
+            self.__client.on_disconnect = self.generate_disconnect_callback(self._logger)
+            self.__client.on_connect = self.generate_connect_callback(self._logger)
 
             try:
                 self.__client.connect(self.__ip, self.__port, 10)
@@ -54,15 +51,17 @@ class MQTTConnector(NetworkConnector):
 
             self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
+            self._start_thread()
 
         except ConnectionRefusedError as err:
             print(err)
 
     def __del__(self):
+        super().__del__()
         self.__client.disconnect()
 
     @staticmethod
-    def generate_callback(request_queue: Queue, request_schema: dict):
+    def generate_callback(request_queue: Queue, request_schema: dict, logger: logging.Logger):
         """Generates a callback with captured queue"""
 
         def buf_callback(client, userdata, message):
@@ -72,19 +71,19 @@ class MQTTConnector(NetworkConnector):
             try:
                 json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
             except UnicodeDecodeError:
-                print("Couldn't format json string")
+                logger.warning("Couldn't format json string")
                 return
 
             try:
                 body = json.loads(json_str)
             except json.decoder.JSONDecodeError:
-                print("Couldn't decode json: '{}'".format(json_str))
+                logger.warning("Couldn't decode json: '{}'".format(json_str))
                 return
 
             try:
                 validate(body, request_schema)
             except ValidationError:
-                print("Could not decode Request, Possible Reasons: Missing key(s) in request, Illegal Values for keys")
+                logger.warning("Could not decode Request, Schema Validation failed.")
 
             try:
                 inc_req = Request(topic,
@@ -97,10 +96,26 @@ class MQTTConnector(NetworkConnector):
                 request_queue.put(inc_req)
 
             except ValueError:
-                print("Error creating Request")
+                logger.error("Error creating Request")
 
         # Return closured callback
         return buf_callback
+
+    @staticmethod
+    def generate_connect_callback(logger: logging.Logger):
+
+        def connect_callback(client, userdata, flags, reason_code, properties=None):
+            logger.info("MQTT connected.")
+
+        return connect_callback
+
+    @staticmethod
+    def generate_disconnect_callback(logger: logging.Logger):
+
+        def disconnect_callback(client, userdata, flags, reason_code, properties=None):
+            logger.info("MQTT disconnected.")
+
+        return disconnect_callback
 
     def _receive_data(self) -> Optional[Request]:
         if not self.__buf_queue.empty():
@@ -109,20 +124,6 @@ class MQTTConnector(NetworkConnector):
 
     def _send_data(self, req: Request):
         self.__client.publish(req.get_path(), json.dumps(req.get_body()))
-
-    def send_broadcast(self, req: Request, timeout: int = 6) -> [Request]:
-
-        responses: [Request] = []
-        json_str = json.dumps(req.get_body())
-        self.__client.publish(req.get_path(), json_str)
-        timeout_time = time.time() + timeout
-        while time.time() < timeout_time:
-            if not self._message_queue.empty():
-                res: Request = self._message_queue.get()
-                # print("Got from Queue: {}".format(res.to_string()))
-                if res.get_path() == "smarthome/broadcast/res" and res.get_session_id() == req.get_session_id():
-                    responses.append(res)
-        return responses
 
     def connected(self) -> bool:
         return self.__client.is_connected()

@@ -292,40 +292,8 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
             self._client.__del__()
 
     def run(self):
-        # Wait for all chips to be alive
-
-        print("Waiting for Clients to boot up")
-        load = LoadingIndicator()
-        load.run()
-        time.sleep(5)
-        load.stop()
-
-        print("Please make sure your chip can receive serial requests")
-        while not self._client_name:
-            load.run()
-            self._client_name = self._connect_to_client()
-            load.stop()
-            if not self._client_name:
-                response = ask_for_continue("Could not find any gadget. Try again?")
-                if not response:
-                    return
-
-        while True:
-
-            print("Connected to '{}'".format(self._client_name))
-
-            task_option = select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do", "Quit")
-
-            if task_option == -1:
-                break
-
-            elif task_option == 0:  # Overwrite EEPROM
-                self._erase_config()
-                continue
-
-            elif task_option == 1:  # Write Config
-                self._write_config()
-                continue
+        """Runs the toolkit, accepting user inputs and executing the selcted tasks"""
+        pass
 
     def _erase_config(self):
         print()
@@ -393,23 +361,32 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
 
         print("Config was successfully written\n")
 
-    def _connect_to_client(self) -> Optional[str]:
+    def _connect_to_client(self):
         """Scans for clients and lets the user select one if needed and possible."""
+        while not self._client_name:
+            load = LoadingIndicator()
+            load.run()
+            client_id = None
+            client_list = self._scan_for_clients()
 
-        client_id = None
-        client_list = self._scan_for_clients()
-
-        if len(client_list) == 0:
-            print("No client answered to broadcast")
-        elif len(client_list) > 1:
-            client_id = select_option(client_list, "client to connect to")
-        else:
-            client_id = client_list[0]
-        return client_id
+            if len(client_list) == 0:
+                print("No client answered to broadcast")
+            elif len(client_list) > 1:
+                client_id = select_option(client_list, "client to connect to")
+            else:
+                client_id = client_list[0]
+            self._client_name = client_id
+            load.stop()
+            if not self._client_name:
+                response = ask_for_continue("Could not find any gadget. Try again?")
+                if not response:
+                    raise ToolkitException
 
     @abstractmethod
     def _scan_for_clients(self) -> [str]:
-        """Sends a broadcast and waits for clients to answer"""
+        """Sends a broadcast and waits for clients to answer.
+
+        Returns a list containing the names of all available clients."""
         pass
 
 
@@ -426,6 +403,35 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
 
     def __del__(self):
         super().__del__()
+
+    def run(self):
+
+        # Wait for all chips to be alive
+        print("Waiting for Clients to boot up")
+        load = LoadingIndicator()
+        load.run()
+        time.sleep(5)
+        load.stop()
+
+        print("Please make sure your chip can receive serial requests")
+        self._connect_to_client()
+
+        while True:
+
+            print("Connected to '{}'".format(self._client_name))
+
+            task_option = select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do", "Quit")
+
+            if task_option == -1:
+                break
+
+            elif task_option == 0:  # Overwrite EEPROM
+                self._erase_config()
+                continue
+
+            elif task_option == 1:  # Write Config
+                self._write_config()
+                continue
 
     def _scan_for_clients(self) -> [str]:
         req = Request("smarthome/broadcast/req",
@@ -465,6 +471,26 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
 
     def __del__(self):
         super().__del__()
+
+    def run(self):
+        self._connect_to_client()
+
+        while True:
+
+            print("Connected to '{}'".format(self._client_name))
+
+            task_option = select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do", "Quit")
+
+            if task_option == -1:
+                break
+
+            elif task_option == 0:  # Overwrite EEPROM
+                self._erase_config()
+                continue
+
+            elif task_option == 1:  # Write Config
+                self._write_config()
+                continue
 
     def _scan_for_clients(self) -> [str]:
         req = Request("smarthome/broadcast/req",
