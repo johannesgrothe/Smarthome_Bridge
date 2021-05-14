@@ -2,6 +2,8 @@ import os
 import socket
 import argparse
 import sys
+import threading
+
 import requests
 import json
 import gadgetlib
@@ -9,14 +11,14 @@ import logging
 import random
 import time
 from jsonschema import validate, ValidationError
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
 from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 from network_connector import NetworkConnector, Request
-from chip_flasher import get_serial_ports
+from chip_flasher import get_serial_ports, flash_chip
 
 TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
 TOOLKIT_DIRECT_TASK_OPTIONS = ["Overwrite EEPROM", "Write Config"]
@@ -26,6 +28,38 @@ DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
+
+
+class LoadingIndicator:
+
+    _running: bool
+    _run_thread: Optional[threading.Thread]
+
+    def __init__(self):
+        self._running = False
+        self._run_thread = None
+
+    def _thread_runner(self):
+        while self._running:
+            print(".", end="")
+            time.sleep(0.25)
+
+    def _stop_thread(self):
+        self._running = False
+        if self._run_thread:
+            self._run_thread.join()
+
+    def run(self):
+        self._stop_thread()
+
+        print("[", end="")
+        self._running = True
+        self._run_thread = threading.Thread(target=self._thread_runner)
+        self._run_thread.start()
+
+    def stop(self):
+        print("]")
+        self._stop_thread()
 
 
 def ask_for_continue(message: str) -> bool:
@@ -259,16 +293,24 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
 
     def run(self):
         # Wait for all chips to be alive
+
+        print("Waiting for Clients to boot up")
+        load = LoadingIndicator()
+        load.run()
         time.sleep(5)
+        load.stop()
+
+        print("Please make sure your chip can receive serial requests")
+        while not self._client_name:
+            load.run()
+            self._client_name = self._connect_to_client()
+            load.stop()
+            if not self._client_name:
+                response = ask_for_continue("Could not find any gadget. Try again?")
+                if not response:
+                    return
 
         while True:
-            print("Please make sure your chip can receive serial requests")
-            while not self._client_name:
-                self._client_name = self.connect_to_client()
-                if not self._client_name:
-                    response = ask_for_continue("Could not find any gadget. Try again?")
-                    if not response:
-                        return
 
             print("Connected to '{}'".format(self._client_name))
 
@@ -278,74 +320,84 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
                 break
 
             elif task_option == 0:  # Overwrite EEPROM
-                print("Requesting EEPROM to be overwritten...")
-
-                reset_req = Request("smarthome/config/reset",
-                                    gen_req_id(),
-                                    TOOLKIT_NETWORK_NAME,
-                                    self._client_name,
-                                    {"reset_option": "erase"})
-
-                (ack, res) = self._client.send_request_split(reset_req)
-
-                if ack is None:
-                    print("Received no Response to Reset Request")
-                    continue
-
-                if ack is False:
-                    print("Failed to reset EEPROM")
-                    continue
-
-                print("Config was successfully erased")
+                self._erase_config()
                 continue
 
             elif task_option == 1:  # Write Config
-                config_path: Optional[str]
-                config_data: Optional[dict] = None
-                while not config_data:
-                    config_path = enter_file_path()
-                    if not config_path:
-                        response = ask_for_continue("Entered invalid config path. Try again?")
-                        if not response:
-                            return
-                        else:
-                            continue
-
-                    config_data = load_config(config_path)
-                    if not config_data:
-                        response = ask_for_continue("Config file could either not be loaded, isn no valid json file or"
-                                                    "no valid config. Try again?")
-                        if not response:
-                            return
-                        else:
-                            continue
-
-                print(f"Loaded config '{config_data['name']}'")
-
-                config_req = Request("smarthome/config/write",
-                                     gen_req_id(),
-                                     TOOLKIT_NETWORK_NAME,
-                                     self._client_name,
-                                     {"config": config_data})
-
-                (ack, res) = self._client.send_request(config_req)
-
-                if ack is None:
-                    print("Received no Response to Reset Request")
-                    continue
-
-                if ack is False:
-                    print("Failed to reset EEPROM")
-                    continue
-
-                print("Config was successfully erased")
+                self._write_config()
                 continue
 
-    def connect_to_client(self) -> Optional[str]:
+    def _erase_config(self):
+        print()
+        print("Overwriting EEPROM:")
+
+        reset_req = Request("smarthome/config/reset",
+                            gen_req_id(),
+                            TOOLKIT_NETWORK_NAME,
+                            self._client_name,
+                            {"reset_option": "erase"})
+
+        (ack, res) = self._client.send_request(reset_req)
+
+        if ack is None:
+            print("Received no Response to Reset Request\n")
+            return
+
+        if ack is False:
+            print("Failed to reset EEPROM\n")
+            return
+
+        print("Config was successfully erased\n")
+
+    def _write_config(self):
+        config_path: Optional[str]
+        config_data: Optional[dict] = None
+        while not config_data:
+            config_path = enter_file_path()
+            if not config_path:
+                response = ask_for_continue("Entered invalid config path. Try again?")
+                if not response:
+                    return
+                else:
+                    continue
+
+            config_data = load_config(config_path)
+            if not config_data:
+                response = ask_for_continue("Config file could either not be loaded, isn no valid json file or"
+                                            "no valid config. Try again?")
+                if not response:
+                    return
+                else:
+                    continue
+
+        print(f"Loaded config '{config_data['name']}'")
+        print()
+        print("Writing config:")
+        config_req = Request("smarthome/config/write",
+                             gen_req_id(),
+                             TOOLKIT_NETWORK_NAME,
+                             self._client_name,
+                             {"config": config_data})
+        load = LoadingIndicator()
+        load.run()
+        (ack, res) = self._client.send_request_split(config_req, timeout=15)
+        load.stop()
+
+        if ack is None:
+            print("Received no Response to write Config Request\n")
+            return
+
+        if ack is False:
+            print("Failed to write Config\n")
+            return
+
+        print("Config was successfully written\n")
+
+    def _connect_to_client(self) -> Optional[str]:
         """Scans for clients and lets the user select one if needed and possible."""
 
         client_id = None
-        client_list = self.scan_for_clients()
+        client_list = self._scan_for_clients()
 
         if len(client_list) == 0:
             print("No client answered to broadcast")
@@ -355,22 +407,10 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
             client_id = client_list[0]
         return client_id
 
-    def scan_for_clients(self) -> [str]:
+    @abstractmethod
+    def _scan_for_clients(self) -> [str]:
         """Sends a broadcast and waits for clients to answer"""
-
-        client_names = []
-        req = Request("smarthome/broadcast/req",
-                      gen_req_id(),
-                      TOOLKIT_NETWORK_NAME,
-                      None,
-                      {})
-
-        responses = self._client.send_broadcast(req)
-
-        for broadcast_res in responses:
-            client_names.append(broadcast_res.get_sender())
-
-        return client_names
+        pass
 
 
 class DirectSerialConnectionToolkit(DirectConnectionToolkit):
@@ -386,6 +426,21 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
 
     def __del__(self):
         super().__del__()
+
+    def _scan_for_clients(self) -> [str]:
+        req = Request("smarthome/broadcast/req",
+                      gen_req_id(),
+                      TOOLKIT_NETWORK_NAME,
+                      None,
+                      {})
+
+        responses = self._client.send_broadcast(req)
+
+        client_names = []
+        for broadcast_res in responses:
+            client_names.append(broadcast_res.get_sender())
+
+        return client_names
 
 
 class DirectMqttConnectionToolkit(DirectConnectionToolkit):
@@ -410,6 +465,21 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
 
     def __del__(self):
         super().__del__()
+
+    def _scan_for_clients(self) -> [str]:
+        req = Request("smarthome/broadcast/req",
+                      gen_req_id(),
+                      TOOLKIT_NETWORK_NAME,
+                      None,
+                      {})
+
+        responses = self._client.send_broadcast(req)
+
+        client_names = []
+        for broadcast_res in responses:
+            client_names.append(broadcast_res.get_sender())
+
+        return client_names
 
 
 if __name__ == '__main__':
@@ -803,8 +873,10 @@ if __name__ == '__main__':
         else:
             print("How do you want to connect to the Client?")
             connection_type = select_option(["serial", "mqtt"], "how to connect to the Client", "Quit")
-            if connection_type == -1:
+
+            if connection_type == -1:  # Quit
                 sys.exit(0)
+
             if connection_type == 0:  # Serial
                 serial_ports = get_serial_ports()
                 serial_port_index = connection_type = select_option(serial_ports, "Serial Port", "Quit")
@@ -816,6 +888,7 @@ if __name__ == '__main__':
                     toolkit_instance = DirectSerialConnectionToolkit(serial_port)
                 except ToolkitException:
                     sys.exit(1)
+
             elif connection_type == 1:  # MQTT
                 ip = input("Please enter the IP Address of the MQTT Broker\n")
                 port = int(input("Please enter the Port of the MQTT Broker\n"))
@@ -834,6 +907,9 @@ if __name__ == '__main__':
                     toolkit_instance = DirectMqttConnectionToolkit(ip, port, username, password)
                 except ToolkitException:
                     sys.exit(1)
+
+            else:  # Error
+                sys.exit(1)
 
         try:
             toolkit_instance.run()

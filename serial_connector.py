@@ -36,7 +36,6 @@ class SerialConnector(ThreadedNetworkConnector):
         self._start_thread()
 
     def __del__(self):
-        self._logger.info("destr33")
         super().__del__()
         try:
             self.__client.close()
@@ -101,7 +100,10 @@ class SerialConnector(ThreadedNetworkConnector):
                 if read_buf_req:
                     return read_buf_req
         except (FileNotFoundError, serial.serialutil.SerialException):
-            print("Lost connection to serial port")
+            self._logger.error("Lost connection to serial ports")
+            return None
+        except UnicodeDecodeError:
+            self._logger.error("Unable to decode message")
             return None
         if (timeout > 0) and (time.time() > timeout_time):
             return None

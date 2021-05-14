@@ -178,7 +178,7 @@ class NetworkConnector(metaclass=ABCMeta):
                               sender,
                               receiver,
                               out_dict)
-            if package_index == last_index:
+            if package_index == last_index - 1:
                 res_ack, res = self.send_request(out_req, timeout)
 
                 return res_ack, res
@@ -186,7 +186,7 @@ class NetworkConnector(metaclass=ABCMeta):
                 self.send_request(out_req, 0)
             package_index += 1
             sleep(0.1)
-        return False, None
+        return None, None
 
     @abstractmethod
     def connected(self) -> bool:
