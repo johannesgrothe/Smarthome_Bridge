@@ -48,8 +48,8 @@ class LoadingIndicator:
         self.run()
         return self
 
-    def __exit__(self):
-        self.__del__()
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.stop()
 
     def _thread_runner(self):
         while self._running:
@@ -70,7 +70,8 @@ class LoadingIndicator:
         self._run_thread.start()
 
     def stop(self):
-        print("]")
+        if self._running:
+            print("]")
         self._stop_thread()
 
 
@@ -408,7 +409,7 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
 
         try:
-            with LoadingIndicator().run():
+            with LoadingIndicator():
                 ack = erase_controller.reset_config()
             if ack is False:
                 print("Failed to reset EEPROM\n")

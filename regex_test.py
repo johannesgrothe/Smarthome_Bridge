@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     with LoadingIndicator():
         import time
-        time.sleep(10)
+        time.sleep(3)
 
     # print(get_url("https://www.feed.nzz.ch/wirtschaft.rss"))
     # print(get_url("www.feed.nzz.ch/wirtschaft.rss"))
