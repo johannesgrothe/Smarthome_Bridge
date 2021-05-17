@@ -7,8 +7,6 @@ from datetime import datetime, timedelta
 from time import sleep
 from abc import abstractmethod, ABC, ABCMeta
 
-Req_Response = tuple[Optional[bool], Optional[Request]]
-
 
 class NetworkConnector(metaclass=ABCMeta):
     """Class to implement an network interface prototype"""
@@ -98,7 +96,7 @@ class NetworkConnector(metaclass=ABCMeta):
             else:
                 self._message_queue.put(received_request)
 
-    def send_request(self, req: Request, timeout: int = 6) -> Req_Response:
+    def send_request(self, req: Request, timeout: int = 6) -> Optional[Request]:
         """
         Sends a request and waits for a response by default.
 
@@ -112,13 +110,12 @@ class NetworkConnector(metaclass=ABCMeta):
                 if not self._message_queue.empty():
                     res: Request = self._message_queue.get()
                     if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
-                        res_ack = res.get_ack()
 
                         # Put checked requests back in queue
                         while not checked_requests_list.empty():
                             self._message_queue.put(checked_requests_list.get())
 
-                        return res_ack, res
+                        return res
 
                     # Save request to put it back in queue later
                     checked_requests_list.put(res)
@@ -126,9 +123,9 @@ class NetworkConnector(metaclass=ABCMeta):
             # Put checked requests back in queue
             while not checked_requests_list.empty():
                 self._message_queue.put(checked_requests_list.get())
-            return None, None
+            return None
 
-        return None, None
+        return None
 
     def send_broadcast(self, req: Request, timeout: int = 5) -> [Request]:
         responses: [Request] = []
@@ -143,7 +140,7 @@ class NetworkConnector(metaclass=ABCMeta):
                     responses.append(res)
         return responses
 
-    def send_request_split(self, req: Request, part_max_size: int = 30, timeout: int = 6) -> Req_Response:
+    def send_request_split(self, req: Request, part_max_size: int = 30, timeout: int = 6) -> Optional[Request]:
         session_id = req.get_session_id()
         path = req.get_path()
         sender = req.get_sender()
@@ -179,14 +176,14 @@ class NetworkConnector(metaclass=ABCMeta):
                               receiver,
                               out_dict)
             if package_index == last_index - 1:
-                res_ack, res = self.send_request(out_req, timeout)
+                res = self.send_request(out_req, timeout)
 
-                return res_ack, res
+                return res
             else:
                 self.send_request(out_req, 0)
             package_index += 1
             sleep(0.1)
-        return None, None
+        return None
 
     @abstractmethod
     def connected(self) -> bool:

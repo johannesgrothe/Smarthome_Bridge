@@ -18,12 +18,14 @@ from tools import git_tools
 from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 from network_connector import NetworkConnector, Request
+from request import NoClientResponseException
 from chip_flasher import get_serial_ports, flash_chip
+from client_control_methods import ClientController
+
+from contextlib import contextmanager
 
 TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
-TOOLKIT_DIRECT_TASK_OPTIONS = ["Overwrite EEPROM", "Write Config"]
 
-CONNECTION_MODES = ["direct", "bridge"]
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
@@ -38,6 +40,16 @@ class LoadingIndicator:
     def __init__(self):
         self._running = False
         self._run_thread = None
+
+    def __del__(self):
+        self.stop()
+
+    def __enter__(self):
+        self.run()
+        return self
+
+    def __exit__(self):
+        self.__del__()
 
     def _thread_runner(self):
         while self._running:
@@ -274,48 +286,99 @@ def format_string_len(in_data: str, length: int) -> str:
     return in_data + " " * (length - len(in_data))
 
 
+def upload_software_to_client(serial_port: str) -> bool:
+    print("Uploading Software to Client:")
+    result = flash_chip("develop",
+                        False,
+                        serial_port)
+    if result:
+        print("Uploading software was successful")
+        return True
+    else:
+        print("Uploading software failed.")
+        if ask_for_continue("Try again with some extra caution?"):
+            print("Uploading Software to Client:")
+            result = flash_chip("develop",
+                                True,
+                                serial_port)
+            if result:
+                print("Uploading software was successful")
+                return True
+            else:
+                print("Uploading software failed again.")
+                return False
+        else:
+            return False
+
+
 class ToolkitException(Exception):
     def __init__(self):
         super().__init__("ToolkitException")
 
 
 class DirectConnectionToolkit(metaclass=ABCMeta):
-    _client: Optional[NetworkConnector]
+    _network: Optional[NetworkConnector]
     _client_name: Optional[str]
 
     def __init__(self):
-        self._client = None
+        self._network = None
         self._client_name = None
 
     def __del__(self):
-        if self._client:
-            self._client.__del__()
+        if self._network:
+            self._network.__del__()
 
     def run(self):
         """Runs the toolkit, accepting user inputs and executing the selcted tasks"""
-        pass
+
+        self._get_ready()
+
+        self._connect_to_client()
+
+        print("Connected to '{}'".format(self._client_name))
+
+        while True:
+            if not self._select_task():
+                break
+
+    def _select_task(self) -> bool:
+        task_option = select_option(["Overwrite EEPROM", "Write Config", "Reboot"],
+                                    "what to do",
+                                    "Quit")
+
+        if task_option == -1:
+            return False
+
+        elif task_option == 0:  # Overwrite EEPROM
+            self._erase_config()
+            return True
+
+        elif task_option == 1:  # Write Config
+            self._write_config()
+            return True
+
+        elif task_option == 2:  # Reboot
+            self._reboot_client()
+            print("Reconnecting might be required.")
+            return True
 
     def _erase_config(self):
         print()
         print("Overwriting EEPROM:")
 
-        reset_req = Request("smarthome/config/reset",
-                            gen_req_id(),
-                            TOOLKIT_NETWORK_NAME,
-                            self._client_name,
-                            {"reset_option": "erase"})
+        erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
 
-        (ack, res) = self._client.send_request(reset_req)
+        try:
+            ack = erase_controller.reset_config()
+            if ack is False:
+                print("Failed to reset EEPROM\n")
+                return
 
-        if ack is None:
+            print("Config was successfully erased\n")
+
+        except NoClientResponseException:
             print("Received no Response to Reset Request\n")
             return
-
-        if ack is False:
-            print("Failed to reset EEPROM\n")
-            return
-
-        print("Config was successfully erased\n")
 
     def _write_config(self):
         config_path: Optional[str]
@@ -341,14 +404,25 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print(f"Loaded config '{config_data['name']}'")
         print()
         print("Writing config:")
-        config_req = Request("smarthome/config/write",
-                             gen_req_id(),
-                             TOOLKIT_NETWORK_NAME,
-                             self._client_name,
-                             {"config": config_data})
+
+        erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+
+        try:
+            with LoadingIndicator().run():
+                ack = erase_controller.reset_config()
+            if ack is False:
+                print("Failed to reset EEPROM\n")
+                return
+
+            print("Config was successfully erased\n")
+
+        except NoClientResponseException:
+            print("Received no Response to Reset Request\n")
+            return
+
         load = LoadingIndicator()
         load.run()
-        (ack, res) = self._client.send_request_split(config_req, timeout=15)
+        (ack, res) = self._network.send_request_split(config_req, timeout=15)
         load.stop()
 
         if ack is None:
@@ -360,6 +434,28 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
             return
 
         print("Config was successfully written\n")
+
+    def _reboot_client(self):
+        print()
+        print("Rebooting Client:")
+
+        reset_req = Request("smarthome/sys",
+                            gen_req_id(),
+                            TOOLKIT_NETWORK_NAME,
+                            self._client_name,
+                            {"subject": "reboot"})
+
+        (ack, res) = self._network.send_request(reset_req)
+
+        if ack is None:
+            print("Received no Response to Reboot Request\n")
+            return
+
+        if ack is False:
+            print("Failed to initiate Reboot\n")
+            return
+
+        print("Client rebooted successfully.\n")
 
     def _connect_to_client(self):
         """Scans for clients and lets the user select one if needed and possible."""
@@ -383,6 +479,10 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
                     raise ToolkitException
 
     @abstractmethod
+    def _get_ready(self):
+        pass
+
+    @abstractmethod
     def _scan_for_clients(self) -> [str]:
         """Sends a broadcast and waits for clients to answer.
 
@@ -404,34 +504,13 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
     def __del__(self):
         super().__del__()
 
-    def run(self):
-
-        # Wait for all chips to be alive
+    def _get_ready(self):
         print("Waiting for Clients to boot up")
         load = LoadingIndicator()
         load.run()
         time.sleep(5)
         load.stop()
-
-        print("Please make sure your chip can receive serial requests")
-        self._connect_to_client()
-
-        while True:
-
-            print("Connected to '{}'".format(self._client_name))
-
-            task_option = select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do", "Quit")
-
-            if task_option == -1:
-                break
-
-            elif task_option == 0:  # Overwrite EEPROM
-                self._erase_config()
-                continue
-
-            elif task_option == 1:  # Write Config
-                self._write_config()
-                continue
+        print("Please make sure your Client is connected to this machine and can receive serial requests")
 
     def _scan_for_clients(self) -> [str]:
         req = Request("smarthome/broadcast/req",
@@ -472,25 +551,8 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
     def __del__(self):
         super().__del__()
 
-    def run(self):
-        self._connect_to_client()
-
-        while True:
-
-            print("Connected to '{}'".format(self._client_name))
-
-            task_option = select_option(TOOLKIT_DIRECT_TASK_OPTIONS, "what to do", "Quit")
-
-            if task_option == -1:
-                break
-
-            elif task_option == 0:  # Overwrite EEPROM
-                self._erase_config()
-                continue
-
-            elif task_option == 1:  # Write Config
-                self._write_config()
-                continue
+    def _get_ready(self):
+        print("Please make sure your Client is connected to the network")
 
     def _scan_for_clients(self) -> [str]:
         req = Request("smarthome/broadcast/req",
@@ -534,12 +596,11 @@ if __name__ == '__main__':
     if ARGS.connection_mode:
         connection_mode = ARGS.connection_mode
     else:
-        connection_mode_nr = select_option(CONNECTION_MODES, "Connection Mode", "Quit")
-        if connection_mode_nr == -1:
+        connection_mode = select_option(["Bridge", "Direct", "Upload Software"], "Connection Mode", "Quit")
+        if connection_mode == -1:
             sys.exit(0)
-        connection_mode = CONNECTION_MODES[connection_mode_nr]
 
-    if connection_mode == "bridge":
+    if connection_mode == 0:  # Bridge
 
         socket_client: socket = None
 
@@ -870,7 +931,7 @@ if __name__ == '__main__':
                 print(f"Quitting...")
                 sys.exit(0)
 
-    elif connection_mode == "direct":
+    elif connection_mode == 1:  # Direct
         toolkit_instance: DirectConnectionToolkit
         if ARGS.serial_port:
             print("Using serial port provided by program argument")
@@ -941,6 +1002,19 @@ if __name__ == '__main__':
             toolkit_instance.run()
             toolkit_instance.__del__()
         except ToolkitException:
+            toolkit_instance.__del__()
             sys.exit(1)
+
+    elif connection_mode == 2:  # Direct - Upload Software
+        serial_port: str = ""
+        if ARGS.serial_port:
+            serial_port = ARGS.serial_port
+        else:
+            serial_ports = get_serial_ports()
+            serial_port_index = connection_type = select_option(serial_ports, "Serial Port", "Quit")
+            if serial_port_index == -1:
+                sys.exit(0)
+            serial_port = serial_ports[serial_port_index]
+        upload_software_to_client(serial_port)
 
     print("Quitting...")

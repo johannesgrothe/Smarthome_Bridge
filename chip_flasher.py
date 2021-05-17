@@ -48,6 +48,11 @@ def get_serial_ports() -> [str]:
             valid_ports.append(port)
     return valid_ports
 
+# TODO: Create Object for chip flasher
+# TODO: Move cloned repository to temp/
+# TODO: Create lock file to prevent other instance from accessing/manipulating the
+#  existing repository before writing is finished
+
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
                output_callback: CallbackFunction = None) -> bool:

@@ -1,6 +1,7 @@
 import re
 import requests
 from typing import Optional
+from toolkits.bridge_remote_control import LoadingIndicator
 
 writing_str = "Writing at 0x00038000... (29 %)"
 writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
@@ -85,9 +86,13 @@ if __name__ == '__main__':
     # writing_group = re.match(compile_framework_pattern, teststr)
     # print(writing_group.groups())
 
-    print(get_url("https://www.feed.nzz.ch/wirtschaft.rss"))
-    print(get_url("www.feed.nzz.ch/wirtschaft.rss"))
-    print(get_url("nzz.ch"))
-    print(get_url("www.nzz.ch/"))
-    print(get_url("www.yolo.co.uk"))
-    print(get_url("www.feed.a.yolo.co.uk/"))
+    with LoadingIndicator():
+        import time
+        time.sleep(10)
+
+    # print(get_url("https://www.feed.nzz.ch/wirtschaft.rss"))
+    # print(get_url("www.feed.nzz.ch/wirtschaft.rss"))
+    # print(get_url("nzz.ch"))
+    # print(get_url("www.nzz.ch/"))
+    # print(get_url("www.yolo.co.uk"))
+    # print(get_url("www.feed.a.yolo.co.uk/"))

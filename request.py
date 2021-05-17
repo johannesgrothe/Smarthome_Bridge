@@ -1,5 +1,17 @@
 """Module to contain the request class"""
+import random
 from typing import Optional
+
+
+class NoClientResponseException(Exception):
+    def __init__(self):
+        super().__init__("NoClientResponseException: No Client answered to the Request sent")
+
+
+def generate_request_id() -> int:
+    """Generates a random Request ID"""
+
+    return random.randint(0, 1000000)
 
 
 class Request:
@@ -11,15 +23,18 @@ class Request:
     __receiver: Optional[str]
     __payload: dict
 
-    def __init__(self, path: str, session_id: int, sender: str, receiver: Optional[str], payload: dict):
+    def __init__(self, path: str, session_id: Optional[int], sender: str, receiver: Optional[str], payload: dict):
         """Constructor for the request"""
 
         if not path:
             raise RuntimeError("path cannot be empty")
-        if not session_id:
-            raise RuntimeError("session_id cannot be empty")
         if not sender:
             raise RuntimeError("sender cannot be empty")
+
+        if not session_id:
+            self.__session_id = generate_request_id()
+        else:
+            self.__session_id = session_id
 
         self.__path = path
         self.__session_id = session_id

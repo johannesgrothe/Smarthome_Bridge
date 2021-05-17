@@ -3,114 +3,105 @@
 import random
 from jsonschema import validate, ValidationError
 import json
-from request import Request
+import logging
+from request import Request, NoClientResponseException
 from typing import Optional, Callable
 from network_connector import NetworkConnector
 
 # Declare Type of callback function for hinting
 CallbackFunction = Optional[Callable[[str, int, str], None]]
 
-CONFIG_ATTRIBUTES = ["irrecv_pin", "irsend_pin", "radio_recv_pin", "radio_send_pin", "network_mode",
-                     "gadget_remote", "code_remote", "event_remote", "id", "wifi_ssid", "wifi_pw",
-                     "mqtt_ip", "mqtt_port", "mqtt_user", "mqtt_pw"]
-PRIVATE_ATTRIBUTES = ["wifi_pw", "mqtt_pw"]
-PUBLIC_ATTRIBUTES = [x for x in CONFIG_ATTRIBUTES if x not in PRIVATE_ATTRIBUTES]
 LOG_SENDER = "CONFIG_UPLOAD"
 
-__general_exit_code = 0
+_general_exit_code = 0
 
-__upload_data_ok_code = 1
-__upload_data_fail_code = -1
+_upload_data_ok_code = 1
+_upload_data_fail_code = -1
 
-__upload_gadget_ok_code = 2
-__upload_gadget_fail_code = -2
-__upload_gadget_format_error_code = -3
-__upload_gadget_no_gadget_in_cfg_code = 3
+_upload_gadget_ok_code = 2
+_upload_gadget_fail_code = -2
+_upload_gadget_format_error_code = -3
+_upload_gadget_no_gadget_in_cfg_code = 3
 
-
-def gen_req_id() -> int:
-    """Generates a random Request ID"""
-
-    return random.randint(0, 1000000)
+# TODO Use said object in toolkit
 
 
-def reset_config(client_name: str, reset_option: str, sender: str, network: NetworkConnector) -> bool:
-    """Resets the config of a client. Select behaviour using 'reset option'."""
+class ClientController:
 
-    payload = {"reset_option": reset_option}
+    _client_name: str
+    _sender_id: str
+    _network: NetworkConnector
+    _logger: logging.Logger
 
-    out_request = Request(path="smarthome/config/reset",
-                          session_id=gen_req_id(),
-                          sender=sender,
-                          receiver=client_name,
-                          payload=payload)
+    def __init__(self, client_name: str, sender: str, network_connector: NetworkConnector):
+        self._client_name = client_name
+        self._sender_id = sender
+        self._network = network_connector
+        self._logger = logging.getLogger("ClientController")
 
-    suc, result = network.send_request(out_request)
-    return suc
+    def reset_config(self) -> bool:
+        """Resets the config of a client. Select behaviour using 'reset option'."""
 
+        payload = {}
 
-def reboot_client(client_name: str, sender: str, network: NetworkConnector) -> bool:
-    """Reboots the client to make changes take effect.\
-     Needs a global NetworkConnector named 'network_gadget'"""
+        out_request = Request(path="smarthome/config/reset",
+                              session_id=None,
+                              sender=self._sender_id,
+                              receiver=self._client_name,
+                              payload=payload)
 
-    payload = {"subject": "reboot"}
+        result = self._network.send_request(out_request)
+        if not result:
+            raise NoClientResponseException
+        else:
+            return result.get_ack()
 
-    out_request = Request(path="smarthome/sys",
-                          session_id=gen_req_id(),
-                          sender=sender,
-                          receiver=client_name,
-                          payload=payload)
+    def reboot_client(self) -> bool:
+        """Reboots the client to make changes take effect.\
+         Needs a global NetworkConnector named 'network_gadget'"""
 
-    suc, result = network.send_request(out_request)
-    return suc is True
+        payload = {"subject": "reboot"}
 
+        out_request = Request(path="smarthome/sys",
+                              session_id=None,
+                              sender=self._sender_id,
+                              receiver=self._client_name,
+                              payload=payload)
 
-def upload_gadget(client_name: str, gadget: dict, sender: str, network: NetworkConnector) -> (bool, Optional[str]):
-    """uploads a gadget to a client."""
+        result = self._network.send_request(out_request)
+        if not result:
+            raise NoClientResponseException
+        else:
+            return result.get_ack()
 
-    if "type" not in gadget or "name" not in gadget:
-        return False
+    def write_config(self, config: dict, print_callback: CallbackFunction = None) -> bool:
 
-    out_request = Request(path="smarthome/gadget/add",
-                          session_id=gen_req_id(),
-                          sender=sender,
-                          receiver=client_name,
-                          payload=gadget)
+        try:
+            with open("json_schemas/client_config.json") as schema_file:
+                schema = json.load(schema_file)
+                validate(config, schema)
+        except IOError:
+            self._logger.error("Config could not be written: Schema could not be loaded")
+            return False
+        except ValidationError:
+            self._logger.error("Config could not be written: Validation failed")
+            return False
 
-    suc, result = network.send_request(out_request)
-    return suc is True, result.get_status_msg()
+        payload_dict = {"config": config}
 
+        out_req = Request(path="smarthome/config/write",
+                          session_id=None,
+                          sender=self._sender_id,
+                          receiver=self._client_name,
+                          payload=payload_dict)
 
-def write_config(client_name: str, config: dict, sender: str, network: NetworkConnector,
-                 print_callback: CallbackFunction = None):
+        success, res = self._network.send_request_split(out_req, 50)
 
-    try:
-        with open("json_schemas/client_config.json") as schema_file:
-            schema = json.load(schema_file)
-            validate(config, schema)
-    except IOError:
-        print("Config could not be written: Schema could not be loaded")
-        return
-    except ValidationError:
-        print("Config could not be written: Validation failed")
-        return
-
-    payload_dict = {"type": "complete",
-                    "reset_config": True,
-                    "reset_gadgets": True,
-                    "config": config}
-
-    out_req = Request(path="smarthome/config/write",
-                      session_id=gen_req_id(),
-                      sender=sender,
-                      receiver=client_name,
-                      payload=payload_dict)
-
-    success, res = network.send_request_split(out_req, 50)
-
-    if success:
-        if print_callback:
-            print_callback(LOG_SENDER, __upload_data_ok_code, f"Flashing '{attr}' was successful")
-        print("Writing config was successful")
-    else:
-        print("Writing config failed")
+        if success:
+            if print_callback:
+                print_callback(LOG_SENDER, _upload_data_ok_code, f"Flashing config was successful")
+            self._logger.info("Writing config was successful")
+            return True
+        else:
+            self._logger.error("Writing config failed")
+            return False
