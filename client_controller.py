@@ -23,8 +23,6 @@ _upload_gadget_fail_code = -2
 _upload_gadget_format_error_code = -3
 _upload_gadget_no_gadget_in_cfg_code = 3
 
-# TODO Use said object in toolkit
-
 
 class ClientController:
 
@@ -95,13 +93,16 @@ class ClientController:
                           receiver=self._client_name,
                           payload=payload_dict)
 
-        success, res = self._network.send_request_split(out_req, 50)
+        result = self._network.send_request_split(out_req, 50)
 
-        if success:
-            if print_callback:
-                print_callback(LOG_SENDER, _upload_data_ok_code, f"Flashing config was successful")
-            self._logger.info("Writing config was successful")
-            return True
+        if not result:
+            raise NoClientResponseException
         else:
-            self._logger.error("Writing config failed")
-            return False
+            if result.get_ack():
+                if print_callback:
+                    print_callback(LOG_SENDER, _upload_data_ok_code, f"Flashing config was successful")
+                self._logger.info("Writing config was successful")
+                return True
+            else:
+                self._logger.error("Writing config failed")
+                return False

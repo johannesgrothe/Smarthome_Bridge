@@ -10,7 +10,7 @@ from request import Request
 from gadgetlib import GadgetIdentifier, str_to_gadget_identifier, str_to_gadget_method
 from typing import Optional
 
-import client_control_methods
+import client_controller
 from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 
@@ -287,29 +287,29 @@ def reset_config(client_name: str, reset_option: str) -> bool:
     """Resets the config of a client. Select behaviour using 'reset option'.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
-    return client_control_methods.reset_config(client_name,
-                                               reset_option,
-                                               get_sender(),
-                                               network_gadget)
+    return client_controller.reset_config(client_name,
+                                          reset_option,
+                                          get_sender(),
+                                          network_gadget)
 
 
 def reboot_client(client_name: str) -> bool:
     """Reboots the client to make changes take effect.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
-    return client_control_methods.reboot_client(client_name,
-                                                get_sender(),
-                                                network_gadget)
+    return client_controller.reboot_client(client_name,
+                                           get_sender(),
+                                           network_gadget)
 
 
 def upload_gadget(client_name: str, upl_gadget: dict) -> (bool, Optional[str]):
     """uploads a gadget to a client.\
      Needs a global NetworkConnector named 'network_gadget'"""
 
-    return client_control_methods.upload_gadget(client_name,
-                                                upl_gadget,
-                                                get_sender(),
-                                                network_gadget)
+    return client_controller.upload_gadget(client_name,
+                                           upl_gadget,
+                                           get_sender(),
+                                           network_gadget)
 
 
 def main():

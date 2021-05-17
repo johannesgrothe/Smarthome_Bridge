@@ -37,7 +37,6 @@ class Request:
             self.__session_id = session_id
 
         self.__path = path
-        self.__session_id = session_id
         self.__sender = sender
         self.__receiver = receiver
         self.__payload = payload

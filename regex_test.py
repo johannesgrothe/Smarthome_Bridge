@@ -1,7 +1,10 @@
 import re
+import time
+
 import requests
 from typing import Optional
 from toolkits.bridge_remote_control import LoadingIndicator
+from chip_flasher import RepoLocker
 
 writing_str = "Writing at 0x00038000... (29 %)"
 writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
@@ -87,8 +90,10 @@ if __name__ == '__main__':
     # print(writing_group.groups())
 
     with LoadingIndicator():
-        import time
-        time.sleep(3)
+        # import os
+        # print(os.system(f"git diff --quiet"))
+        with RepoLocker(max_delay=3):
+            time.sleep(10)
 
     # print(get_url("https://www.feed.nzz.ch/wirtschaft.rss"))
     # print(get_url("www.feed.nzz.ch/wirtschaft.rss"))

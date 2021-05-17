@@ -20,7 +20,7 @@ from mqtt_connector import MQTTConnector
 from network_connector import NetworkConnector, Request
 from request import NoClientResponseException
 from chip_flasher import get_serial_ports, flash_chip
-from client_control_methods import ClientController
+from client_controller import ClientController
 
 from contextlib import contextmanager
 
@@ -72,7 +72,7 @@ class LoadingIndicator:
     def stop(self):
         if self._running:
             print("]")
-        self._stop_thread()
+            self._stop_thread()
 
 
 def ask_for_continue(message: str) -> bool:
@@ -138,10 +138,10 @@ def select_option(input_list: [str], category: Optional[str] = None, back_option
         selection = input("Please select an option by entering its number:\n")
         try:
             selection = int(selection)
-        except TypeError:
+        except (TypeError, ValueError):
             selection = None
 
-        if selection < 0 or selection > max_i:
+        if selection is None or selection < 0 or selection > max_i:
             print("Illegal input, try again.")
             selection = None
     if selection == max_i:
@@ -406,74 +406,56 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print()
         print("Writing config:")
 
-        erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        write_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
 
         try:
             with LoadingIndicator():
-                ack = erase_controller.reset_config()
+                ack = write_controller.write_config(config_data)
             if ack is False:
-                print("Failed to reset EEPROM\n")
+                print("Failed to write config\n")
                 return
 
-            print("Config was successfully erased\n")
+            print("Config was successfully written\n")
 
         except NoClientResponseException:
-            print("Received no Response to Reset Request\n")
+            print("Received no response to config write request\n")
             return
-
-        load = LoadingIndicator()
-        load.run()
-        (ack, res) = self._network.send_request_split(config_req, timeout=15)
-        load.stop()
-
-        if ack is None:
-            print("Received no Response to write Config Request\n")
-            return
-
-        if ack is False:
-            print("Failed to write Config\n")
-            return
-
-        print("Config was successfully written\n")
 
     def _reboot_client(self):
         print()
         print("Rebooting Client:")
 
-        reset_req = Request("smarthome/sys",
-                            gen_req_id(),
-                            TOOLKIT_NETWORK_NAME,
-                            self._client_name,
-                            {"subject": "reboot"})
+        reboot_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
 
-        (ack, res) = self._network.send_request(reset_req)
+        try:
+            with LoadingIndicator():
+                ack = reboot_controller.reboot_client()
+            if ack is False:
+                print("Failed to reboot client\n")
+                return
 
-        if ack is None:
-            print("Received no Response to Reboot Request\n")
+            print("Client reboot successful\n")
+
+        except NoClientResponseException:
+            print("Received no response to reboot request\n")
             return
-
-        if ack is False:
-            print("Failed to initiate Reboot\n")
-            return
-
-        print("Client rebooted successfully.\n")
 
     def _connect_to_client(self):
         """Scans for clients and lets the user select one if needed and possible."""
         while not self._client_name:
-            load = LoadingIndicator()
-            load.run()
-            client_id = None
-            client_list = self._scan_for_clients()
 
-            if len(client_list) == 0:
-                print("No client answered to broadcast")
-            elif len(client_list) > 1:
-                client_id = select_option(client_list, "client to connect to")
-            else:
-                client_id = client_list[0]
-            self._client_name = client_id
-            load.stop()
+            with LoadingIndicator():
+                client_id = None
+                client_list = self._scan_for_clients()
+
+                if len(client_list) == 0:
+                    print("No client answered to broadcast")
+                elif len(client_list) > 1:
+                    client_id = select_option(client_list, "client to connect to")
+                else:
+                    client_id = client_list[0]
+                self._client_name = client_id
+
             if not self._client_name:
                 response = ask_for_continue("Could not find any gadget. Try again?")
                 if not response:
@@ -498,19 +480,19 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
     def __init__(self, serial_port: str):
         super().__init__()
         self._serial_port = serial_port
-        self._client = SerialConnector(TOOLKIT_NETWORK_NAME,
-                                       self._serial_port,
-                                       115200)
+        self._network = SerialConnector(TOOLKIT_NETWORK_NAME,
+                                        self._serial_port,
+                                        115200)
 
     def __del__(self):
         super().__del__()
 
     def _get_ready(self):
         print("Waiting for Clients to boot up")
-        load = LoadingIndicator()
-        load.run()
-        time.sleep(5)
-        load.stop()
+
+        with LoadingIndicator():
+            time.sleep(5)
+
         print("Please make sure your Client is connected to this machine and can receive serial requests")
 
     def _scan_for_clients(self) -> [str]:
@@ -520,7 +502,7 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
                       None,
                       {})
 
-        responses = self._client.send_broadcast(req)
+        responses = self._network.send_broadcast(req)
 
         client_names = []
         for broadcast_res in responses:
@@ -542,11 +524,11 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
         self._mqtt_username = username
         self._mqtt_password = password
 
-        self._client = MQTTConnector("ConsoleToolkit",
-                                     self._mqtt_ip,
-                                     self._mqtt_port,
-                                     self._mqtt_username,
-                                     self._mqtt_password)
+        self._network = MQTTConnector("ConsoleToolkit",
+                                      self._mqtt_ip,
+                                      self._mqtt_port,
+                                      self._mqtt_username,
+                                      self._mqtt_password)
         pass
 
     def __del__(self):
@@ -562,7 +544,7 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
                       None,
                       {})
 
-        responses = self._client.send_broadcast(req)
+        responses = self._network.send_broadcast(req)
 
         client_names = []
         for broadcast_res in responses:

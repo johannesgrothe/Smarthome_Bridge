@@ -8,7 +8,7 @@ from mqtt_connector import MQTTConnector
 from request import Request
 import api
 import socket_api
-import client_control_methods
+import client_controller
 
 
 class BridgeMQTTThread(Thread):
@@ -67,11 +67,11 @@ class ChipConfigFlasherThread(Thread):
 
     def run(self):
         print("Starting config flasher thread")
-        client_control_methods.write_config(self.__client_name,
-                                            self.__config,
-                                            self.__sender,
-                                            self.__network,
-                                            self.__streaming_callback)
+        client_controller.write_config(self.__client_name,
+                                       self.__config,
+                                       self.__sender,
+                                       self.__network,
+                                       self.__streaming_callback)
         print("Flashing done.")
 
 

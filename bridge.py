@@ -20,7 +20,7 @@ from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, Character
 from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
-import client_control_methods
+import client_controller
 
 
 def get_connected_chip_id(network: SerialConnector, sender: str) -> Optional[str]:
@@ -635,9 +635,9 @@ class MainBridge:
     def restart_client(self, client: SmarthomeClient) -> bool:
         """Sends out a request to restart the client and"""
 
-        return client_control_methods.reboot_client(client.get_name(),
+        return client_controller.reboot_client(client.get_name(),
                                                     "<bridge>",
-                                                    self.__network_gadget)
+                                               self.__network_gadget)
 
     # endregion
 
