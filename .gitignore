@@ -40,3 +40,4 @@ venv
 *.lock
 temp
 /logs/
+/tests_manual/

@@ -9,6 +9,7 @@ from typing import Optional, Callable
 
 # Declare Type of callback function for hinting
 CallbackFunction = Optional[Callable[[str, int, str], None]]
+PioCallbackFunction = Optional[Callable[[int, str], None]]
 
 repo_name = "Smarthome_ESP32"
 repo_url = "https://github.com/johannesgrothe/{}.git".format(repo_name)
@@ -57,8 +58,6 @@ def get_serial_ports() -> [str]:
             valid_ports.append(port)
     return valid_ports
 
-# TODO: Create Object for chip flasher
-# TODO: Move cloned repository to temp/
 # TODO: Create Repository manager object
 
 
@@ -160,17 +159,117 @@ class RepoLocker:
         self._write_repository_lock()
 
 
+class PioUploader:
+    _repo_path: str
+    _output_callback: PioCallbackFunction
+    _logger: logging.Logger
+
+    # Upload message sent flags
+    _compile_src_unsent: bool
+    _compile_framework_unsent: bool
+    _compile_lib_unsent: bool
+
+    def __init__(self, repository_path: str, output_callback: PioCallbackFunction = None):
+        self._repo_path = repository_path
+        self._output_callback = output_callback
+        self._logger = logging.getLogger("PioUploader")
+
+    def _callback(self, code: int, message: str):
+        if self._output_callback:
+            self._output_callback(code, message)
+
+    def _analyze_line(self, line: str):
+        # Patterns
+        link_pattern = "Linking .pio/build/[a-zA-Z0-9]+?/firmware.elf"
+        ram_pattern = "RAM:.+?([0-9\\.]+?)%"
+        flash_pattern = "Flash:.+?([0-9\\.]+?)%"
+        connecting_pattern = "Serial port .+?"
+        connecting_error_pattern = r"A fatal error occurred: \.+? Timed out waiting for packet header"
+        writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
+        compile_src_pattern = r"Compiling .pio/build/\w+?/src/.+?.cpp.o"
+        compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/.+?.cpp.o"
+        compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?.o"
+
+        if re.findall(link_pattern, line):
+            self._callback(_linking_code, "Linking...")
+
+        elif re.findall(connecting_error_pattern, line):
+            self._callback(_connecting_error_code, "Error connecting to Chip.")
+
+        elif re.findall(connecting_pattern, line):
+            self._callback(_connecting_ok_code, "Connecting to Chip...")
+
+        elif re.findall(compile_src_pattern, line):
+            if self._compile_src_unsent:
+                self._callback(_compiling_src_code, "Compiling Source")
+                self._compile_src_unsent = False
+
+        elif re.findall(compile_framework_pattern, line):
+            if self._compile_framework_unsent:
+                self._callback(_compiling_framework_code, "Compiling Framework")
+                self._compile_framework_unsent = False
+
+        elif re.findall(compile_lib_pattern, line):
+            if self._compile_lib_unsent:
+                self._callback(_compiling_lib_code, "Compiling Libraries")
+                self._compile_lib_unsent = False
+
+        else:
+
+            writing_group = re.match(writing_pattern, line)
+            if writing_group:
+                writing_address = int(writing_group.groups()[0], 16)
+                percentage = writing_group.groups()[1]
+                if writing_address >= 65536:
+                    self._callback(_writing_fw_code, f"Writing Firmware: {percentage}%")
+
+            ram_groups = re.match(ram_pattern, line)
+            if ram_groups:
+                ram = ram_groups.groups()[0]
+                self._callback(_ram_usage_code, f"RAM usage: {ram}%")
+
+            flash_groups = re.match(flash_pattern, line)
+            if flash_groups:
+                flash = flash_groups.groups()[0]
+                self._callback(_sw_upload_code, f"Flash usage: {flash}%")
+
+    def upload_software(self, port: str):
+
+        self._compile_src_unsent = True
+        self._compile_framework_unsent = True
+        self._compile_lib_unsent = True
+
+        upload_port_phrase = ""
+        if port is not None:
+            self._logger.info(f"Manually setting upload port to '{port}'")
+            upload_port_phrase = f" --upload-port {port}"
+
+        # Upload software
+        upload_command = f"cd {self._repo_path}; pio run --target upload{upload_port_phrase}"
+        process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        for raw_line in iter(process.stdout.readline, b''):
+            line = raw_line.decode()
+            self._analyze_line(line)
+            self._logger.info(line.strip("\n"))
+
+        process.wait()
+        if process.returncode != 0:
+            self._callback(_flash_fail_code, f"Flashing failed.")
+            raise PioUploadException
+        self._callback(_flash_ok_code, "Flashing was successful.")
+
+
+class RepositoryManager:
+    pass
+
+
 class ChipFlasher:
 
     _output_callback: CallbackFunction
     _max_delay: Optional[int] = None
     _logger: logging.Logger
     _locker: Optional[RepoLocker]
-
-    # Upload message sent flags
-    _compile_src_unsent: bool
-    _compile_framework_unsent: bool
-    _compile_lib_unsent: bool
 
     def __init__(self, output_callback: CallbackFunction = None, max_delay: Optional[int] = None):
         self._output_callback = output_callback
@@ -201,7 +300,8 @@ class ChipFlasher:
                 raise UploadFailedException
 
             try:
-                self._upload(upload_port)
+                uploader = PioUploader(get_path_to_repo(), self._callback)
+                uploader.upload_software(upload_port)
             except (PioUploadException, PioCompileException):
                 raise UploadFailedException
 
@@ -212,12 +312,23 @@ class ChipFlasher:
     def _repo_is_locked(self) -> bool:
         return self._locker is not None and self._locker.has_lock()
 
+    @staticmethod
+    def _delete_repository_folder(path):
+        if not os.path.isdir(".git"):
+            raise Exception("Selected Folder is no git Repository")
+
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+
     def _init_repository(self, force_reset: bool):
         repo_works = False
 
         if force_reset:
             if os.path.isdir(get_path_to_repo()):
-                os.remove(get_path_to_repo())
+                self._delete_repository_folder(get_path_to_repo())
         else:
             if os.path.isdir(get_path_to_repo()):
                 repo_clean = os.system(f"cd {get_path_to_repo()};git diff --quiet") == 0
@@ -226,9 +337,10 @@ class ChipFlasher:
         if not repo_works:
             self._logger.info(f"Repo doesn't exist or is broken, deleting dir and cloning repository from '{repo_url}'")
             if os.path.isdir(get_path_to_repo()):
-                os.remove(get_path_to_repo())
+                self._delete_repository_folder(get_path_to_repo())
 
-            repo_works = os.system(f"cd {_repo_base_path};git clone {repo_url} --quiet") == 0
+            target_path = os.path.abspath(os.path.join(get_path_to_repo(), os.pardir))
+            repo_works = os.system(f"cd {target_path};git clone {repo_url} --quiet") == 0
 
         if not repo_works:
             self._logger.error(f"Error cloning repository from '{repo_url}'")
@@ -289,98 +401,6 @@ class ChipFlasher:
         if len(branch_list) != 1:
             raise RepositoryStatusException
         return branch_list[0]
-
-    def _analyze_line(self, line: str):
-
-        # Analyze output
-        link_pattern = "Linking .pio/build/[a-zA-Z0-9]+?/firmware.elf"
-        ram_pattern = "RAM:.+?([0-9\\.]+?)%"
-        flash_pattern = "Flash:.+?([0-9\\.]+?)%"
-        connecting_pattern = "Serial port .+?"
-        connecting_error_pattern = r"A fatal error occurred: \.+? Timed out waiting for packet header"
-        writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
-        compile_src_pattern = r"Compiling .pio/build/\w+?/src/.+?.cpp.o"
-        compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/.+?.cpp.o"
-        compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?.o"
-
-        if re.findall(link_pattern, line):
-            self._callback(_linking_code, "Linking...")
-
-        elif re.findall(connecting_error_pattern, line):
-            self._callback(_connecting_error_code, "Error connecting to Chip.")
-
-        elif re.findall(connecting_pattern, line):
-            self._callback(_connecting_ok_code, "Connecting to Chip...")
-
-        elif re.findall(compile_src_pattern, line):
-            if self._compile_src_unsent:
-                self._callback(_compiling_src_code, "Compiling Source")
-                self._compile_src_unsent = False
-
-        elif re.findall(compile_framework_pattern, line):
-            if self._compile_framework_unsent:
-                self._callback(_compiling_framework_code, "Compiling Framework")
-                self._compile_framework_unsent = False
-
-        elif re.findall(compile_lib_pattern, line):
-            if self._compile_lib_unsent:
-                self._callback(_compiling_lib_code, "Compiling Libraries")
-                self._compile_lib_unsent = False
-
-        else:
-
-            writing_group = re.match(writing_pattern, line)
-            if writing_group:
-                writing_address = int(writing_group.groups()[0], 16)
-                percentage = writing_group.groups()[1]
-                if writing_address >= 65536:
-                    self._callback(_writing_fw_code, f"Writing Firmware: {percentage}%")
-
-            ram_groups = re.match(ram_pattern, line)
-            if ram_groups:
-                ram = ram_groups.groups()[0]
-                self._callback(_ram_usage_code, f"RAM usage: {ram}%")
-
-            flash_groups = re.match(flash_pattern, line)
-            if flash_groups:
-                flash = flash_groups.groups()[0]
-                self._callback(_sw_upload_code, f"Flash usage: {flash}%")
-
-    def _upload(self, port: str):
-        if not self._repo_is_locked():
-            raise RepositoryNotLockedException
-
-        self._compile_src_unsent = True
-        self._compile_framework_unsent = True
-        self._compile_lib_unsent = True
-
-        upload_port_phrase = ""
-        if port is not None:
-            self._logger.info(f"Manually setting upload port to '{port}'")
-            upload_port_phrase = f" --upload-port {port}"
-
-        b_name = self.get_git_branch()
-        commit_hash = self.get_commit_hash()
-
-        self._logger.info(f"Flashing branch '{b_name}', commit '{commit_hash}'")
-
-        self._callback(_sw_upload_code,
-                       f"Flashing branch '{b_name}', commit '{commit_hash}'")
-
-        # Upload software
-        upload_command = f"cd {get_path_to_repo()}; pio run --target upload{upload_port_phrase}"
-        process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, shell=True)
-
-        for raw_line in iter(process.stdout.readline, b''):
-            line = raw_line.decode()
-            self._analyze_line(line)
-            self._logger.info(line.strip("\n"))
-
-        process.wait()
-        if process.returncode != 0:
-            self._callback(_flash_fail_code, f"Flashing failed.")
-            raise PioUploadException
-        self._callback(_flash_ok_code, "Flashing was successful.")
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
