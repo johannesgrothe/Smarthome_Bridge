@@ -44,6 +44,10 @@ _writing_fw_code = 13
 _ram_usage_code = 14
 
 
+def get_path_to_repo() -> str:
+    return os.path.join(_repo_base_path, repo_name)
+
+
 def get_serial_ports() -> [str]:
     """Returns a list of all serial ports available to the system"""
     detected_ports = os.popen(f"ls /dev/tty*").read().strip("\n").split()
@@ -55,8 +59,7 @@ def get_serial_ports() -> [str]:
 
 # TODO: Create Object for chip flasher
 # TODO: Move cloned repository to temp/
-# TODO: Create lock file to prevent other instance from accessing/manipulating the
-#  existing repository before writing is finished
+# TODO: Create Repository manager object
 
 
 class RepositoryAccessTimeout(Exception):
@@ -64,9 +67,49 @@ class RepositoryAccessTimeout(Exception):
         super().__init__(f"Repository could not be accessed: Timeout of {timeout} seconds has passed")
 
 
+class RepositoryNotLockedException(Exception):
+    def __init__(self):
+        super().__init__(f"Action failed because repository is not locked.")
+
+
+class RepositoryStatusException(Exception):
+    def __init__(self):
+        super().__init__(f"General repository error")
+
+
+class RepositoryCloneException(Exception):
+    def __init__(self):
+        super().__init__(f"Cloning repository failed.")
+
+
 class RepositoryFetchException(Exception):
     def __init__(self):
         super().__init__(f"Fetching repository failed.")
+
+
+class RepositoryCheckoutException(Exception):
+    def __init__(self, branch: str):
+        super().__init__(f"Failed to check out '{branch}'.")
+
+
+class RepositoryPullException(Exception):
+    def __init__(self):
+        super().__init__(f"Pulling repository failed.")
+
+
+class PioCompileException(Exception):
+    def __init__(self):
+        super().__init__(f"Failed to compile sourcecode.")
+
+
+class PioUploadException(Exception):
+    def __init__(self):
+        super().__init__(f"Failed to upload software.")
+
+
+class UploadFailedException(Exception):
+    def __init__(self):
+        super().__init__(f"Failed to upload the software to the client")
 
 
 class RepoLocker:
@@ -87,6 +130,9 @@ class RepoLocker:
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._release_repository_lock()
+
+    def has_lock(self):
+        return self._has_repo_locked
 
     def _write_repository_lock(self):
         if not self._has_repo_locked:
@@ -119,49 +165,222 @@ class ChipFlasher:
     _output_callback: CallbackFunction
     _max_delay: Optional[int] = None
     _logger: logging.Logger
+    _locker: Optional[RepoLocker]
+
+    # Upload message sent flags
+    _compile_src_unsent: bool
+    _compile_framework_unsent: bool
+    _compile_lib_unsent: bool
 
     def __init__(self, output_callback: CallbackFunction = None, max_delay: Optional[int] = None):
         self._output_callback = output_callback
         self._max_delay = max_delay
         self._logger = logging.getLogger("ChipFlasher")
+        self._locker = None
+
+    def upload_software(self, branch: str, upload_port: Optional[str] = None):
+        with RepoLocker(self._max_delay) as self._locker:
+            try:
+                self._init_repository(False)
+            except RepositoryCloneException:
+                raise UploadFailedException
+
+            try:
+                self._fetch_repository()
+            except RepositoryFetchException:
+                raise UploadFailedException
+
+            try:
+                self._checkout_branch(branch)
+            except RepositoryCheckoutException:
+                raise UploadFailedException
+
+            try:
+                self._pull()
+            except RepositoryPullException:
+                raise UploadFailedException
+
+            try:
+                self._upload(upload_port)
+            except RepositoryPullException:
+                raise UploadFailedException
 
     def _callback(self, code: int, message: str):
         if self._output_callback:
             self._output_callback("SOFTWARE_UPLOAD", code, message)
 
-    def _init_repository(self, force_reset: bool) -> bool:
+    def _repo_is_locked(self) -> bool:
+        return self._locker is not None and self._locker.has_lock()
+
+    def _init_repository(self, force_reset: bool):
         repo_works = False
 
         if force_reset:
-            os.remove(repo_name)
+            if os.path.isdir(get_path_to_repo()):
+                os.remove(get_path_to_repo())
         else:
-            if os.path.isdir(repo_name):
-                repo_clean = os.system(f"cd {repo_name};git diff --quiet") == 0
+            if os.path.isdir(get_path_to_repo()):
+                repo_clean = os.system(f"cd {get_path_to_repo()};git diff --quiet") == 0
                 repo_works = repo_clean
 
         if not repo_works:
-            self._logger.info(f"Repo doesn't exist or is broken, Cloning repository from '{repo_url}'")
-            repo_works = os.system("git clone {}".format(repo_url)) == 0
-            os.system(f"cd {repo_name};git config pull.ff only")
+            self._logger.info(f"Repo doesn't exist or is broken, deleting dir and cloning repository from '{repo_url}'")
+            if os.path.isdir(get_path_to_repo()):
+                os.remove(get_path_to_repo())
+
+            repo_works = os.system(f"cd {_repo_base_path};git clone {repo_url} --quiet") == 0
 
         if not repo_works:
-            self._logger.error("Error cloning repository")
+            self._logger.error(f"Error cloning repository from '{repo_url}'")
             self._callback(_cloning_fail_code, "Cloning failed.")
-            return False
+            raise RepositoryCloneException
         else:
             self._callback(_cloning_ok_code, "Cloning ok.")
 
     def _fetch_repository(self):
-        with RepoLocker(self._max_delay):
-            self._logger.info(f"Fetching repository")
-            fetch_ok = os.system(f"cd {repo_name};git fetch") == 0
-            if not fetch_ok:
-                self._logger.error("Fetching repository failed.")
-                self._callback(_fetch_fail_code, "Fetching failed.")
-                raise RepositoryFetchException
-            else:
-                self._logger.info("Fetching repository was successful.")
-                self._callback(_fetch_ok_code, "Fetching OK.")
+        if not self._repo_is_locked():
+            raise RepositoryNotLockedException
+
+        self._logger.info(f"Fetching...")
+        fetch_ok = os.system(f"cd {get_path_to_repo()};git fetch --quiet") == 0
+        if not fetch_ok:
+            self._logger.error("Fetching repository failed.")
+            self._callback(_fetch_fail_code, "Fetching failed.")
+            raise RepositoryFetchException
+        else:
+            self._logger.info("Fetching repository was successful.")
+            self._callback(_fetch_ok_code, "Fetching OK.")
+
+    def _checkout_branch(self, branch: str):
+        if not self._repo_is_locked():
+            raise RepositoryNotLockedException
+
+        self._logger.info(f"Checking out '{branch}'...")
+        checkout_successful = os.system(f"cd {get_path_to_repo()};git checkout {branch} --quiet") == 0
+        if not checkout_successful:
+            self._logger.error(f"Failed to check out '{branch}'.")
+            self._callback(_checkout_fail_code, f"Checking out '{branch}' failed.")
+            raise RepositoryCheckoutException(branch)
+        self._logger.info(f"Checking out '{branch}' was successful.")
+        self._callback(_checkout_ok_code, f"Checking out '{branch}' OK.")
+
+    def _pull(self):
+        if not self._repo_is_locked():
+            raise RepositoryNotLockedException
+
+        pull_ok = os.system(f"cd {get_path_to_repo()};git pull --quiet") == 0
+        if not pull_ok:
+            self._logger.error("Failed to pull from remote repository")
+            self._callback(_pull_fail_code, f"Pulling failed.")
+            raise RepositoryPullException
+        self._logger.info("Pulling from remote repository was successful")
+        self._callback(_pull_ok_code, "Pulling was successful")
+
+    @staticmethod
+    def get_commit_hash() -> str:
+        return os.popen(f"cd {get_path_to_repo()};git rev-parse HEAD").read().strip("\n")
+
+    @staticmethod
+    def get_git_branch() -> str:
+        branch_list = [x.strip().strip("*").strip()
+                       for x
+                       in os.popen(f"cd {get_path_to_repo()};git branch").read().strip("\n").split("\n")
+                       if x.strip().startswith("*")]
+        if len(branch_list) != 1:
+            raise RepositoryStatusException
+        return branch_list[0]
+
+    def _analyze_line(self, line: str):
+
+        # Analyze output
+        link_pattern = "Linking .pio/build/[a-zA-Z0-9]+?/firmware.elf"
+        ram_pattern = "RAM:.+?([0-9\\.]+?)%"
+        flash_pattern = "Flash:.+?([0-9\\.]+?)%"
+        connecting_pattern = "Serial port .+?"
+        connecting_error_pattern = r"A fatal error occurred: \.+? Timed out waiting for packet header"
+        writing_pattern = r"Writing at (0x[0-9a-f]+)\.+? \(([0-9]+?) %\)"
+        compile_src_pattern = r"Compiling .pio/build/\w+?/src/.+?.cpp.o"
+        compile_framework_pattern = r"Compiling .pio/build/\w+?/FrameworkArduino/.+?.cpp.o"
+        compile_lib_pattern = r"Compiling .pio/build/\w+?/lib[0-9]+/.+?.o"
+
+        if re.findall(link_pattern, line):
+            self._callback(_linking_code, "Linking...")
+
+        elif re.findall(connecting_error_pattern, line):
+            self._callback(_connecting_error_code, "Error connecting to Chip.")
+
+        elif re.findall(connecting_pattern, line):
+            self._callback(_connecting_ok_code, "Connecting to Chip...")
+
+        elif re.findall(compile_src_pattern, line):
+            if self._compile_src_unsent:
+                self._callback(_compiling_src_code, "Compiling Source")
+                self._compile_src_unsent = False
+
+        elif re.findall(compile_framework_pattern, line):
+            if self._compile_framework_unsent:
+                self._callback(_compiling_framework_code, "Compiling Framework")
+                self._compile_framework_unsent = False
+
+        elif re.findall(compile_lib_pattern, line):
+            if self._compile_lib_unsent:
+                self._callback(_compiling_lib_code, "Compiling Libraries")
+                self._compile_lib_unsent = False
+
+        else:
+
+            writing_group = re.match(writing_pattern, line)
+            if writing_group:
+                writing_address = int(writing_group.groups()[0], 16)
+                percentage = writing_group.groups()[1]
+                if writing_address >= 65536:
+                    self._callback(_writing_fw_code, f"Writing Firmware: {percentage}%")
+
+            ram_groups = re.match(ram_pattern, line)
+            if ram_groups:
+                ram = ram_groups.groups()[0]
+                self._callback(_ram_usage_code, f"RAM usage: {ram}%")
+
+            flash_groups = re.match(flash_pattern, line)
+            if flash_groups:
+                flash = flash_groups.groups()[0]
+                self._callback(_sw_upload_code, f"Flash usage: {flash}%")
+
+    def _upload(self, port: str):
+        if not self._repo_is_locked():
+            raise RepositoryNotLockedException
+
+        self._compile_src_unsent = True
+        self._compile_framework_unsent = True
+        self._compile_lib_unsent = True
+
+        upload_port_phrase = ""
+        if port is not None:
+            self._logger.info(f"Manually setting upload port to '{port}'")
+            upload_port_phrase = f" --upload-port {port}"
+
+        b_name = self.get_git_branch()
+        commit_hash = self.get_commit_hash()
+
+        self._logger.info(f"Flashing branch '{b_name}', commit '{commit_hash}'")
+
+        self._callback(_sw_upload_code,
+                       f"Flashing branch '{b_name}', commit '{commit_hash}'")
+
+        # Upload software
+        upload_command = f"cd {repo_name}; pio run --target upload{upload_port_phrase}"
+        process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, shell=True)
+
+        for raw_line in iter(process.stdout.readline, b''):
+            line = raw_line.decode()
+            self._analyze_line(line)
+            self._logger.info(line.strip("\n"))
+
+        process.wait()
+        if process.returncode == 0:
+            self._callback(_flash_ok_code, "Flashing was successful.")
+        self._callback(_flash_fail_code, f"Flashing failed.")
+        raise PioUploadException
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
