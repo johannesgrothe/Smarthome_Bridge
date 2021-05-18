@@ -181,7 +181,7 @@ class ChipFlasher:
     def upload_software(self, branch: str, upload_port: Optional[str] = None):
         with RepoLocker(self._max_delay) as self._locker:
             try:
-                self._init_repository(False)
+                self._init_repository(force_reset=False)
             except RepositoryCloneException:
                 raise UploadFailedException
 
@@ -202,7 +202,7 @@ class ChipFlasher:
 
             try:
                 self._upload(upload_port)
-            except RepositoryPullException:
+            except (PioUploadException, PioCompileException):
                 raise UploadFailedException
 
     def _callback(self, code: int, message: str):
@@ -368,7 +368,7 @@ class ChipFlasher:
                        f"Flashing branch '{b_name}', commit '{commit_hash}'")
 
         # Upload software
-        upload_command = f"cd {repo_name}; pio run --target upload{upload_port_phrase}"
+        upload_command = f"cd {get_path_to_repo()}; pio run --target upload{upload_port_phrase}"
         process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, shell=True)
 
         for raw_line in iter(process.stdout.readline, b''):
@@ -377,10 +377,10 @@ class ChipFlasher:
             self._logger.info(line.strip("\n"))
 
         process.wait()
-        if process.returncode == 0:
-            self._callback(_flash_ok_code, "Flashing was successful.")
-        self._callback(_flash_fail_code, f"Flashing failed.")
-        raise PioUploadException
+        if process.returncode != 0:
+            self._callback(_flash_fail_code, f"Flashing failed.")
+            raise PioUploadException
+        self._callback(_flash_ok_code, "Flashing was successful.")
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
@@ -542,7 +542,7 @@ def flash_chip_helper(b_name: str, f_reset: bool = False, upload_port: Optional[
                                 _sw_upload_code,
                                 f"Flash usage: {flash}%")
 
-        print(line.strip("\n"))
+        # print(line.strip("\n"))
 
     process.wait()
     if process.returncode == 0:
@@ -559,6 +559,10 @@ def flash_chip_helper(b_name: str, f_reset: bool = False, upload_port: Optional[
 
 
 if __name__ == '__main__':
+
+    def callback(sender: str, code: int, message:str):
+        print(f"{sender} | {code} | {message}")
+
     parser = argparse.ArgumentParser(description='Script to flash different software versions to the chip')
     parser.add_argument('--branch', help='git branch to flash on the chip')
     parser.add_argument('--serial_port', help='serial port for uploading')
@@ -566,11 +570,12 @@ if __name__ == '__main__':
 
     print("Launching Chip Flasher")
     branch = "develop"
+    flasher = ChipFlasher(output_callback=callback)
+
     if ARGS.branch:
         branch = ARGS.branch
     if ARGS.serial_port:
-        flash_chip(branch,
-                   upload_port=ARGS.serial_port)
+        flasher.upload_software(branch, ARGS.serial_port)
     else:
-        flash_chip(branch)
+        flasher.upload_software(branch)
     print("Done")
