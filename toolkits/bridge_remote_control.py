@@ -19,8 +19,9 @@ from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 from network_connector import NetworkConnector, Request
 from request import NoClientResponseException
-from chip_flasher import get_serial_ports, flash_chip
+from chip_flasher import ChipFlasher, flash_chip
 from client_controller import ClientController
+from client_config_manager import ClientConfigManager
 
 from contextlib import contextmanager
 
@@ -94,20 +95,6 @@ def enter_file_path() -> Optional[str]:
     if not f_path or not os.path.isfile(f_path):
         return None
     return f_path
-
-
-def load_config(path: str) -> Optional[dict]:
-    """Loads a config from the disk and validates it. Returns None on Error."""
-    try:
-        json_schema: dict = {}
-        with open(os.path.join("json_schemas", "client_config.json")) as file_h:
-            json_schema = json.load(file_h)
-        with open(path) as file_h:
-            config_data = json.load(file_h)
-            validate(config_data, json_schema)
-            return config_data
-    except (OSError, IOError, ValidationError):
-        return None
 
 
 def gen_req_id() -> int:
@@ -382,18 +369,24 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
             return
 
     def _write_config(self):
+
+        manager = ClientConfigManager()
+        config_names = manager.get_config_names()
+
         config_path: Optional[str]
         config_data: Optional[dict] = None
-        while not config_data:
-            config_path = enter_file_path()
-            if not config_path:
-                response = ask_for_continue("Entered invalid config path. Try again?")
-                if not response:
-                    return
-                else:
-                    continue
 
-            config_data = load_config(config_path)
+        while not config_data:
+
+            config_index = select_option(config_names,
+                                         "which config to write",
+                                         "Quit")
+
+            if config_index == -1:
+                return
+
+            config_data = manager.get_config(config_names[config_index])
+
             if not config_data:
                 response = ask_for_continue("Config file could either not be loaded, isn no valid json file or"
                                             "no valid config. Try again?")
@@ -948,7 +941,7 @@ if __name__ == '__main__':
                 sys.exit(0)
 
             if connection_type == 0:  # Serial
-                serial_ports = get_serial_ports()
+                serial_ports = ChipFlasher.get_serial_ports()
                 serial_port_index = connection_type = select_option(serial_ports, "Serial Port", "Quit")
                 if serial_port_index == -1:
                     sys.exit(0)
