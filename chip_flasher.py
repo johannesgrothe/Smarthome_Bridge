@@ -4,6 +4,7 @@ import re
 import argparse
 import subprocess
 import logging
+import repository_manager
 from datetime import datetime, timedelta
 from typing import Optional, Callable
 
@@ -45,60 +46,19 @@ _writing_fw_code = 13
 _ram_usage_code = 14
 
 
-def get_path_to_repo() -> str:
-    return os.path.join(_repo_base_path, repo_name)
-
-
-def get_serial_ports() -> [str]:
-    """Returns a list of all serial ports available to the system"""
-    detected_ports = os.popen(f"ls /dev/tty*").read().strip("\n").split()
-    valid_ports = []
-    for port in detected_ports:
-        if "usb" in port.lower():
-            valid_ports.append(port)
-    return valid_ports
-
-# TODO: Create Repository manager object
-
-
 class RepositoryAccessTimeout(Exception):
     def __init__(self, timeout: int):
         super().__init__(f"Repository could not be accessed: Timeout of {timeout} seconds has passed")
 
 
-class RepositoryNotLockedException(Exception):
-    def __init__(self):
-        super().__init__(f"Action failed because repository is not locked.")
-
-
-class RepositoryStatusException(Exception):
-    def __init__(self):
-        super().__init__(f"General repository error")
-
-
-class RepositoryCloneException(Exception):
-    def __init__(self):
-        super().__init__(f"Cloning repository failed.")
-
-
-class RepositoryFetchException(Exception):
-    def __init__(self):
-        super().__init__(f"Fetching repository failed.")
-
-
-class RepositoryCheckoutException(Exception):
-    def __init__(self, branch: str):
-        super().__init__(f"Failed to check out '{branch}'.")
-
-
-class RepositoryPullException(Exception):
-    def __init__(self):
-        super().__init__(f"Pulling repository failed.")
-
-
 class PioCompileException(Exception):
     def __init__(self):
         super().__init__(f"Failed to compile sourcecode.")
+
+
+class PioNoProjectFoundException(Exception):
+    def __init__(self, path):
+        super().__init__(f"The selected directory is no valid PlatformIO project directory: '{path}'")
 
 
 class PioUploadException(Exception):
@@ -160,7 +120,7 @@ class RepoLocker:
 
 
 class PioUploader:
-    _repo_path: str
+    _project_path: str
     _output_callback: PioCallbackFunction
     _logger: logging.Logger
 
@@ -169,8 +129,10 @@ class PioUploader:
     _compile_framework_unsent: bool
     _compile_lib_unsent: bool
 
-    def __init__(self, repository_path: str, output_callback: PioCallbackFunction = None):
-        self._repo_path = repository_path
+    def __init__(self, project_path: str, output_callback: PioCallbackFunction = None):
+        if not os.path.isfile(os.path.join(project_path, "platformio.ini")):
+            raise PioNoProjectFoundException(project_path)
+        self._project_path = project_path
         self._output_callback = output_callback
         self._logger = logging.getLogger("PioUploader")
 
@@ -245,7 +207,7 @@ class PioUploader:
             upload_port_phrase = f" --upload-port {port}"
 
         # Upload software
-        upload_command = f"cd {self._repo_path}; pio run --target upload{upload_port_phrase}"
+        upload_command = f"cd {self._project_path}; pio run --target upload{upload_port_phrase}"
         process = subprocess.Popen(upload_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
         for raw_line in iter(process.stdout.readline, b''):
@@ -258,10 +220,6 @@ class PioUploader:
             self._callback(_flash_fail_code, f"Flashing failed.")
             raise PioUploadException
         self._callback(_flash_ok_code, "Flashing was successful.")
-
-
-class RepositoryManager:
-    pass
 
 
 class ChipFlasher:
@@ -279,28 +237,37 @@ class ChipFlasher:
 
     def upload_software(self, branch: str, upload_port: Optional[str] = None):
         with RepoLocker(self._max_delay) as self._locker:
+            repo_manager = repository_manager.RepositoryManager(_repo_base_path, repo_name, repo_url)
             try:
-                self._init_repository(force_reset=False)
-            except RepositoryCloneException:
+                repo_manager.init_repository(force_reset=False)
+                self._callback(_cloning_ok_code, "Cloning ok.")
+            except repository_manager.RepositoryCloneException:
+                self._callback(_cloning_fail_code, "Cloning failed.")
                 raise UploadFailedException
 
             try:
-                self._fetch_repository()
-            except RepositoryFetchException:
+                repo_manager.fetch()
+                self._callback(_fetch_ok_code, "Fetching OK.")
+            except repository_manager.RepositoryFetchException:
+                self._callback(_fetch_fail_code, "Fetching failed.")
                 raise UploadFailedException
 
             try:
-                self._checkout_branch(branch)
-            except RepositoryCheckoutException:
+                repo_manager.checkout(branch)
+                self._callback(_checkout_ok_code, f"Checking out '{branch}' OK.")
+            except repository_manager.RepositoryCheckoutException:
+                self._callback(_checkout_fail_code, f"Checking out '{branch}' failed.")
                 raise UploadFailedException
 
             try:
-                self._pull()
-            except RepositoryPullException:
+                repo_manager.pull()
+                self._callback(_pull_ok_code, "Pulling was successful")
+            except repository_manager.RepositoryPullException:
+                self._callback(_pull_fail_code, f"Pulling failed.")
                 raise UploadFailedException
 
             try:
-                uploader = PioUploader(get_path_to_repo(), self._callback)
+                uploader = PioUploader(os.path.join(_repo_base_path, repo_name), self._callback)
                 uploader.upload_software(upload_port)
             except (PioUploadException, PioCompileException):
                 raise UploadFailedException
@@ -309,98 +276,15 @@ class ChipFlasher:
         if self._output_callback:
             self._output_callback("SOFTWARE_UPLOAD", code, message)
 
-    def _repo_is_locked(self) -> bool:
-        return self._locker is not None and self._locker.has_lock()
-
     @staticmethod
-    def _delete_repository_folder(path):
-        if not os.path.isdir(".git"):
-            raise Exception("Selected Folder is no git Repository")
-
-        for root, dirs, files in os.walk(path, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-
-    def _init_repository(self, force_reset: bool):
-        repo_works = False
-
-        if force_reset:
-            if os.path.isdir(get_path_to_repo()):
-                self._delete_repository_folder(get_path_to_repo())
-        else:
-            if os.path.isdir(get_path_to_repo()):
-                repo_clean = os.system(f"cd {get_path_to_repo()};git diff --quiet") == 0
-                repo_works = repo_clean
-
-        if not repo_works:
-            self._logger.info(f"Repo doesn't exist or is broken, deleting dir and cloning repository from '{repo_url}'")
-            if os.path.isdir(get_path_to_repo()):
-                self._delete_repository_folder(get_path_to_repo())
-
-            target_path = os.path.abspath(os.path.join(get_path_to_repo(), os.pardir))
-            repo_works = os.system(f"cd {target_path};git clone {repo_url} --quiet") == 0
-
-        if not repo_works:
-            self._logger.error(f"Error cloning repository from '{repo_url}'")
-            self._callback(_cloning_fail_code, "Cloning failed.")
-            raise RepositoryCloneException
-        else:
-            self._callback(_cloning_ok_code, "Cloning ok.")
-
-    def _fetch_repository(self):
-        if not self._repo_is_locked():
-            raise RepositoryNotLockedException
-
-        self._logger.info(f"Fetching...")
-        fetch_ok = os.system(f"cd {get_path_to_repo()};git fetch --quiet") == 0
-        if not fetch_ok:
-            self._logger.error("Fetching repository failed.")
-            self._callback(_fetch_fail_code, "Fetching failed.")
-            raise RepositoryFetchException
-        else:
-            self._logger.info("Fetching repository was successful.")
-            self._callback(_fetch_ok_code, "Fetching OK.")
-
-    def _checkout_branch(self, branch: str):
-        if not self._repo_is_locked():
-            raise RepositoryNotLockedException
-
-        self._logger.info(f"Checking out '{branch}'...")
-        checkout_successful = os.system(f"cd {get_path_to_repo()};git checkout {branch} --quiet") == 0
-        if not checkout_successful:
-            self._logger.error(f"Failed to check out '{branch}'.")
-            self._callback(_checkout_fail_code, f"Checking out '{branch}' failed.")
-            raise RepositoryCheckoutException(branch)
-        self._logger.info(f"Checking out '{branch}' was successful.")
-        self._callback(_checkout_ok_code, f"Checking out '{branch}' OK.")
-
-    def _pull(self):
-        if not self._repo_is_locked():
-            raise RepositoryNotLockedException
-
-        pull_ok = os.system(f"cd {get_path_to_repo()};git pull --quiet") == 0
-        if not pull_ok:
-            self._logger.error("Failed to pull from remote repository")
-            self._callback(_pull_fail_code, f"Pulling failed.")
-            raise RepositoryPullException
-        self._logger.info("Pulling from remote repository was successful")
-        self._callback(_pull_ok_code, "Pulling was successful")
-
-    @staticmethod
-    def get_commit_hash() -> str:
-        return os.popen(f"cd {get_path_to_repo()};git rev-parse HEAD").read().strip("\n")
-
-    @staticmethod
-    def get_git_branch() -> str:
-        branch_list = [x.strip().strip("*").strip()
-                       for x
-                       in os.popen(f"cd {get_path_to_repo()};git branch").read().strip("\n").split("\n")
-                       if x.strip().startswith("*")]
-        if len(branch_list) != 1:
-            raise RepositoryStatusException
-        return branch_list[0]
+    def get_serial_ports() -> [str]:
+        """Returns a list of all serial ports available to the system"""
+        detected_ports = os.popen(f"ls /dev/tty*").read().strip("\n").split()
+        valid_ports = []
+        for port in detected_ports:
+            if "usb" in port.lower():
+                valid_ports.append(port)
+        return valid_ports
 
 
 def flash_chip(branch_name: str, force_reset: bool = False, upload_port: Optional[str] = None,
