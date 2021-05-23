@@ -7,7 +7,23 @@
       "type": "object"
     },
     "mqtt": {
-      "type": "object"
+      "type": "object",
+      "required": ["ip", "port", "username", "password"],
+      "properties": {
+        "ip": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "username": {
+          "type": ["string", "null"]
+        },
+        "password": {
+          "type": ["string", "null"]
+        }
+      }
     }
   }
 }

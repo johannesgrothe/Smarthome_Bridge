@@ -235,11 +235,11 @@ class ChipFlasher:
         self._logger = logging.getLogger("ChipFlasher")
         self._locker = None
 
-    def upload_software(self, branch: str, upload_port: Optional[str] = None):
+    def upload_software(self, branch: str, upload_port: Optional[str] = None, clone_new_repository: bool = False):
         with RepoLocker(self._max_delay) as self._locker:
             repo_manager = repository_manager.RepositoryManager(_repo_base_path, repo_name, repo_url)
             try:
-                repo_manager.init_repository(force_reset=False)
+                repo_manager.init_repository(force_reset=clone_new_repository)
                 self._callback(_cloning_ok_code, "Cloning ok.")
             except repository_manager.RepositoryCloneException:
                 self._callback(_cloning_fail_code, "Cloning failed.")

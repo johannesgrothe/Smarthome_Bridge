@@ -10,7 +10,6 @@ import gadgetlib
 import logging
 import random
 import time
-from jsonschema import validate, ValidationError
 from abc import ABCMeta, abstractmethod
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
@@ -19,11 +18,10 @@ from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 from network_connector import NetworkConnector, Request
 from request import NoClientResponseException
-from chip_flasher import ChipFlasher, flash_chip
+from chip_flasher import ChipFlasher
 from client_controller import ClientController
 from client_config_manager import ClientConfigManager
-
-from contextlib import contextmanager
+from toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
 
 TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
 
@@ -31,9 +29,6 @@ DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
-
-_config_path = os.path.join("temp", "connection_configs.json")
-_validation_schema_path = os.path.join("json_schemas", "toolkit_config.json")
 
 
 class LoadingIndicator:
@@ -279,9 +274,9 @@ def format_string_len(in_data: str, length: int) -> str:
 
 def upload_software_to_client(serial_port: str) -> bool:
     print("Uploading Software to Client:")
-    result = flash_chip("develop",
-                        False,
-                        serial_port)
+    flasher = ChipFlasher()
+    result = flasher.upload_software("develop", serial_port)
+
     if result:
         print("Uploading software was successful")
         return True
@@ -289,9 +284,8 @@ def upload_software_to_client(serial_port: str) -> bool:
         print("Uploading software failed.")
         if ask_for_continue("Try again with some extra caution?"):
             print("Uploading Software to Client:")
-            result = flash_chip("develop",
-                                True,
-                                serial_port)
+            result = flasher.upload_software("develop", serial_port, clone_new_repository=True)
+
             if result:
                 print("Uploading software was successful")
                 return True
@@ -300,109 +294,6 @@ def upload_software_to_client(serial_port: str) -> bool:
                 return False
         else:
             return False
-
-
-class ValidationSchemaNotFoundException(Exception):
-    def __init__(self):
-        super().__init__(f"No schema for config validation found")
-
-
-class ConfigAlreadyExistsException(Exception):
-    def __init__(self, config_id: str):
-        super().__init__(f"A config with the id '{config_id}' already exists")
-
-
-class InvalidConfigException(Exception):
-    def __init__(self, config_id: str):
-        super().__init__(f"The config with the id '{config_id}' failed validation process")
-
-
-class ToolkitSettingsManager:
-    _logger: logging.Logger
-    _configs: dict
-    _validation_schema: dict
-
-    def __init__(self):
-        self._logger = logging.getLogger("ToolkitSettingsManager")
-        self._load_validation_schema()
-        self.load()
-
-    def _load_validation_schema(self):
-        try:
-            with open(_validation_schema_path, 'r') as file_h:
-                self._validation_schema = json.load(file_h)
-        except IOError:
-            self._logger.error("Validation scheme could not be loaded.")
-            raise ValidationSchemaNotFoundException
-
-    @staticmethod
-    def _generate_base_config() -> dict:
-        out_config = {"$schema": os.path.join("..", _validation_schema_path),
-                      "bridge": {},
-                      "mqtt": {}}
-        return out_config
-
-    def _config_is_valid(self, config_type: str, config_id: str, config: dict) -> bool:
-        buf_config = self._generate_base_config()
-        buf_config[config_type][config_id] = config
-        try:
-            validate(buf_config, self._validation_schema)
-        except ValidationError:
-            return False
-        return True
-
-    def load(self):
-        try:
-            with open(_config_path, 'r') as file_h:
-                self._configs = json.load(file_h)
-                self._logger.info("Config successfully loaded.")
-
-        except IOError:
-            self._logger.warning("No configs file found, creating new one.")
-            self._configs = self._generate_base_config()
-            self.save()
-
-    def save(self):
-        try:
-            with open(_config_path, 'w') as file_h:
-                json.dump(self._configs, file_h)
-                self._logger.info("Saved config file to disk.")
-        except IOError:
-            self._logger.error("Could not save configs file.")
-
-    def get_bridge_config_ids(self):
-        return [config_id for config_id in self._configs["bridge"]]
-
-    def get_bridge_config(self, config_id: str) -> Optional[dict]:
-        try:
-            return self._configs["bridge"][config_id]
-        except KeyError:
-            return None
-
-    def set_bridge_config(self, config_id: str, config: dict, overwrite: bool = False):
-        if not self._config_is_valid("bridge", config_id, config):
-            raise InvalidConfigException
-
-        if config_id in self._configs["bridge"] and not overwrite:
-            raise ConfigAlreadyExistsException(config_id)
-        self._configs["bridge"][config_id] = config
-
-    def get_mqtt_config_ids(self):
-        return [config_id for config_id in self._configs["mqtt"]]
-
-    def get_mqtt_config(self, config_id: str) -> Optional[dict]:
-        try:
-            return self._configs["mqtt"][config_id]
-        except KeyError:
-            return None
-
-    def set_mqtt_config(self, config_id: str, config: dict, overwrite: bool = False):
-        if not self._config_is_valid("mqtt", config_id, config):
-            raise InvalidConfigException
-
-        if config_id in self._configs["mqtt"] and not overwrite:
-            raise ConfigAlreadyExistsException(config_id)
-        self._configs["mqtt"][config_id] = config
 
 
 class ToolkitException(Exception):
@@ -1104,18 +995,26 @@ if __name__ == '__main__':
                             else:
                                 config_name = input("Please enter a ID to identify the config later\n")
 
-                        print(f"You are about to save this config:\n"
+                        print(f"You entered the following config:\n"
+                              f"ID: {config_name}\n"
                               f"IP: {ip}\n"
                               f"Port: {port}\n"
                               f"Username: {username}\n"
                               f"Password: {password}")
+
                         if not ask_for_continue("Do you want to use it?"):
-                            sys.exit(0)
-                        manager.set_mqtt_config(config_name,
-                                                {"ip": ip,
-                                                 "port": port,
-                                                 "username": username,
-                                                 "password": password})
+                            continue
+
+                        try:
+                            manager.set_mqtt_config(config_name,
+                                                    {"ip": ip,
+                                                     "port": port,
+                                                     "username": username,
+                                                     "password": password})
+                        except InvalidConfigException:
+                            print("Some of the entered values were illegal, please try again.\n")
+                            continue
+
                         if ask_for_continue("Do you want to save all created configs?"):
                             manager.save()
                     else:
@@ -1144,7 +1043,7 @@ if __name__ == '__main__':
         if ARGS.serial_port:
             serial_port = ARGS.serial_port
         else:
-            serial_ports = get_serial_ports()
+            serial_ports = ChipFlasher.get_serial_ports()
             serial_port_index = connection_type = select_option(serial_ports, "Serial Port", "Quit")
             if serial_port_index == -1:
                 sys.exit(0)
