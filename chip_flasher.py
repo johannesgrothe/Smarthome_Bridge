@@ -462,24 +462,27 @@ def flash_chip_helper(b_name: str, f_reset: bool = False, upload_port: Optional[
     return False
 
 
-if __name__ == '__main__':
-
-    def callback(sender: str, code: int, message:str):
+def module_main():
+    def callback(sender: str, code: int, message: str):
         print(f"{sender} | {code} | {message}")
 
     parser = argparse.ArgumentParser(description='Script to flash different software versions to the chip')
     parser.add_argument('--branch', help='git branch to flash on the chip')
     parser.add_argument('--serial_port', help='serial port for uploading')
-    ARGS = parser.parse_args()
+    args = parser.parse_args()
 
     print("Launching Chip Flasher")
     branch = "develop"
     flasher = ChipFlasher(output_callback=callback)
 
-    if ARGS.branch:
-        branch = ARGS.branch
-    if ARGS.serial_port:
-        flasher.upload_software(branch, ARGS.serial_port)
+    if args.branch:
+        branch = args.branch
+    if args.serial_port:
+        flasher.upload_software(branch, args.serial_port)
     else:
         flasher.upload_software(branch)
     print("Done")
+
+
+if __name__ == '__main__':
+    module_main()

@@ -32,6 +32,9 @@ BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot ch
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
 
+_config_path = os.path.join("temp", "connection_configs.json")
+_validation_schema_path = os.path.join("json_schemas", "toolkit_config.json")
+
 
 class LoadingIndicator:
 
@@ -297,6 +300,109 @@ def upload_software_to_client(serial_port: str) -> bool:
                 return False
         else:
             return False
+
+
+class ValidationSchemaNotFoundException(Exception):
+    def __init__(self):
+        super().__init__(f"No schema for config validation found")
+
+
+class ConfigAlreadyExistsException(Exception):
+    def __init__(self, config_id: str):
+        super().__init__(f"A config with the id '{config_id}' already exists")
+
+
+class InvalidConfigException(Exception):
+    def __init__(self, config_id: str):
+        super().__init__(f"The config with the id '{config_id}' failed validation process")
+
+
+class ToolkitSettingsManager:
+    _logger: logging.Logger
+    _configs: dict
+    _validation_schema: dict
+
+    def __init__(self):
+        self._logger = logging.getLogger("ToolkitSettingsManager")
+        self._load_validation_schema()
+        self.load()
+
+    def _load_validation_schema(self):
+        try:
+            with open(_validation_schema_path, 'r') as file_h:
+                self._validation_schema = json.load(file_h)
+        except IOError:
+            self._logger.error("Validation scheme could not be loaded.")
+            raise ValidationSchemaNotFoundException
+
+    @staticmethod
+    def _generate_base_config() -> dict:
+        out_config = {"$schema": os.path.join("..", _validation_schema_path),
+                      "bridge": {},
+                      "mqtt": {}}
+        return out_config
+
+    def _config_is_valid(self, config_type: str, config_id: str, config: dict) -> bool:
+        buf_config = self._generate_base_config()
+        buf_config[config_type][config_id] = config
+        try:
+            validate(buf_config, self._validation_schema)
+        except ValidationError:
+            return False
+        return True
+
+    def load(self):
+        try:
+            with open(_config_path, 'r') as file_h:
+                self._configs = json.load(file_h)
+                self._logger.info("Config successfully loaded.")
+
+        except IOError:
+            self._logger.warning("No configs file found, creating new one.")
+            self._configs = self._generate_base_config()
+            self.save()
+
+    def save(self):
+        try:
+            with open(_config_path, 'w') as file_h:
+                json.dump(self._configs, file_h)
+                self._logger.info("Saved config file to disk.")
+        except IOError:
+            self._logger.error("Could not save configs file.")
+
+    def get_bridge_config_ids(self):
+        return [config_id for config_id in self._configs["bridge"]]
+
+    def get_bridge_config(self, config_id: str) -> Optional[dict]:
+        try:
+            return self._configs["bridge"][config_id]
+        except KeyError:
+            return None
+
+    def set_bridge_config(self, config_id: str, config: dict, overwrite: bool = False):
+        if not self._config_is_valid("bridge", config_id, config):
+            raise InvalidConfigException
+
+        if config_id in self._configs["bridge"] and not overwrite:
+            raise ConfigAlreadyExistsException(config_id)
+        self._configs["bridge"][config_id] = config
+
+    def get_mqtt_config_ids(self):
+        return [config_id for config_id in self._configs["mqtt"]]
+
+    def get_mqtt_config(self, config_id: str) -> Optional[dict]:
+        try:
+            return self._configs["mqtt"][config_id]
+        except KeyError:
+            return None
+
+    def set_mqtt_config(self, config_id: str, config: dict, overwrite: bool = False):
+        if not self._config_is_valid("mqtt", config_id, config):
+            raise InvalidConfigException
+
+        if config_id in self._configs["mqtt"] and not overwrite:
+            raise ConfigAlreadyExistsException(config_id)
+        self._configs["mqtt"][config_id] = config
 
 
 class ToolkitException(Exception):
@@ -916,7 +1022,7 @@ if __name__ == '__main__':
             except ToolkitException:
                 sys.exit(1)
 
-        elif ARGS.mqtt_ip:
+        elif ARGS.mqtt_ip and ARGS.mqtt_port:
             print("Using mqtt config provided by program argument")
             username = None
             password = None
@@ -953,21 +1059,73 @@ if __name__ == '__main__':
                     sys.exit(1)
 
             elif connection_type == 1:  # MQTT
-                ip = input("Please enter the IP Address of the MQTT Broker\n")
-                port = int(input("Please enter the Port of the MQTT Broker\n"))
+                manager = ToolkitSettingsManager()
+                selected_config: Optional[dict] = None
 
-                username = input("Please enter the Username of the MQTT Broker. Leave Empty if there isn't any.\n")
+                while selected_config is None:
+                    config_ids = manager.get_mqtt_config_ids()
+                    config_id = select_option(config_ids + ["Create New Config"], "a config", "Quit")
 
-                if username:
-                    password = input("Please enter the Password of the MQTT Broker. Leave Empty if there isn't any.\n")
-                    if not password:
-                        password = None
-                else:
-                    username = None
-                    password = None
+                    if config_id == -1:  # Quit
+                        sys.exit(0)
+
+                    elif config_id == len(config_ids):
+                        ip = input("Please enter the IP Address of the MQTT Broker\n")
+                        port = int(input("Please enter the Port of the MQTT Broker\n"))
+
+                        username = input("Please enter the Username of the MQTT Broker. "
+                                         "Leave Empty if there isn't any.\n")
+
+                        if username:
+                            password = input("Please enter the Password of the MQTT Broker. "
+                                             "Leave Empty if there isn't any.\n")
+                            if not password:
+                                password = None
+                        else:
+                            username = None
+                            password = None
+
+                        config_name = input("Please enter a ID to identify the config later\n")
+                        override = False
+
+                        while len(config_name) < 3 or (config_name in config_ids and not override):
+                            if len(config_name) < 3:
+                                print("The config ID has to be at least 3 Chars long")
+                                config_name = input("Please enter a ID to identify the config later\n")
+                                continue
+
+                            print("A config with this name already exists, what do you want to do?")
+                            to_do = select_option(config_ids + ["Override", "Select new ID"], "what to do", "Quit")
+
+                            if to_do == -1:  # Quit
+                                sys.exit(0)
+                            elif to_do == 0:  # Override
+                                override = True
+                            else:
+                                config_name = input("Please enter a ID to identify the config later\n")
+
+                        print(f"You are about to save this config:\n"
+                              f"IP: {ip}\n"
+                              f"Port: {port}\n"
+                              f"Username: {username}\n"
+                              f"Password: {password}")
+                        if not ask_for_continue("Do you want to use it?"):
+                            sys.exit(0)
+                        manager.set_mqtt_config(config_name,
+                                                {"ip": ip,
+                                                 "port": port,
+                                                 "username": username,
+                                                 "password": password})
+                        if ask_for_continue("Do you want to save all created configs?"):
+                            manager.save()
+                    else:
+                        selected_config = manager.get_mqtt_config(config_ids[config_id])
 
                 try:
-                    toolkit_instance = DirectMqttConnectionToolkit(ip, port, username, password)
+                    toolkit_instance = DirectMqttConnectionToolkit(selected_config["ip"],
+                                                                   selected_config["port"],
+                                                                   selected_config["username"],
+                                                                   selected_config["password"])
                 except ToolkitException:
                     sys.exit(1)
 
