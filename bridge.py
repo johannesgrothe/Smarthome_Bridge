@@ -8,7 +8,7 @@ import time
 import config_functions
 import threading
 from datetime import datetime
-from chip_flasher import get_serial_ports
+from chip_flasher import ChipFlasher
 from bridge_threads import *
 from tools import system_tools, git_tools
 from jsonschema import validate, ValidationError
@@ -495,7 +495,7 @@ class MainBridge:
     @staticmethod
     def get_serial_ports() -> [str]:
         """Returns all serial ports existing on the host system"""
-        return get_serial_ports()
+        return ChipFlasher.get_serial_ports()
 
     # region BRIDGE DATA
 
