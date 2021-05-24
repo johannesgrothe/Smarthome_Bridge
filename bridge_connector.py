@@ -213,6 +213,18 @@ class BridgeConnector:
         except KeyError:
             raise GadgetDoesNotExistException
 
+    def get_connector_types(self) -> list:
+        out_list = []
+        for connector_type in self._connectors:
+            out_list.append(connector_type)
+        return out_list
+
+    def get_connector_data(self, type: str) -> dict:
+        try:
+            return self._connectors[type]
+        except KeyError:
+            raise GadgetDoesNotExistException
+
 
 def script_main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

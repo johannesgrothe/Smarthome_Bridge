@@ -18,6 +18,7 @@ from serial_connector import SerialConnector
 from mqtt_connector import MQTTConnector
 from network_connector import NetworkConnector, Request
 from request import NoClientResponseException
+from loading_indicator import LoadingIndicator
 from chip_flasher import ChipFlasher
 from client_controller import ClientController
 from client_config_manager import ClientConfigManager
@@ -31,49 +32,6 @@ DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
-
-
-class LoadingIndicator:
-
-    _running: bool
-    _run_thread: Optional[threading.Thread]
-
-    def __init__(self):
-        self._running = False
-        self._run_thread = None
-
-    def __del__(self):
-        self.stop()
-
-    def __enter__(self):
-        self.run()
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def _thread_runner(self):
-        while self._running:
-            print(".", end="")
-            time.sleep(0.25)
-
-    def _stop_thread(self):
-        self._running = False
-        if self._run_thread:
-            self._run_thread.join()
-
-    def run(self):
-        self._stop_thread()
-
-        print("[", end="")
-        self._running = True
-        self._run_thread = threading.Thread(target=self._thread_runner)
-        self._run_thread.start()
-
-    def stop(self):
-        if self._running:
-            print("]")
-            self._stop_thread()
 
 
 def ask_for_continue(message: str) -> bool:
@@ -313,9 +271,9 @@ class BridgeConnectionToolkit:
         print(f"Status of '{self._bridge_connector.get_name()}':")
         print(f" -> Running since: {self._bridge_connector.get_launch_time()}")
         print(f" -> Software Branch: {self._bridge_connector.get_branch()}")
-        print(f" -> Software Commit: {self._bridge_connector.get_commit()}")
+        print(f" -> Software Commit: {self._bridge_connector.get_commit()[:7]}")
         print(f" -> Clients: {len(self._bridge_connector.get_client_names())}")
-        print(f" -> Connectors: {3}")
+        print(f" -> Connectors: {len(self._bridge_connector.get_connector_types())}")
         print(f" -> Gadgets: {len(self._bridge_connector.get_gadget_names())}")
 
     def run(self):
@@ -326,6 +284,15 @@ class BridgeConnectionToolkit:
         except (BridgeRestApiException, BridgeSocketApiException):
             print("Connection could not be established")
             return
+
+        try:
+            self._bridge_connector.load_data()
+            self._print_bridge_info()
+        except BridgeRestApiException:
+            print("Error fetching information about bridge")
+            return
+
+
 
 
 class DirectConnectionToolkit(metaclass=ABCMeta):
