@@ -154,10 +154,16 @@ class BridgeConnector:
         self._load_serial_ports()
 
     def connect(self):
-        # self._disconnect()
+        self._disconnect()
 
-        self._fetch_data("")
-        self._logger.info("REST-API is responding")
+        self._socket_client = socket.socket()
+
+        try:
+            self._fetch_data("")
+            self._logger.info("REST-API is responding")
+        except requests.exceptions.ConnectionError:
+            self._logger.error("Could not connect to remote api")
+            raise BridgeRestApiException
 
         try:
             self._socket_client.connect((self._address, self._socket_port))  # connect to the server

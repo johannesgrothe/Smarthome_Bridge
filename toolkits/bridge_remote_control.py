@@ -261,20 +261,137 @@ class ToolkitException(Exception):
         super().__init__("ToolkitException")
 
 
+_unknown_data_replacement = "unknown"
+
+
 class BridgeConnectionToolkit:
-    _bridge_connector = BridgeConnector
+    _bridge_connector: BridgeConnector
+    _logger: logging.Logger
+
+    _client_name_len_max: int
+    _client_branch_name_len_max: int
+    _gadget_name_len_max: int
 
     def __init__(self, bridge_ip, bridge_rest_port, bridge_websocket_port):
         self._bridge_connector = BridgeConnector(bridge_ip, bridge_rest_port, bridge_websocket_port)
+        self._logger = logging.getLogger("BridgeConnectionToolkit")
+
+    def _get_gadgets_max_name_length(self) -> int:
+        gadget_max_name_len = 0
+
+        for client_name in self._bridge_connector.get_gadget_names():
+            name_len = len(client_name)
+            if name_len > gadget_max_name_len:
+                gadget_max_name_len = name_len
+
+        return gadget_max_name_len
+
+    def _get_clients_max_name_length(self) -> int:
+        client_max_name_len = 0
+
+        for client_name in self._bridge_connector.get_client_names():
+            name_len = len(client_name)
+            if name_len > client_max_name_len:
+                client_max_name_len = name_len
+
+        return client_max_name_len
+
+    def _get_clients_max_branch_name_length(self) -> int:
+        client_max_branch_name_len = len(_unknown_data_replacement)
+
+        for client_name in self._bridge_connector.get_client_names():
+            client_data = self._bridge_connector.get_client_data(client_name)
+            if client_data["sw_branch"]:
+                branch_len = len(client_data["sw_branch"])
+
+                if branch_len > client_max_branch_name_len:
+                    client_max_branch_name_len = branch_len
+
+        return client_max_branch_name_len
+
+    @staticmethod
+    def _get_characteristics_name_len_max(characteristics: dict):
+        characteristic_max_len = 0
+
+        for characteristic_data in characteristics:
+            name = gadgetlib.characteristic_identifier_to_str(CharacteristicIdentifier(characteristic_data["type"]))
+            if len(name) > characteristic_max_len:
+                characteristic_max_len = len(name)
+
+        return characteristic_max_len
+
+    def _refresh_bridge_data(self):
+        self._bridge_connector.load_data()
+        self._client_name_len_max = self._get_clients_max_name_length()
+        self._client_branch_name_len_max = self._get_clients_max_branch_name_length()
+        self._gadget_name_len_max = self._get_gadgets_max_name_length()
 
     def _print_bridge_info(self):
-        print(f"Status of '{self._bridge_connector.get_name()}':")
         print(f" -> Running since: {self._bridge_connector.get_launch_time()}")
         print(f" -> Software Branch: {self._bridge_connector.get_branch()}")
         print(f" -> Software Commit: {self._bridge_connector.get_commit()[:7]}")
         print(f" -> Clients: {len(self._bridge_connector.get_client_names())}")
         print(f" -> Connectors: {len(self._bridge_connector.get_connector_types())}")
         print(f" -> Gadgets: {len(self._bridge_connector.get_gadget_names())}")
+
+    def _print_clients(self):
+        for client_name in self._bridge_connector.get_client_names():
+            client_data = self._bridge_connector.get_client_data(client_name)
+            self._print_client(client_name, client_data)
+
+    def _print_client(self, name: str, data: dict):
+        if data["sw_version"]:
+            c_commit = data["sw_version"][:7]
+        else:
+            c_commit = _unknown_data_replacement
+
+        if data["sw_branch"]:
+            c_branch = data["sw_branch"]
+        else:
+            c_branch = _unknown_data_replacement
+
+        client_pattern = " -> {}  |  Commit: {}  |  Branch: {}  |  {}"
+        print(client_pattern.format(
+            format_string_len(name, self._client_name_len_max),
+            c_commit,
+            format_string_len(c_branch, self._client_branch_name_len_max),
+            ("Active" if data["is_active"] else "Inactive")
+        ))
+
+    def _print_gadgets(self):
+        for gadget_name in self._bridge_connector.get_gadget_names():
+            gadget_data = self._bridge_connector.get_gadget_data(gadget_name)
+            self._print_gadget(gadget_name, gadget_data)
+
+    def _print_gadget(self, name: str, data: dict):
+        print(" -> {} <{}>".format(
+            format_string_len(name, self._gadget_name_len_max),
+            gadgetlib.gadget_identifier_to_str(GadgetIdentifier(data["type"]))
+        ))
+
+        characteristic_max_len = self._get_characteristics_name_len_max(data["characteristics"])
+
+        for characteristic_data in data["characteristics"]:
+            value_display = characteristic_data["value"]
+
+            if characteristic_data["min"] == 0 and characteristic_data["max"] == 1:
+                if characteristic_data["value"] == 1:
+                    value_display = "On"
+                else:
+                    value_display = "Off"
+
+            characteristic_display = "{} | {} | {}".format(
+                format_string_len(characteristic_data["min"], 3),
+                format_string_len(value_display, 3),
+                format_string_len(characteristic_data["max"], 3)
+            )
+
+            char_ident = CharacteristicIdentifier(characteristic_data["type"])
+
+            print("       {} : {}".format(
+                format_string_len(gadgetlib.characteristic_identifier_to_str(char_ident), characteristic_max_len),
+                characteristic_display
+            ))
 
     def run(self):
         print("Connecting to bridge...")
@@ -286,13 +403,20 @@ class BridgeConnectionToolkit:
             return
 
         try:
-            self._bridge_connector.load_data()
+            self._refresh_bridge_data()
+            print(f"Connected to '{self._bridge_connector.get_name()}'")
+            print()
+            print("Status:")
             self._print_bridge_info()
+            print()
+            print("Clients:")
+            self._print_clients()
+            print()
+            print("Gadgets:")
+            self._print_gadgets()
         except BridgeRestApiException:
             print("Error fetching information about bridge")
             return
-
-
 
 
 class DirectConnectionToolkit(metaclass=ABCMeta):
