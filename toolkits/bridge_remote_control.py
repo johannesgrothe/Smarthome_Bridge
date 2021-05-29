@@ -262,6 +262,7 @@ class ToolkitException(Exception):
 
 
 _unknown_data_replacement = "unknown"
+_default_git_branches = ["master", "develop"]
 
 
 class BridgeConnectionToolkit:
@@ -272,9 +273,14 @@ class BridgeConnectionToolkit:
     _client_branch_name_len_max: int
     _gadget_name_len_max: int
 
+    _tasks = list
+
     def __init__(self, bridge_ip, bridge_rest_port, bridge_websocket_port):
         self._bridge_connector = BridgeConnector(bridge_ip, bridge_rest_port, bridge_websocket_port)
         self._logger = logging.getLogger("BridgeConnectionToolkit")
+        self._tasks = [("Write Software to Client", self._write_software),
+                       ("Write Config to Client", self._write_config),
+                       ("Restart Client", self._restart_client)]
 
     def _get_gadgets_max_name_length(self) -> int:
         gadget_max_name_len = 0
@@ -393,6 +399,54 @@ class BridgeConnectionToolkit:
                 characteristic_display
             ))
 
+    @staticmethod
+    def _software_write_callback(data: dict):
+        print(f" -> {data['message']}")
+
+    def _write_software(self):
+        selected_branch = select_option(_default_git_branches + ["Enter own name"], "Branch", "Back")
+
+        if selected_branch == -1:
+            return
+        elif selected_branch == len(_default_git_branches):
+            selected_branch_name = input("Enter branch name:\n")
+        else:
+            selected_branch_name = _default_git_branches[selected_branch]
+        print(f"Writing software branch '{selected_branch_name}':")
+
+        sel_ser_port_str = ""
+        bridge_serial_ports = self._bridge_connector.get_serial_ports()
+        if bridge_serial_ports:
+            sel_ser_port = select_option(bridge_serial_ports, "Serial Port for Upload", "Back")
+            if sel_ser_port == -1:
+                return
+            sel_ser_port_str = bridge_serial_ports[sel_ser_port]
+
+        write_ok = self._bridge_connector.write_software_to_client(selected_branch_name,
+                                                                   sel_ser_port_str,
+                                                                   self._software_write_callback)
+        print()
+        if write_ok:
+            print("Software writing successful.")
+        else:
+            print("Failed to write software to client.")
+
+    def _write_config(self):
+        print("FLASHING CONFIG")
+
+    def _restart_client(self):
+        print("restarting client")
+
+    def _run_tasks(self):
+        title_list = [x for (x, y) in self._tasks]
+        method_list = [y for (x, y) in self._tasks]
+        while True:
+            print()
+            task_option = select_option(title_list, "what to do", "Quit")
+            if task_option == -1:
+                return
+            method_list[task_option]()
+
     def run(self):
         print("Connecting to bridge...")
         try:
@@ -414,6 +468,8 @@ class BridgeConnectionToolkit:
             print()
             print("Gadgets:")
             self._print_gadgets()
+
+            self._run_tasks()
         except BridgeRestApiException:
             print("Error fetching information about bridge")
             return
@@ -878,7 +934,7 @@ if __name__ == '__main__':
                 ))
             print()
 
-        keep_running = True
+        keep_running = True  # TODO: add to class
 
         while keep_running:
             print()

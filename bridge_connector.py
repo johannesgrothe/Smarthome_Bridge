@@ -2,7 +2,58 @@ import socket
 import logging
 import requests
 import json
-from typing import Optional
+import enum
+from typing import Optional, Callable
+
+
+class SerialPortAdapterState(enum.IntEnum):
+    pending = 0,
+    succeeded = 1,
+    failed = 2
+
+
+class SerialPortAdapter:
+    _state: SerialPortAdapterState
+    _callback: Optional[Callable[[dict], None]]
+    _socket_client: socket.socket
+    _logger: logging.Logger
+
+    def __init__(self, callback: Optional[Callable[[dict], None]], socket_client: socket.socket):
+        self._callback = callback
+        self._socket_client = socket_client
+        self._state = SerialPortAdapterState.pending
+        self._logger = logging.getLogger("SerialPortAdapter")
+
+    def get_state(self) -> SerialPortAdapterState:
+        return self._state
+
+    def read_until(self, sender: str, success_codes: list, fail_codes: list) -> bool:
+        self._state = SerialPortAdapterState.pending
+
+        while True:
+            buf_rec_data = self._socket_client.recv(5000).decode().strip("\n").strip("'").strip('"').strip()
+            self._logger.debug(buf_rec_data)
+
+            try:
+                data = json.loads(buf_rec_data)
+            except json.decoder.JSONDecodeError:
+                continue
+
+            if not ("sender" in data and "message" in data and "status" in data):
+                continue
+
+            if data["sender"] != sender:
+                continue
+
+            self._callback(data)
+
+            if data["status"] in success_codes:
+                self._state = SerialPortAdapterState.succeeded
+                return True
+
+            if data["status"] in fail_codes:
+                self._state = SerialPortAdapterState.failed
+                return False
 
 
 class BridgeRestApiException(Exception):
@@ -57,16 +108,54 @@ class BridgeConnector:
     def __del__(self):
         self._disconnect()
 
-    def _send_api_request(self, url: str) -> (int, dict):
+    @staticmethod
+    def _format_url(url: str):
         if not url.startswith("http"):
             url = "http://" + url
+        return url
 
-        self._logger.info(f"Sending API request to '{url}'")
+    @staticmethod
+    def _add_params_to_url(url: str, url_args: Optional[dict]) -> str:
+        if not url_args:
+            return url
+
+        url = url + "?"
+
+        for key in url_args:
+            url = url + f"{key}={url_args[key]}&"
+
+        return url[:-1]
+
+    def _send_api_request(self, url: str) -> (int, dict):
+        url = self._format_url(url)
+
+        self._logger.info(f"Sending GET request to '{url}'")
         response = requests.get(url)
+        body = response.content.decode()
         try:
-            res_data = json.loads(response.content.decode())
+            res_data = json.loads(body)
         except json.decoder.JSONDecodeError:
             self._logger.error(f"Failed to parse received payload to json")
+            self._logger.error(body)
+            return 1200, {}
+        return response.status_code, res_data
+
+    def _send_api_command(self, url: str, payload: Optional[dict]) -> (int, dict):
+        url = self._format_url(url)
+
+        self._logger.info(f"Sending POST request to '{url}'")
+
+        if payload:
+            response = requests.post(url, json=payload)
+        else:
+            response = requests.post(url)
+
+        body = response.content.decode()
+        try:
+            res_data = json.loads(body)
+        except json.decoder.JSONDecodeError:
+            self._logger.error(f"Failed to parse received payload to json")
+            self._logger.error(body)
             return 1200, {}
         return response.status_code, res_data
 
@@ -75,9 +164,25 @@ class BridgeConnector:
         self._connected = False
         self._socket_client.close()
 
-    def _fetch_data(self, path: str) -> Optional[dict]:
+    def _fetch_data(self, path: str, url_args: Optional[dict] = None) -> Optional[dict]:
         full_path = f"{self._address}:{self._rest_port}/{path}"
+
+        full_path = self._add_params_to_url(full_path, url_args)
+
         status, data = self._send_api_request(full_path)
+
+        if status != 200:
+            self._logger.error(f"Could not load information from the bridge at '{full_path}'")
+            raise BridgeRestApiException
+
+        return data
+
+    def _send_data(self, path: str, payload: Optional[dict], url_args: Optional[dict] = None) -> Optional[dict]:
+        full_path = f"{self._address}:{self._rest_port}/{path}"
+
+        full_path = self._add_params_to_url(full_path, url_args)
+
+        status, data = self._send_api_command(full_path, payload)
 
         if status != 200:
             self._logger.error(f"Could not load information from the bridge at '{full_path}'")
@@ -225,15 +330,36 @@ class BridgeConnector:
             out_list.append(connector_type)
         return out_list
 
-    def get_connector_data(self, type: str) -> dict:
+    def get_connector_data(self, connector_type: str) -> dict:
         try:
-            return self._connectors[type]
+            return self._connectors[connector_type]
         except KeyError:
             raise GadgetDoesNotExistException
 
+    def get_serial_ports(self) -> list:
+        return self._serial_ports
+
+    def write_software_to_client(self, branch: str, serial_port: Optional[str] = None,
+                                 callback: Optional[Callable[[dict], None]] = None) -> bool:
+        url_args = {'branch_name': branch}
+        if serial_port:
+            url_args['serial_port'] = serial_port
+
+        try:
+            self._send_data("system/flash_software", {}, url_args)
+        except BridgeRestApiException:
+            print(f"Software flashing could no be started.")
+            return False
+
+        print("Software writing started.\n")
+
+        listener = SerialPortAdapter(callback, self._socket_client)
+        listener.read_until("SOFTWARE_UPLOAD", [6], [0, -6])
+        return True
+
 
 def script_main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     connector = BridgeConnector(socket.gethostname(), 4999, 5007)
 
     connector.connect()
