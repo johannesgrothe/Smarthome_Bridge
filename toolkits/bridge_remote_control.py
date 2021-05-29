@@ -24,7 +24,7 @@ from client_controller import ClientController
 from client_config_manager import ClientConfigManager
 from toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
 from bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
-    GadgetDoesNotExistException, ClientDoesNotExistException
+    SoftwareWritingFailedException, ConfigWritingFailedException
 
 TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
 
@@ -282,6 +282,42 @@ class BridgeConnectionToolkit:
                        ("Write Config to Client", self._write_config),
                        ("Restart Client", self._restart_client)]
 
+    def _select_config(self) -> Optional[dict]:
+        manager = ClientConfigManager()
+        config_names = manager.get_config_names()
+
+        config_data: Optional[dict] = None
+
+        while not config_data:
+
+            config_index = select_option(config_names,
+                                         "which config to write",
+                                         "Quit")
+
+            if config_index == -1:
+                return None
+
+            config_data = manager.get_config(config_names[config_index])
+
+            if not config_data:
+                response = ask_for_continue("Config file could either not be loaded, isn no valid json file or"
+                                            "no valid config. Try again?")
+                if not response:
+                    return None
+                else:
+                    continue
+
+            return config_data
+
+    def _select_serial_port(self) -> Optional[str]:
+        bridge_serial_ports = self._bridge_connector.get_serial_ports()
+        if bridge_serial_ports:
+            sel_ser_port = select_option(bridge_serial_ports, "Serial Port for Upload", "Back")
+            if sel_ser_port == -1:
+                return None
+            return bridge_serial_ports[sel_ser_port]
+        return None
+
     def _get_gadgets_max_name_length(self) -> int:
         gadget_max_name_len = 0
 
@@ -414,25 +450,67 @@ class BridgeConnectionToolkit:
             selected_branch_name = _default_git_branches[selected_branch]
         print(f"Writing software branch '{selected_branch_name}':")
 
-        sel_ser_port_str = ""
-        bridge_serial_ports = self._bridge_connector.get_serial_ports()
-        if bridge_serial_ports:
-            sel_ser_port = select_option(bridge_serial_ports, "Serial Port for Upload", "Back")
-            if sel_ser_port == -1:
-                return
-            sel_ser_port_str = bridge_serial_ports[sel_ser_port]
+        serial_port = self._select_serial_port()
+        if not serial_port:
+            print("\nNo serial port available, quitting.")
+            return
 
-        write_ok = self._bridge_connector.write_software_to_client(selected_branch_name,
-                                                                   sel_ser_port_str,
-                                                                   self._software_write_callback)
-        print()
-        if write_ok:
-            print("Software writing successful.")
-        else:
-            print("Failed to write software to client.")
+        try:
+            self._bridge_connector.write_software_to_client(selected_branch_name,
+                                                            serial_port,
+                                                            self._software_write_callback)
+            print("\nSoftware writing successful.")
+        except SoftwareWritingFailedException:
+            print("\nFailed to write software to client.")
+
+    def _write_config_to_client(self, name: str, config: dict):
+        try:
+            self._bridge_connector.write_config_to_network_client(name, config, self._software_write_callback)
+            print("\nConfig writing successful.")
+        except ConfigWritingFailedException:
+            print("\nFailed to write the config to the client.")
+
+    def _write_config_to_serial(self, serial_port: str, config: dict):
+        try:
+            self._bridge_connector.write_config_to_serial_client(config, serial_port, self._software_write_callback)
+            print("\nConfig writing successful.")
+        except ConfigWritingFailedException:
+            print("\nFailed to write the config to the client.")
 
     def _write_config(self):
-        print("FLASHING CONFIG")
+
+        config = self._select_config()
+        if not config:
+            return
+
+        client_names = self._bridge_connector.get_client_names()
+        task_option = select_option(client_names + ["<Serial Connection>"],
+                                    "where to write the config", "Back")
+        if task_option == -1:
+            return
+        elif task_option == len(client_names):
+            serial_port = self._select_serial_port()
+            if not serial_port:
+                print("\nNo serial port available, quitting.")
+                return
+            try:
+                self._bridge_connector.write_config_to_serial_client(
+                    config,
+                    serial_port,
+                    self._software_write_callback)
+                print("\nConfig writing successful.")
+            except ConfigWritingFailedException:
+                print("\nFailed to write the config to the client.")
+        else:
+            client_name = client_names[task_option]
+            try:
+                self._bridge_connector.write_config_to_network_client(
+                    client_name,
+                    config,
+                    self._software_write_callback)
+                print("\nConfig writing successful.")
+            except ConfigWritingFailedException:
+                print("\nFailed to write the config to the client.")
 
     def _restart_client(self):
         print("restarting client")

@@ -96,6 +96,8 @@ class ClientController:
         result = self._network.send_request_split(out_req, 50)
 
         if not result:
+            if print_callback:
+                print_callback(LOG_SENDER, _upload_data_fail_code, f"Received no response from client")
             raise NoClientResponseException
         else:
             if result.get_ack():
@@ -104,5 +106,7 @@ class ClientController:
                 self._logger.info("Writing config was successful")
                 return True
             else:
+                if print_callback:
+                    print_callback(LOG_SENDER, _upload_data_fail_code, f"Failed to write config")
                 self._logger.error("Writing config failed")
                 return False

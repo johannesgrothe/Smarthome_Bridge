@@ -76,6 +76,16 @@ class GadgetDoesNotExistException(Exception):
         super().__init__(f"No gadget named '{name}' was found")
 
 
+class ConfigWritingFailedException(Exception):
+    def __init__(self):
+        super().__init__(f"Failed to write the selected config")
+
+
+class SoftwareWritingFailedException(Exception):
+    def __init__(self):
+        super().__init__(f"Failed to write the software to the client")
+
+
 class BridgeConnector:
     _socket_client: socket.socket
     _logger: logging.Logger
@@ -340,7 +350,7 @@ class BridgeConnector:
         return self._serial_ports
 
     def write_software_to_client(self, branch: str, serial_port: Optional[str] = None,
-                                 callback: Optional[Callable[[dict], None]] = None) -> bool:
+                                 callback: Optional[Callable[[dict], None]] = None):
         url_args = {'branch_name': branch}
         if serial_port:
             url_args['serial_port'] = serial_port
@@ -349,13 +359,50 @@ class BridgeConnector:
             self._send_data("system/flash_software", {}, url_args)
         except BridgeRestApiException:
             print(f"Software flashing could no be started.")
-            return False
+            raise SoftwareWritingFailedException
 
         print("Software writing started.\n")
 
         listener = SerialPortAdapter(callback, self._socket_client)
-        listener.read_until("SOFTWARE_UPLOAD", [6], [0, -6])
-        return True
+        write_ok = listener.read_until("SOFTWARE_UPLOAD", [1], [-1])
+        if not write_ok:
+            raise SoftwareWritingFailedException
+
+    def write_config_to_network_client(self, name: str, config: dict,
+                                       callback: Optional[Callable[[dict], None]] = None):
+        flash_path = f"clients/{name}/write_config"
+
+        try:
+            self._send_data(flash_path, config)
+        except BridgeRestApiException:
+            raise ConfigWritingFailedException
+
+        print("Config writing started.\n")
+
+        listener = SerialPortAdapter(callback, self._socket_client)
+        write_ok = listener.read_until("CONFIG_UPLOAD", [1], [-1])
+        if not write_ok:
+            raise ConfigWritingFailedException
+
+    def write_config_to_serial_client(self, config: dict, serial_port: Optional[str],
+                                      callback: Optional[Callable[[dict], None]] = None):
+        req_args = {}
+        if serial_port:
+            req_args["serial_port"] = serial_port
+
+        flash_path = f"system/write_config"
+
+        try:
+            self._send_data(flash_path, config, req_args)
+        except BridgeRestApiException:
+            raise ConfigWritingFailedException
+
+        print("Config writing started.\n")
+
+        listener = SerialPortAdapter(callback, self._socket_client)
+        write_ok = listener.read_until("CONFIG_UPLOAD", [6], [-1, -2, -3, -4, -5, -6])
+        if not write_ok:
+            raise ConfigWritingFailedException
 
 
 def script_main():

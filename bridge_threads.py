@@ -1,5 +1,5 @@
 from threading import Thread
-from chip_flasher import flash_chip
+from chip_flasher import ChipFlasher, UploadFailedException
 from bridge import MainBridge
 
 from network_connector import NetworkConnector
@@ -8,7 +8,7 @@ from mqtt_connector import MQTTConnector
 from request import Request
 import api
 import socket_api
-import client_controller
+from client_controller import ClientController, NoClientResponseException
 
 
 class BridgeMQTTThread(Thread):
@@ -67,12 +67,12 @@ class ChipConfigFlasherThread(Thread):
 
     def run(self):
         print("Starting config flasher thread")
-        client_controller.write_config(self.__client_name,
-                                       self.__config,
-                                       self.__sender,
-                                       self.__network,
-                                       self.__streaming_callback)
-        print("Flashing done.")
+        controller = ClientController(self.__client_name, self.__sender, self.__network)
+        try:
+            controller.write_config(self.__config, self.__streaming_callback)
+            print("Flashing done.")
+        except NoClientResponseException:
+            print("Flashing failed.")
 
 
 class ChipSWFlasherThread(Thread):
@@ -91,10 +91,13 @@ class ChipSWFlasherThread(Thread):
 
     def run(self):
         print("Starting chip flasher Thread")
-        flash_chip(self.__branch,
-                   self.__force_reset,
-                   self.__upload_port,
-                   self.__streaming_callback)
+
+        flasher = ChipFlasher(self.__streaming_callback)
+        try:
+            flasher.upload_software(self.__branch, self.__upload_port, self.__force_reset)
+        except UploadFailedException:
+            pass
+
         print("Flashing done.")
 
 
