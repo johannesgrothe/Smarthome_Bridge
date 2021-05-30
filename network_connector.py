@@ -1,27 +1,63 @@
 import json
 import logging
-from request import Request
 from typing import Optional
 from queue import Queue
 from datetime import datetime, timedelta
 from time import sleep
-from abc import abstractmethod, ABC, ABCMeta
+from abc import abstractmethod
+
+from request import Request
+from pubsub import Publisher, Subscriber
 
 
-class NetworkConnector(metaclass=ABCMeta):
+class NetworkReceiver(Subscriber):
+
+    _request_queue: Queue
+    _network: Publisher
+
+    def __init__(self, network: Publisher):
+        self._request_queue = Queue()
+        self._network = network
+        network.subscribe(self)
+
+    def __del__(self):
+        self._network.unsubscribe(self)
+
+    def _receive(self, req: Request):
+        self._request_queue.put(req)
+
+    def wait_for_responses(self, out_req: Request, timeout: int = 300, max_resp_count: Optional[int] = 1) -> list[Request]:
+        responses: list[Request] = []
+        self._request_queue = Queue()
+
+        timeout_time = datetime.now() + timedelta(seconds=timeout)
+
+        while timeout and datetime.now() < timeout_time:
+            if not self._request_queue.empty():
+                res: Request = self._request_queue.get()
+                if res.get_session_id() == out_req.get_session_id() and out_req.get_sender() != res.get_sender():
+
+                    responses.append(res)
+
+                    if max_resp_count and len(responses) >= max_resp_count:
+                        return responses
+
+        return responses
+
+
+class NetworkConnector(Publisher):
     """Class to implement an network interface prototype"""
 
     _logger: logging.Logger
-    _message_queue: Queue  # TODO: Make private
     _request_validation_schema: dict
 
     __part_data: dict
 
     def __init__(self):
+        super().__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
 
         self._connected = False
-        self._message_queue = Queue()
         self.__part_data = {}
         with open("json_schemas/request_basic_structure.json", "r") as f:
             self._request_validation_schema = json.load(f)
@@ -31,22 +67,15 @@ class NetworkConnector(metaclass=ABCMeta):
 
     @abstractmethod
     def _send_data(self, req: Request):
-        print(f"Not implemented: '_send_data'")
+        self._logger.error(f"Not implemented: '_send_data'")
 
     @abstractmethod
     def _receive_data(self) -> Optional[Request]:
-        print(f"Not implemented: '_receive_data'")
-        return None
-
-    def get_request(self) -> Optional[Request]:
-        """Returns a request if there is one"""
-
-        if not self._message_queue.empty():
-            return self._message_queue.get()
+        self._logger.error(f"Not implemented: '_receive_data'")
         return None
 
     def _receive(self):
-        """Tries to receive a new request from the network and adds it to the queue"""
+        """Tries to receive a new request from the network and publishs it to its subscribers"""
         received_request = self._receive_data()
         if received_request:
             req_payload = received_request.get_payload()
@@ -85,7 +114,7 @@ class NetworkConnector(metaclass=ABCMeta):
                                                   first_req.get_sender(),
                                                   first_req.get_receiver(),
                                                   json_data)
-                                self._message_queue.put(out_req)
+                                self._publish(out_req)
                                 del self.__part_data[id_str]
                             except json.decoder.JSONDecodeError:
                                 print("Received illegal payload")
@@ -94,7 +123,7 @@ class NetworkConnector(metaclass=ABCMeta):
                         print("Received a followup-block with no entry in storage")
 
             else:
-                self._message_queue.put(received_request)
+                self._publish(received_request)
 
     def send_request(self, req: Request, timeout: int = 6) -> Optional[Request]:
         """
@@ -104,40 +133,18 @@ class NetworkConnector(metaclass=ABCMeta):
         """
         self._send_data(req)
         if timeout > 0:
-            timeout_time = datetime.now() + timedelta(seconds=timeout)
-            checked_requests_list = Queue()
-            while datetime.now() < timeout_time:
-                if not self._message_queue.empty():
-                    res: Request = self._message_queue.get()
-                    if res.get_session_id() == req.get_session_id() and req.get_sender() != res.get_sender():
-
-                        # Put checked requests back in queue
-                        while not checked_requests_list.empty():
-                            self._message_queue.put(checked_requests_list.get())
-
-                        return res
-
-                    # Save request to put it back in queue later
-                    checked_requests_list.put(res)
-
-            # Put checked requests back in queue
-            while not checked_requests_list.empty():
-                self._message_queue.put(checked_requests_list.get())
-            return None
+            req_receiver = NetworkReceiver(self)
+            responses = req_receiver.wait_for_responses(req, timeout)
+            if not responses:
+                return None
+            return responses[0]
 
         return None
 
-    def send_broadcast(self, req: Request, timeout: int = 5) -> [Request]:
-        responses: [Request] = []
+    def send_broadcast(self, req: Request, timeout: int = 5) -> list[Request]:
         self._send_data(req)
-        timeout_time = datetime.now() + timedelta(seconds=timeout)
-        # checked_requests_list = Queue()
-        while datetime.now() < timeout_time:
-            if not self._message_queue.empty():
-                res: Request = self._message_queue.get()
-                # print("Got from Queue: {}".format(res.to_string()))
-                if res.get_path() == "smarthome/broadcast/res" and res.get_session_id() == req.get_session_id():
-                    responses.append(res)
+        req_receiver = NetworkReceiver(self)
+        responses = req_receiver.wait_for_responses(req, timeout, None)
         return responses
 
     def send_request_split(self, req: Request, part_max_size: int = 30, timeout: int = 6) -> Optional[Request]:
@@ -187,5 +194,5 @@ class NetworkConnector(metaclass=ABCMeta):
 
     @abstractmethod
     def connected(self) -> bool:
-        print("!!Not implemented!!")
+        self._logger.error("'connected()' isn't implemented")
         return False
