@@ -20,6 +20,7 @@ from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, Character
 from typing import Optional
 from mqtt_connector import MQTTConnector
 from request import Request
+from pubsub import Subscriber
 import client_controller
 
 
@@ -58,7 +59,7 @@ def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
     return buf_dict
 
 
-class MainBridge:
+class MainBridge(Subscriber):
     """Main Bridge for the Smarthome Environment"""
 
     # region ATTRIBUTES
@@ -185,8 +186,8 @@ class MainBridge:
                                               self.__mqtt_port,
                                               None,
                                               None)
-        self.__mqtt_callback_thread = BridgeMQTTThread(parent=self,
-                                                       connector=self.__network_gadget)
+        self.__network_gadget.subscribe(self)
+
         self.__mqtt_callback_thread.start()
 
         self.__load_json_schemas()
@@ -253,8 +254,8 @@ class MainBridge:
             return False
         return True
 
-    def handle_request(self, req: Request):
-        """Receives a request from the watcher Thread and handles it"""
+    def _receive(self, req: Request):
+        """Handles a received request"""
         self.__received_requests += 1
 
         if req.get_receiver() != "<bridge>":
