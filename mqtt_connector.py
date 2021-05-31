@@ -2,7 +2,7 @@ import logging
 
 from network_connector import NetworkConnector, Request
 from network_connector_threaded import ThreadedNetworkConnector
-from typing import Optional
+from typing import Optional, Callable
 from queue import Queue
 import paho.mqtt.client as mqtt
 import time
@@ -39,7 +39,7 @@ class MQTTConnector(ThreadedNetworkConnector):
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
             self.__client.on_message = self.generate_callback(self.__buf_queue,
-                                                              self._request_validation_schema,
+                                                              self._validate_request,
                                                               self._logger)
             self.__client.on_disconnect = self.generate_disconnect_callback(self._logger)
             self.__client.on_connect = self.generate_connect_callback(self._logger)
@@ -61,7 +61,7 @@ class MQTTConnector(ThreadedNetworkConnector):
         self.__client.disconnect()
 
     @staticmethod
-    def generate_callback(request_queue: Queue, request_schema: dict, logger: logging.Logger):
+    def generate_callback(request_queue: Queue, validate_function: Callable, logger: logging.Logger):
         """Generates a callback with captured queue"""
 
         def buf_callback(client, userdata, message):
@@ -81,7 +81,7 @@ class MQTTConnector(ThreadedNetworkConnector):
                 return
 
             try:
-                validate(body, request_schema)
+                validate_function(body)
             except ValidationError:
                 logger.warning("Could not decode Request, Schema Validation failed.")
 

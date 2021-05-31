@@ -213,7 +213,7 @@ class PioUploader:
         for raw_line in iter(process.stdout.readline, b''):
             line = raw_line.decode()
             self._analyze_line(line)
-            self._logger.info(line.strip("\n"))
+            # self._logger.info(line.strip("\n"))
 
         process.wait()
         if process.returncode != 0:
@@ -273,6 +273,7 @@ class ChipFlasher:
                 raise UploadFailedException
 
     def _callback(self, code: int, message: str):
+        print(f"callback: {message}")
         if self._output_callback:
             self._output_callback("SOFTWARE_UPLOAD", code, message)
 

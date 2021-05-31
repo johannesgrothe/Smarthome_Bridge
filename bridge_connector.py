@@ -4,6 +4,10 @@ import requests
 import json
 import enum
 from typing import Optional, Callable
+from queue import Queue
+
+from socket_connector import SocketClient
+from pubsub import Subscriber, Request
 
 
 class SerialPortAdapterState(enum.IntEnum):
@@ -12,48 +16,52 @@ class SerialPortAdapterState(enum.IntEnum):
     failed = 2
 
 
-class SerialPortAdapter:
+class SocketReader(Subscriber):
+
     _state: SerialPortAdapterState
     _callback: Optional[Callable[[dict], None]]
-    _socket_client: socket.socket
     _logger: logging.Logger
+    _msg_queue: Queue
 
-    def __init__(self, callback: Optional[Callable[[dict], None]], socket_client: socket.socket):
+    def __init__(self, callback: Optional[Callable[[dict], None]], socket_client: SocketClient):
+        super().__init__()
         self._callback = callback
-        self._socket_client = socket_client
+        self._msg_queue = Queue()
         self._state = SerialPortAdapterState.pending
         self._logger = logging.getLogger("SerialPortAdapter")
+        socket_client.subscribe(self)
 
     def get_state(self) -> SerialPortAdapterState:
         return self._state
 
+    def receive(self, req: Request):
+        self._msg_queue.put(req)
+
     def read_until(self, sender: str, success_codes: list, fail_codes: list) -> bool:
         self._state = SerialPortAdapterState.pending
+        self._msg_queue = Queue()
 
         while True:
-            buf_rec_data = self._socket_client.recv(5000).decode().strip("\n").strip("'").strip('"').strip()
-            self._logger.debug(buf_rec_data)
+            if not self._msg_queue.empty():
+                req: Request = self._msg_queue.get()
 
-            try:
-                data = json.loads(buf_rec_data)
-            except json.decoder.JSONDecodeError:
-                continue
+                if not req.get_sender() == sender:
+                    continue
 
-            if not ("sender" in data and "message" in data and "status" in data):
-                continue
+                data = req.get_payload()
 
-            if data["sender"] != sender:
-                continue
+                if not ("message" in data and "status" in data):
+                    continue
 
-            self._callback(data)
+                self._callback(data)
 
-            if data["status"] in success_codes:
-                self._state = SerialPortAdapterState.succeeded
-                return True
+                if data["status"] in success_codes:
+                    self._state = SerialPortAdapterState.succeeded
+                    return True
 
-            if data["status"] in fail_codes:
-                self._state = SerialPortAdapterState.failed
-                return False
+                if data["status"] in fail_codes:
+                    self._state = SerialPortAdapterState.failed
+                    return False
 
 
 class BridgeRestApiException(Exception):
@@ -87,7 +95,7 @@ class SoftwareWritingFailedException(Exception):
 
 
 class BridgeConnector:
-    _socket_client: socket.socket
+    _socket_client: Optional[SocketClient]
     _logger: logging.Logger
 
     _connected: bool
@@ -107,13 +115,13 @@ class BridgeConnector:
     _configs: dict
     _serial_ports: list
 
-    def __init__(self, address, rest_port, socket_port):
+    def __init__(self, address: str, rest_port: int, socket_port: int):
         self._logger = logging.getLogger("BridgeConnector")
-        self._socket_client = socket.socket()
         self._address = address
         self._rest_port = rest_port
         self._socket_port = socket_port
         self._connected = False
+        self._socket_client = None
 
     def __del__(self):
         self._disconnect()
@@ -172,7 +180,9 @@ class BridgeConnector:
     def _disconnect(self):
         self._logger.info("Closing all active connections")
         self._connected = False
-        self._socket_client.close()
+        if self._socket_client:
+            self._socket_client.__del__()
+            self._socket_client = None
 
     def _fetch_data(self, path: str, url_args: Optional[dict] = None) -> Optional[dict]:
         full_path = f"{self._address}:{self._rest_port}/{path}"
@@ -271,8 +281,6 @@ class BridgeConnector:
     def connect(self):
         self._disconnect()
 
-        self._socket_client = socket.socket()
-
         try:
             self._fetch_data("")
             self._logger.info("REST-API is responding")
@@ -281,7 +289,7 @@ class BridgeConnector:
             raise BridgeRestApiException
 
         try:
-            self._socket_client.connect((self._address, self._socket_port))  # connect to the server
+            self._socket_client = SocketClient(self._address, self._socket_port)
         except ConnectionRefusedError:
             self._logger.error("Could not connect to remote socket")
             raise BridgeSocketApiException
@@ -363,8 +371,8 @@ class BridgeConnector:
 
         print("Software writing started.\n")
 
-        listener = SerialPortAdapter(callback, self._socket_client)
-        write_ok = listener.read_until("SOFTWARE_UPLOAD", [1], [-1])
+        listener = SocketReader(callback, self._socket_client)
+        write_ok = listener.read_until("SOFTWARE_UPLOAD", [6], [-1, -2, -3, -4, -5, -6])
         if not write_ok:
             raise SoftwareWritingFailedException
 
@@ -379,7 +387,7 @@ class BridgeConnector:
 
         print("Config writing started.\n")
 
-        listener = SerialPortAdapter(callback, self._socket_client)
+        listener = SocketReader(callback, self._socket_client)
         write_ok = listener.read_until("CONFIG_UPLOAD", [1], [-1])
         if not write_ok:
             raise ConfigWritingFailedException
@@ -399,8 +407,8 @@ class BridgeConnector:
 
         print("Config writing started.\n")
 
-        listener = SerialPortAdapter(callback, self._socket_client)
-        write_ok = listener.read_until("CONFIG_UPLOAD", [6], [-1, -2, -3, -4, -5, -6])
+        listener = SocketReader(callback, self._socket_client)
+        write_ok = listener.read_until("CONFIG_UPLOAD", [1], [-1])
         if not write_ok:
             raise ConfigWritingFailedException
 

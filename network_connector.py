@@ -8,22 +8,26 @@ from abc import abstractmethod
 
 from request import Request
 from pubsub import Publisher, Subscriber
+from json_validator import Validator
+
+
+_req_validation_scheme_name = "request_basic_structure"
 
 
 class NetworkReceiver(Subscriber):
 
     _request_queue: Queue
-    _network: Publisher
 
     def __init__(self, network: Publisher):
+        super().__init__()
         self._request_queue = Queue()
         self._network = network
-        network.subscribe(self)
+        self._network.subscribe(self)
 
     def __del__(self):
-        self._network.unsubscribe(self)
+        pass
 
-    def _receive(self, req: Request):
+    def receive(self, req: Request):
         self._request_queue.put(req)
 
     def wait_for_responses(self, out_req: Request, timeout: int = 300, max_resp_count: Optional[int] = 1) -> list[Request]:
@@ -49,21 +53,23 @@ class NetworkConnector(Publisher):
     """Class to implement an network interface prototype"""
 
     _logger: logging.Logger
-    _request_validation_schema: dict
+    _validator: Validator
 
     __part_data: dict
 
     def __init__(self):
         super().__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._validator = Validator()
 
         self._connected = False
         self.__part_data = {}
-        with open("json_schemas/request_basic_structure.json", "r") as f:
-            self._request_validation_schema = json.load(f)
 
     def __del__(self):
         pass
+
+    def _validate_request(self, data: dict):
+        self._validator.validate(data, _req_validation_scheme_name)
 
     @abstractmethod
     def _send_data(self, req: Request):

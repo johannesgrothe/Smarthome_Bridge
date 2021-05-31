@@ -64,7 +64,7 @@ class SerialConnector(ThreadedNetworkConnector):
                 json_body = json.loads(req_dict["b"])
 
                 try:
-                    validate(json_body, self._request_validation_schema)
+                    self._validate_request(json_body)
                 except ValidationError:
                     self._logger.warning("Could not decode Request, Schema Validation failed.")
                     return None
