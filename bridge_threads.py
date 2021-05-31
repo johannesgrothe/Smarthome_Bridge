@@ -58,7 +58,7 @@ class ChipConfigFlasherThread(Thread):
 
     def __init__(self, sender: str, network: NetworkConnector, config: dict, client_name: str, callback=None):
         super().__init__()
-        print("Chip Software Flasher Thread")
+        print("Chip Config Flasher Thread")
         self.__config = config
         self.__streaming_callback = callback
         self.__sender = sender
@@ -66,13 +66,14 @@ class ChipConfigFlasherThread(Thread):
         self.__client_name = client_name
 
     def run(self):
-        print("Starting config flasher thread")
+        print("Starting config uploader thread")
         controller = ClientController(self.__client_name, self.__sender, self.__network)
         try:
+            print("Starting config upload.")
             controller.write_config(self.__config, self.__streaming_callback)
-            print("Flashing done.")
+            print("Config uploaded.")
         except NoClientResponseException:
-            print("Flashing failed.")
+            print("Config uploading failed..")
 
 
 class ChipSWFlasherThread(Thread):
@@ -91,14 +92,14 @@ class ChipSWFlasherThread(Thread):
 
     def run(self):
         print("Starting chip flasher Thread")
-
-        flasher = ChipFlasher(self.__streaming_callback)
+        # TODO: Add extra error handling for repository timeout
+        flasher = ChipFlasher(self.__streaming_callback, max_delay=10)
         try:
+            print("Starting flashing.")
             flasher.upload_software(self.__branch, self.__upload_port, self.__force_reset)
+            print("Flashing done.")
         except UploadFailedException:
-            pass
-
-        print("Flashing done.")
+            print("Flashing failed.")
 
 
 class BridgeSocketAPIThread(Thread):

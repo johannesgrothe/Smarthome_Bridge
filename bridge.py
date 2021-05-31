@@ -804,7 +804,7 @@ class MainBridge(Subscriber):
                               sender,
                               None,
                               {"status": status_code, "message": message})
-            self._socket_server.send_request(out_req)
+            self._socket_server.send_request(out_req, timeout=0)
 
 
 if __name__ == '__main__':

@@ -3,8 +3,9 @@ import socket
 import threading
 import json
 from jsonschema import ValidationError
+from queue import Queue
 
-from network_connector import Request
+from network_connector import Request, NetworkReceiver
 from network_connector_threaded import ThreadedNetworkConnector
 
 _socket_receive_len = 3000
@@ -15,6 +16,11 @@ def _format_request(req: Request) -> str:
     req_obj = {"path": req.get_path(), "body": req.get_body()}
     req_str = json.dumps(req_obj)
     return req_str
+
+
+class SocketServerCreationFailedException(Exception):
+    def __init__(self, host, port):
+        super().__init__(f"An error occurred while binding to host '{host}' at port '{port}' ")
 
 
 class SocketServer(ThreadedNetworkConnector):
@@ -34,12 +40,17 @@ class SocketServer(ThreadedNetworkConnector):
 
         self._logger.info(f"SocketServer is binding to {self._host} @ {self._port}")
         self._server_socket = socket.socket()
-        self._server_socket.bind((self._host, self._port))
+        try:
+            self._server_socket.bind((self._host, self._port))
+        except OSError:
+            raise SocketServerCreationFailedException(self._host, self._port)
+
+        self._add_thread(self._accept_new_clients)
 
         # configure how many client the server can listen simultaneously
         self._server_socket.listen(5)
         self._logger.info("SocketServer is listening for clients...")
-        self._start_thread()
+        self._start_threads()
 
     def __del__(self):
         with self._lock:
@@ -58,7 +69,6 @@ class SocketServer(ThreadedNetworkConnector):
             self._add_client(new_client, str(address))
 
     def _receive_data(self) -> Optional[Request]:
-        self._accept_new_clients()
         return None
 
     def connected(self) -> bool:
@@ -80,13 +90,15 @@ class SocketServer(ThreadedNetworkConnector):
 
             # remove 'dead' clients
             if remove_clients:
-                print("Removing stored client data")
+                self._logger.info(f"Removing stored data of {len(remove_clients)} clients")
                 remove_clients.reverse()
                 for client_index in remove_clients:
                     self._clients.pop(client_index)
 
 
 class SocketClient(ThreadedNetworkConnector):
+
+    _request_queue: Queue
 
     _socket_client: socket.socket
     _address: str
@@ -97,7 +109,9 @@ class SocketClient(ThreadedNetworkConnector):
         self._port = port
         self._address = address
         self._connect()
-        self._start_thread()
+        self._add_thread(self._receive_socket_data)
+        self._request_queue = Queue()
+        self._start_threads()
 
     def _connect(self):
         self._socket_client = socket.socket()
@@ -107,20 +121,20 @@ class SocketClient(ThreadedNetworkConnector):
         req_str = _format_request(req)
         self._socket_client.send(req_str.encode())
 
-    def _receive_data(self) -> Optional[Request]:
+    def _receive_socket_data(self):
         buf_rec_data = self._socket_client.recv(_socket_receive_len).decode()
 
         try:
             buf_json = json.loads(buf_rec_data)
         except json.decoder.JSONDecodeError:
             self._logger.info(f"Could not decode JSON: '{buf_rec_data}'")
-            return None
+            return
 
         try:
             self._validator.validate(buf_json, _socket_request_scheme)
         except ValidationError:
             self._logger.info(f"Received JSON is no valid Socket Request: '{buf_rec_data}'")
-            return None
+            return
 
         req_body = buf_json['body']
 
@@ -128,7 +142,7 @@ class SocketClient(ThreadedNetworkConnector):
             self._validate_request(req_body)
         except ValidationError:
             self._logger.info(f"Received JSON is no valid Request: '{req_body}'")
-            return None
+            return
 
         buf_req = Request(buf_json["path"],
                           req_body["session_id"],
@@ -137,6 +151,12 @@ class SocketClient(ThreadedNetworkConnector):
                           req_body["payload"])
 
         self._logger.info(f"Received Socket Request at '{buf_req.get_path()}': {buf_req.get_payload()}")
+        self._request_queue.put(buf_req)
+
+    def _receive_data(self) -> Optional[Request]:
+        if self._request_queue.empty():
+            return None
+        buf_req = self._request_queue.get()
         return buf_req
 
     def connected(self) -> bool:

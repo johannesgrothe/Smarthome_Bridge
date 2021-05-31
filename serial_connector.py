@@ -33,7 +33,7 @@ class SerialConnector(ThreadedNetworkConnector):
             raise SerialConnectionFailedException
         self.__connected = True
 
-        self._start_thread()
+        self._start_threads()
 
     def __del__(self):
         super().__del__()

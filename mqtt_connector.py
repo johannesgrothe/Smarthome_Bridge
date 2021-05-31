@@ -51,7 +51,7 @@ class MQTTConnector(ThreadedNetworkConnector):
 
             self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
-            self._start_thread()
+            self._start_threads()
 
         except ConnectionRefusedError as err:
             print(err)
