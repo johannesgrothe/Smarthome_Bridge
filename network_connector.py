@@ -67,9 +67,11 @@ class NetworkConnector(Publisher):
     _validator: Validator
 
     __part_data: dict
+    _name: str
 
-    def __init__(self):
+    def __init__(self, name: str):
         super().__init__()
+        self._name = name
         self._logger = logging.getLogger(self.__class__.__name__)
         self._validator = Validator()
 
@@ -94,6 +96,10 @@ class NetworkConnector(Publisher):
         """Tries to receive a new request from the network and publishes it to its subscribers"""
         received_request = self._receive_data()
         if received_request:
+
+            if received_request.get_receiver() is not None and received_request.get_receiver() != self._name:
+                return  # Request is not for me
+
             req_payload = received_request.get_payload()
             if "package_index" in req_payload and "split_payload" in req_payload:
                 id_str = str(received_request.get_session_id())
@@ -108,7 +114,7 @@ class NetworkConnector(Publisher):
                         buf_json["payload_bits"][0] = split_payload
                         self.__part_data[id_str] = buf_json
                     else:
-                        print("Received first block of split request without last_index")
+                        self._logger.error("Received first block of split request without last_index")
                 else:
                     if id_str in self.__part_data:
                         req_data = self.__part_data[id_str]
@@ -117,7 +123,7 @@ class NetworkConnector(Publisher):
                             end_data = ""
                             for str_data in req_data["payload_bits"]:
                                 if str_data is None:
-                                    print("Detected missing data block")
+                                    self._logger.error("Detected missing data block in split request")
                                     break
                                 end_data += str_data
                             try:
@@ -141,12 +147,7 @@ class NetworkConnector(Publisher):
             else:
                 self._publish(received_request)
 
-    def send_request(self, req: Request, timeout: int = 6) -> Optional[Request]:
-        """
-        Sends a request and waits for a response by default.
-
-        Returns the Ack-Status of the response, the status message of the response and the response itself.
-        """
+    def _send_request_obj(self, req: Request, timeout: int = 6) -> Optional[Request]:
         self._logger.debug(f"Sending Request to '{req.get_path()}'")
         self._send_data(req)
         if timeout > 0:
@@ -158,13 +159,26 @@ class NetworkConnector(Publisher):
 
         return None
 
-    def send_broadcast(self, req: Request, timeout: int = 5) -> list[Request]:
+    def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
+        """
+        Sends a request and waits for a response by default.
+
+        Returns the Ack-Status of the response, the status message of the response and the response itself.
+        """
+        req = Request(path, None, self._name, receiver, payload)
+        return self._send_request_obj(req, timeout)
+
+    def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
+                       max_responses: Optional[int] = None) -> list[Request]:
+        req = Request(path, None, self._name, None, payload)
         self._send_data(req)
         req_receiver = NetworkReceiver(self)
-        responses = req_receiver.wait_for_responses(req, timeout, None)
+        responses = req_receiver.wait_for_responses(req, timeout, max_responses)
         return responses
 
-    def send_request_split(self, req: Request, part_max_size: int = 30, timeout: int = 6) -> Optional[Request]:
+    def send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
+                           timeout: int = 6) -> Optional[Request]:
+        req = Request(path, None, self._name, receiver, payload)
         session_id = req.get_session_id()
         path = req.get_path()
         sender = req.get_sender()
@@ -200,11 +214,27 @@ class NetworkConnector(Publisher):
                               receiver,
                               out_dict)
             if package_index == last_index - 1:
-                res = self.send_request(out_req, timeout)
+                res = self._send_request_obj(out_req, timeout)
 
                 return res
             else:
-                self.send_request(out_req, 0)
+                self._send_request_obj(out_req, 0)
             package_index += 1
             sleep(0.1)
         return None
+
+    def respond(self, req: Request, payload: dict, path: Optional[str] = None):
+        if path:
+            out_path = path
+        else:
+            out_path = req.get_path()
+
+        receiver = req.get_sender()
+
+        out_req = Request(out_path,
+                          req.get_session_id(),
+                          self._name,
+                          receiver,
+                          payload)
+
+        self._send_request_obj(out_req, 0)

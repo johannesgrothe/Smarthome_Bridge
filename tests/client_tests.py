@@ -2,6 +2,8 @@ import unittest
 import json
 from mqtt_connector import MQTTConnector, Request
 
+from mqtt_connector_tests import request_long
+
 # Data for the MQTT Broker
 BROKER_IP = "192.168.178.111"
 BROKER_PORT = 1883

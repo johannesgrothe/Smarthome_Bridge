@@ -1,20 +1,18 @@
 import logging
-
-from network_connector import NetworkConnector, Request
+from network_connector import Request
 from network_connector_threaded import ThreadedNetworkConnector
 from typing import Optional, Callable
 from queue import Queue
 import paho.mqtt.client as mqtt
-import time
 import json
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError
 
 
 class MQTTConnector(ThreadedNetworkConnector):
     """Class to implement a MQTT connection module"""
 
     __client: mqtt.Client
-    __own_name: str
+    _name: str
     __ip: str
     __port: int
 
@@ -25,9 +23,8 @@ class MQTTConnector(ThreadedNetworkConnector):
 
     def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str] = None,
                  mqtt_pw: Optional[str] = None):
-        super().__init__()
-        self.__own_name = own_name
-        self.__client = mqtt.Client(self.__own_name)
+        super().__init__(own_name)
+        self.__client = mqtt.Client(self._name)
         self.__ip = mqtt_ip
         self.__port = mqtt_port
         self.__mqtt_username = mqtt_user

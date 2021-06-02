@@ -11,8 +11,8 @@ class ThreadedNetworkConnector(NetworkConnector, ABC):
     __threads: list[Thread]
     __threads_running: bool
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name: str):
+        super().__init__(name)
         self.__threads = []
         self._add_thread(self._receive)
 

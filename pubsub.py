@@ -25,6 +25,5 @@ class Publisher(metaclass=ABCMeta):
         self.__subscriber_clients.remove(client)
 
     def _publish(self, req: Request):
-        print(f"Publishing req: {req.get_payload()}")
         for subscriber in self.__subscriber_clients:
             subscriber.receive(req)
