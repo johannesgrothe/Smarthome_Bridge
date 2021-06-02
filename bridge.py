@@ -440,9 +440,6 @@ class MainBridge(Subscriber):
             115200
         )
 
-        if not buf_serial_gadget.connected():
-            return False, f"Could not connect to '{serial_port}'"
-
         # Get client name
         client_name = get_connected_chip_id(buf_serial_gadget, self.get_bridge_name())
 

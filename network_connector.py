@@ -17,10 +17,12 @@ _req_validation_scheme_name = "request_basic_structure"
 class NetworkReceiver(Subscriber):
 
     _request_queue: Queue
+    _keep_queue: bool
 
     def __init__(self, network: Publisher):
         super().__init__()
         self._request_queue = Queue()
+        self._keep_queue = False
         self._network = network
         self._network.subscribe(self)
 
@@ -30,10 +32,19 @@ class NetworkReceiver(Subscriber):
     def receive(self, req: Request):
         self._request_queue.put(req)
 
-    def wait_for_responses(self, out_req: Request, timeout: int = 300, max_resp_count: Optional[int] = 1) -> list[Request]:
-        responses: list[Request] = []
+    def start_listening_for_responses(self):
+        """Clears the queue and starts recording requests.
+        All received requests are used the next time wait_for_responses() is called."""
         self._request_queue = Queue()
+        self._keep_queue = True
 
+    def wait_for_responses(self, out_req: Request, timeout: int = 300, max_resp_count: Optional[int] = 1) -> list[Request]:
+        if not self._keep_queue:
+            self._request_queue = Queue()
+        else:
+            self._keep_queue = False
+
+        responses: list[Request] = []
         timeout_time = datetime.now() + timedelta(seconds=timeout)
 
         while timeout and datetime.now() < timeout_time:
@@ -62,7 +73,6 @@ class NetworkConnector(Publisher):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._validator = Validator()
 
-        self._connected = False
         self.__part_data = {}
 
     def __del__(self):
@@ -81,7 +91,7 @@ class NetworkConnector(Publisher):
         return None
 
     def _receive(self):
-        """Tries to receive a new request from the network and publishs it to its subscribers"""
+        """Tries to receive a new request from the network and publishes it to its subscribers"""
         received_request = self._receive_data()
         if received_request:
             req_payload = received_request.get_payload()
@@ -103,7 +113,7 @@ class NetworkConnector(Publisher):
                     if id_str in self.__part_data:
                         req_data = self.__part_data[id_str]
                         req_data["payload_bits"][p_index] = split_payload
-                        if p_index >= req_data["last_index"]:
+                        if p_index >= req_data["last_index"] - 1:
                             end_data = ""
                             for str_data in req_data["payload_bits"]:
                                 if str_data is None:
@@ -137,6 +147,7 @@ class NetworkConnector(Publisher):
 
         Returns the Ack-Status of the response, the status message of the response and the response itself.
         """
+        self._logger.debug(f"Sending Request to '{req.get_path()}'")
         self._send_data(req)
         if timeout > 0:
             req_receiver = NetworkReceiver(self)
@@ -197,8 +208,3 @@ class NetworkConnector(Publisher):
             package_index += 1
             sleep(0.1)
         return None
-
-    @abstractmethod
-    def connected(self) -> bool:
-        self._logger.error("'connected()' isn't implemented")
-        return False

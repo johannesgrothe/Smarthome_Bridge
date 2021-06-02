@@ -104,7 +104,7 @@ class MQTTConnector(ThreadedNetworkConnector):
     @staticmethod
     def generate_connect_callback(logger: logging.Logger):
 
-        def connect_callback(client, userdata, flags, reason_code, properties=None):
+        def connect_callback(client, userdata, reasonCode, properties=None):
             logger.info("MQTT connected.")
 
         return connect_callback
@@ -112,7 +112,7 @@ class MQTTConnector(ThreadedNetworkConnector):
     @staticmethod
     def generate_disconnect_callback(logger: logging.Logger):
 
-        def disconnect_callback(client, userdata, flags, reason_code, properties=None):
+        def disconnect_callback(client, userdata, reasonCode, properties=None):
             logger.info("MQTT disconnected.")
 
         return disconnect_callback
@@ -124,9 +124,6 @@ class MQTTConnector(ThreadedNetworkConnector):
 
     def _send_data(self, req: Request):
         self.__client.publish(req.get_path(), json.dumps(req.get_body()))
-
-    def connected(self) -> bool:
-        return self.__client.is_connected()
 
 
 if __name__ == '__main__':

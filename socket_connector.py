@@ -71,9 +71,6 @@ class SocketServer(ThreadedNetworkConnector):
     def _receive_data(self) -> Optional[Request]:
         return None
 
-    def connected(self) -> bool:
-        return True
-
     def _send_data(self, req: Request):
         req_str = _format_request(req)
         with self._lock:
@@ -158,6 +155,3 @@ class SocketClient(ThreadedNetworkConnector):
             return None
         buf_req = self._request_queue.get()
         return buf_req
-
-    def connected(self) -> bool:
-        return True

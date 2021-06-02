@@ -10,6 +10,8 @@ pyserial = {version="*"}
 requests = {version="*"}
 pysimplegui = {version="*"}
 jsonschema = {version="*"}
+pytest = {version="*"}
+coverage = {version="*"}
 
 [dev-packages]
 

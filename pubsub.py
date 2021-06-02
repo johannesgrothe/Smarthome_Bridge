@@ -1,6 +1,5 @@
-import logging
+"""Module for the publisher/subscriber pattern metaclasses"""
 from abc import abstractmethod, ABCMeta
-
 from request import Request
 
 
@@ -14,11 +13,9 @@ class Subscriber(metaclass=ABCMeta):
 class Publisher(metaclass=ABCMeta):
 
     __subscriber_clients: list
-    __logger: logging.Logger
 
     def __init__(self):
         self.__subscriber_clients = []
-        self.__logger = logging.getLogger("Publisher")
 
     def subscribe(self, client: Subscriber):
         if client not in self.__subscriber_clients:
@@ -28,6 +25,6 @@ class Publisher(metaclass=ABCMeta):
         self.__subscriber_clients.remove(client)
 
     def _publish(self, req: Request):
-        self.__logger.debug("Publishing request")
+        print(f"Publishing req: {req.get_payload()}")
         for subscriber in self.__subscriber_clients:
             subscriber.receive(req)
