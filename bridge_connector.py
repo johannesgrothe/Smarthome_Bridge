@@ -289,7 +289,7 @@ class BridgeConnector:
             raise BridgeRestApiException
 
         try:
-            self._socket_client = SocketClient(self._address, self._socket_port)
+            self._socket_client = SocketClient("<bridge>", self._address, self._socket_port)
         except ConnectionRefusedError:
             self._logger.error("Could not connect to remote socket")
             raise BridgeSocketApiException

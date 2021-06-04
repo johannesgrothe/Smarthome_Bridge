@@ -1,14 +1,16 @@
 import json
 import logging
-from typing import Optional
+from typing import Optional, Callable
 from queue import Queue
 from datetime import datetime, timedelta
 from time import sleep
 from abc import abstractmethod
+from threading import Thread
 
-from request import Request
+from request import Request, response_callback_type
 from pubsub import Publisher, Subscriber
 from json_validator import Validator
+from thread_manager import ThreadManager
 
 
 _req_validation_scheme_name = "request_basic_structure"
@@ -38,7 +40,8 @@ class NetworkReceiver(Subscriber):
         self._request_queue = Queue()
         self._keep_queue = True
 
-    def wait_for_responses(self, out_req: Request, timeout: int = 300, max_resp_count: Optional[int] = 1) -> list[Request]:
+    def wait_for_responses(self, out_req: Request, timeout: int = 300,
+                           max_resp_count: Optional[int] = 1) -> list[Request]:
         if not self._keep_queue:
             self._request_queue = Queue()
         else:
@@ -65,9 +68,13 @@ class NetworkConnector(Publisher):
 
     _logger: logging.Logger
     _validator: Validator
+    _name: str
+    _thread_manager: ThreadManager
 
     __part_data: dict
-    _name: str
+
+    __out_queue: Queue
+    __in_queue: Queue
 
     def __init__(self, name: str):
         super().__init__()
@@ -76,27 +83,26 @@ class NetworkConnector(Publisher):
         self._validator = Validator()
 
         self.__part_data = {}
+        self.__out_queue = Queue()
+        self.__in_queue = Queue()
+
+        self._thread_manager = ThreadManager()
+
+        self._thread_manager.add_thread("send_thread", self.__task_send_request)
+        self._thread_manager.add_thread("handler_thread", self.__task_handle_request)
 
     def __del__(self):
-        pass
+        self._thread_manager.__del__()
 
-    def _validate_request(self, data: dict):
-        self._validator.validate(data, _req_validation_scheme_name)
+    def __task_send_request(self):
+        if not self.__out_queue.empty():
+            out_req = self.__out_queue.get()
+            self._send_data(out_req)
 
-    @abstractmethod
-    def _send_data(self, req: Request):
-        self._logger.error(f"Not implemented: '_send_data'")
-
-    @abstractmethod
-    def _receive_data(self) -> Optional[Request]:
-        self._logger.error(f"Not implemented: '_receive_data'")
-        return None
-
-    def _receive(self):
-        """Tries to receive a new request from the network and publishes it to its subscribers"""
-        received_request = self._receive_data()
-        if received_request:
-
+    def __task_handle_request(self):
+        if not self.__in_queue.empty():
+            received_request = self.__in_queue.get()
+            self._logger.info("Received")
             if received_request.get_receiver() is not None and received_request.get_receiver() != self._name:
                 return  # Request is not for me
 
@@ -136,18 +142,35 @@ class NetworkConnector(Publisher):
                                                   first_req.get_sender(),
                                                   first_req.get_receiver(),
                                                   json_data)
-                                self._publish(out_req)
+
+                                out_req.set_callback_method(first_req.get_callback())
+
+                                self.__forward_request(out_req)
                                 del self.__part_data[id_str]
                             except json.decoder.JSONDecodeError:
-                                print("Received illegal payload")
+                                self._logger.error("Received illegal payload")
 
                     else:
-                        print("Received a followup-block with no entry in storage")
+                        self._logger.error("Received a followup-block with no entry in storage")
 
             else:
-                self._publish(received_request)
+                self.__forward_request(received_request)
 
-    def _send_request_obj(self, req: Request, timeout: int = 6) -> Optional[Request]:
+    def __forward_request(self, req: Request):
+        self._publish(req)
+
+    def _validate_request(self, data: dict):
+        self._validator.validate(data, _req_validation_scheme_name)
+
+    def _handle_request(self, req: Request):
+        self._logger.info(f"Received Request at '{req.get_path()}'")
+        self.__in_queue.put(req)
+
+    @abstractmethod
+    def _send_data(self, req: Request):
+        self._logger.error(f"Not implemented: '_send_data'")
+
+    def __send_request_obj(self, req: Request, timeout: int = 6) -> Optional[Request]:
         self._logger.debug(f"Sending Request to '{req.get_path()}'")
         self._send_data(req)
         if timeout > 0:
@@ -166,7 +189,7 @@ class NetworkConnector(Publisher):
         Returns the Ack-Status of the response, the status message of the response and the response itself.
         """
         req = Request(path, None, self._name, receiver, payload)
-        return self._send_request_obj(req, timeout)
+        return self.__send_request_obj(req, timeout)
 
     def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
                        max_responses: Optional[int] = None) -> list[Request]:
@@ -214,16 +237,16 @@ class NetworkConnector(Publisher):
                               receiver,
                               out_dict)
             if package_index == last_index - 1:
-                res = self._send_request_obj(out_req, timeout)
+                res = self.__send_request_obj(out_req, timeout)
 
                 return res
             else:
-                self._send_request_obj(out_req, 0)
+                self.__send_request_obj(out_req, 0)
             package_index += 1
             sleep(0.1)
         return None
 
-    def respond(self, req: Request, payload: dict, path: Optional[str] = None):
+    def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
         if path:
             out_path = path
         else:
@@ -237,4 +260,4 @@ class NetworkConnector(Publisher):
                           receiver,
                           payload)
 
-        self._send_request_obj(out_req, 0)
+        self.__send_request_obj(out_req, 0)

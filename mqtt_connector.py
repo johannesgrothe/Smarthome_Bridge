@@ -1,25 +1,20 @@
 import logging
-from network_connector import Request
-from network_connector_threaded import ThreadedNetworkConnector
+from network_connector import NetworkConnector, Request, response_callback_type
 from typing import Optional, Callable
-from queue import Queue
 import paho.mqtt.client as mqtt
 import json
 from jsonschema import ValidationError
 
 
-class MQTTConnector(ThreadedNetworkConnector):
+class MQTTConnector(NetworkConnector):
     """Class to implement a MQTT connection module"""
 
     __client: mqtt.Client
-    _name: str
     __ip: str
     __port: int
 
     __mqtt_username: Optional[str]
     __mqtt_password: Optional[str]
-
-    __buf_queue: Queue
 
     def __init__(self, own_name: str, mqtt_ip: str, mqtt_port: int, mqtt_user: Optional[str] = None,
                  mqtt_pw: Optional[str] = None):
@@ -30,14 +25,13 @@ class MQTTConnector(ThreadedNetworkConnector):
         self.__mqtt_username = mqtt_user
         self.__mqtt_password = mqtt_pw
 
-        self.__buf_queue = Queue()
-
         if self.__mqtt_username and self.__mqtt_password:
             self.__client.username_pw_set(self.__mqtt_username, self.__mqtt_password)
         try:
-            self.__client.on_message = self.generate_callback(self.__buf_queue,
-                                                              self._validate_request,
-                                                              self._logger)
+            self.__client.on_message = self.generate_callback(self._validate_request,
+                                                              self._logger,
+                                                              self._respond_to,
+                                                              self._handle_request)
             self.__client.on_disconnect = self.generate_disconnect_callback(self._logger)
             self.__client.on_connect = self.generate_connect_callback(self._logger)
 
@@ -48,7 +42,7 @@ class MQTTConnector(ThreadedNetworkConnector):
 
             self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
-            self._start_threads()
+            self._thread_manager.start_threads()
 
         except ConnectionRefusedError as err:
             print(err)
@@ -58,7 +52,7 @@ class MQTTConnector(ThreadedNetworkConnector):
         self.__client.disconnect()
 
     @staticmethod
-    def generate_callback(request_queue: Queue, validate_function: Callable, logger: logging.Logger):
+    def generate_callback(validate_function: Callable, logger: logging.Logger, respond_method, handler_function):
         """Generates a callback with captured queue"""
 
         def buf_callback(client, userdata, message):
@@ -88,9 +82,9 @@ class MQTTConnector(ThreadedNetworkConnector):
                                   body["sender"],
                                   body["receiver"],
                                   body["payload"])
-                # print("Received: {}".format(inc_req.to_string()))
+                inc_req.set_callback_method(respond_method)
 
-                request_queue.put(inc_req)
+                handler_function(inc_req)
 
             except ValueError:
                 logger.error("Error creating Request")
@@ -114,30 +108,5 @@ class MQTTConnector(ThreadedNetworkConnector):
 
         return disconnect_callback
 
-    def _receive_data(self) -> Optional[Request]:
-        if not self.__buf_queue.empty():
-            return self.__buf_queue.get()
-        return None
-
     def _send_data(self, req: Request):
         self.__client.publish(req.get_path(), json.dumps(req.get_body()))
-
-
-if __name__ == '__main__':
-    import sys
-
-    ip = "192.168.178.111"
-    port = 1883
-    try:
-        mqtt_gadget = MQTTConnector("TesTeR", ip, port)
-    except OSError as e:
-        print("Cannot connect to '{}:{}'".format(ip, port))
-        sys.exit(1)
-
-    buf_req = Request("smarthome/debug",
-                      125543,
-                      "me",
-                      "you",
-                      {"yolo": "hallo"})
-
-    mqtt_gadget.send_request(buf_req)

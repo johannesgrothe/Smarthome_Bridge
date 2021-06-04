@@ -26,16 +26,7 @@ class TestEchoClient(Subscriber):
         else:
             return
 
-        # sender = self.get_name()
-        # receiver = req.get_sender()
-
-        # res = Request(req.get_path(),
-        #               req.get_session_id(),
-        #               sender,
-        #               receiver,
-        #               req.get_payload())
-        self._network.respond(req, req.get_payload())
-        # self._network.send_request(res, timeout=0)
+        req.respond(req.get_payload())
 
     def get_name(self):
         return self._name

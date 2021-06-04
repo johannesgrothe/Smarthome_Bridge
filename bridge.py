@@ -790,7 +790,7 @@ class MainBridge(Subscriber):
     def run_socket_api(self):
         """Launches the REST API"""
         with self.__lock:
-            self._socket_server = SocketServer(self._socket_api_port)
+            self._socket_server = SocketServer("<bridge>", self._socket_api_port)
 
     # endregion
 

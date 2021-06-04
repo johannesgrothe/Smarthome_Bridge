@@ -1,7 +1,7 @@
 """Module containing the ThreadedNetworkConnector class"""
 from threading import Thread
 from abc import ABC
-from network_connector import NetworkConnector
+from network_connector import NetworkConnector, Request, response_callback_type  # Passed down to subclasses
 from typing import Callable
 
 

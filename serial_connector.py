@@ -1,11 +1,10 @@
-from network_connector import Request
-from network_connector_threaded import ThreadedNetworkConnector
+from network_connector_threaded import ThreadedNetworkConnector, Request, response_callback_type
 from typing import Optional
 import serial
 import re
 import time
 import json
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError
 
 
 class SerialConnectionFailedException(Exception):
@@ -17,14 +16,12 @@ class SerialConnector(ThreadedNetworkConnector):
     """Class to implement a MQTT connection module"""
 
     __client: serial.Serial
-    __own_name: str
     __baud_rate: int
     __port: str
     __connected: bool
 
     def __init__(self, own_name: str, port: str, baud_rate: int):
-        super().__init__()
-        self.__own_name = own_name
+        super().__init__(own_name)
         self.__baud_rate = baud_rate
         self.__port = port
         try:
@@ -121,31 +118,22 @@ class SerialConnector(ThreadedNetworkConnector):
     def _receive_data(self) -> Optional[Request]:
         return self.__read_serial()
 
-    def monitor(self):
-        self.__read_serial(0, True)
-
-    def connected(self) -> bool:
-        return self.__connected
+    def _get_respond_callback_for_id(self, req_id: int) -> Optional[response_callback_type]:
+        return self._respond_to
 
 
 def main():
     import sys
 
     port = '/dev/cu.usbserial-0001'
-    baudrate = 115200
+    baud_rate = 115200
     try:
-        network_gadget = SerialConnector("TesTeR", port, baudrate)
-    except OSError as e:
+        network_gadget = SerialConnector("TesTeR", port, baud_rate)
+    except OSError:
         print("Cannot connect to '{}'".format(port))
         sys.exit(1)
 
-    buf_req = Request("smarthome/debug",
-                      125543,
-                      "me",
-                      "you",
-                      {"yolo": "blub"})
-
-    network_gadget.send_request(buf_req)
+    network_gadget.send_request("smarthome/debug", "you", {"yolo": "xD"})
 
 
 if __name__ == '__main__':
