@@ -13,7 +13,7 @@ from json_validator import Validator
 from thread_manager import ThreadManager
 
 
-_req_validation_scheme_name = "request_basic_structure"
+req_validation_scheme_name = "request_basic_structure"
 
 
 class NetworkReceiver(Subscriber):
@@ -160,7 +160,7 @@ class NetworkConnector(Publisher):
         self._publish(req)
 
     def _validate_request(self, data: dict):
-        self._validator.validate(data, _req_validation_scheme_name)
+        self._validator.validate(data, req_validation_scheme_name)
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at '{req.get_path()}'")
