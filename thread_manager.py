@@ -21,13 +21,17 @@ class ThreadController:
 
         return buffer_thread
 
+    def is_running(self):
+        return self._thread.is_alive()
+
     def start(self):
         self._thread_running = True
         self._thread.start()
 
     def kill(self):
         self._thread_running = False
-        self._thread.join()
+        if self.is_running():
+            self._thread.join()
 
 
 class ThreadManager:
@@ -47,14 +51,15 @@ class ThreadManager:
 
     def _remove_all_threads(self):
         self._threads_running = False
-        for thread_id in self._threads:
+        thread_names = [thread_id for thread_id in self._threads]
+        for thread_id in thread_names:
             self.remove_thread(thread_id)
 
     def start_threads(self):
         self._threads_running = True
         for thread_id in self._threads:
             thread = self._threads[thread_id]
-            if not thread.is_alive():
+            if not thread.is_running():
                 self._logger.info("Launching Thread")
                 thread.start()
 
