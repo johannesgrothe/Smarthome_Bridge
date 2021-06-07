@@ -7,10 +7,15 @@ from typing import Callable
 class ThreadController:
     _thread: Thread
     _thread_running: bool
+    _name: str
 
-    def __init__(self, thread_method: Callable):
+    def __init__(self, thread_method: Callable, name: str):
         self._thread_running = True
         self._thread = self._create_thread(thread_method)
+        self._name = name
+
+    def __del__(self):
+        self.kill()
 
     def _create_thread(self, thread_method: Callable) -> Thread:
         def buffer_thread_method():
@@ -64,7 +69,7 @@ class ThreadManager:
                 thread.start()
 
     def add_thread(self, thread_id: str, thread_method: Callable) -> ThreadController:
-        controller = ThreadController(thread_method)
+        controller = ThreadController(thread_method, thread_id)
         self._threads[thread_id] = controller
         return controller
 

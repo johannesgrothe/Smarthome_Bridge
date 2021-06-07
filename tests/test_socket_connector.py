@@ -3,35 +3,53 @@ import pytest
 
 from socket_connector import SocketServer, SocketClient
 from test_helpers.echo_client import TestEchoClient
-from tests.connector_tests import TEST_ECHO_CLIENT_NAME, TEST_SENDER_NAME, TEST_PATH, test_payload
+from tests.connector_tests import TEST_ECHO_CLIENT_NAME, TEST_SENDER_NAME, TEST_PATH, test_payload_big
 
-# Data for the MQTT Broker
+
+SERVER_PORT = 5781
 SERVER_IP = "localhost"
-SERVER_PORT = 1883
 
 
 @pytest.fixture
 def server():
-    sender = SocketServer(TEST_SENDER_NAME,
+    server = SocketServer(TEST_SENDER_NAME,
                           SERVER_PORT)
-    yield sender
-    sender.__del__()
+    yield server
+    server.__del__()
 
 
 @pytest.fixture
-def echo_client():
-    sender = SocketClient(TEST_ECHO_CLIENT_NAME,
+def client():
+    client = SocketClient(TEST_ECHO_CLIENT_NAME,
                           SERVER_IP,
                           SERVER_PORT)
-    echo = TestEchoClient(TEST_ECHO_CLIENT_NAME, sender)
-    yield echo
-    sender.__del__()
+    yield client
+    client.__del__()
 
 
-def test_socket_server_send(sender: SocketServer, test_payload, echo_client):
-    response = sender.send_request(TEST_PATH, TEST_ECHO_CLIENT_NAME, test_payload)
+@pytest.fixture
+def echo_client(client):
+    echo_client = TestEchoClient(client)
+    return echo_client
+
+
+@pytest.fixture
+def echo_server(server):
+    echo_server = TestEchoClient(server)
+    return echo_server
+
+
+def test_socket_server_send(server: SocketServer, test_payload_big: dict, echo_client: TestEchoClient):
+    response = server.send_request(TEST_PATH, TEST_ECHO_CLIENT_NAME, test_payload_big)
     assert response is not None
-    assert response.get_payload() == test_payload
+    assert response.get_payload() == test_payload_big
+    return
+
+
+def test_socket_server_send_split(server: SocketServer, test_payload_big: dict, echo_client: TestEchoClient):
+    response = server.send_request_split(TEST_PATH, TEST_ECHO_CLIENT_NAME, test_payload_big)
+    assert response is not None
+    assert response.get_payload() == test_payload_big
     return
 
 #

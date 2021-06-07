@@ -101,62 +101,70 @@ class NetworkConnector(Publisher):
 
     def __task_handle_request(self):
         if not self.__in_queue.empty():
-            received_request = self.__in_queue.get()
-            self._logger.info("Received")
+            received_request: Request = self.__in_queue.get()
+            self._logger.info(f"Received Request {received_request.get_payload()}")
             if received_request.get_receiver() is not None and received_request.get_receiver() != self._name:
                 return  # Request is not for me
 
             req_payload = received_request.get_payload()
             if "package_index" in req_payload and "split_payload" in req_payload:
-                id_str = str(received_request.get_session_id())
-                p_index = req_payload["package_index"]
-                split_payload = req_payload["split_payload"]
-                if p_index == 0:
-                    if "last_index" in req_payload:
-                        l_index = req_payload["last_index"]
-                        buf_json = {"start_req": received_request, "last_index": l_index, "payload_bits": []}
-                        for i in range(l_index + 1):
-                            buf_json["payload_bits"].append(None)
-                        buf_json["payload_bits"][0] = split_payload
-                        self.__part_data[id_str] = buf_json
-                    else:
-                        self._logger.error("Received first block of split request without last_index")
-                else:
-                    if id_str in self.__part_data:
-                        req_data = self.__part_data[id_str]
-                        req_data["payload_bits"][p_index] = split_payload
-                        if p_index >= req_data["last_index"] - 1:
-                            end_data = ""
-                            for str_data in req_data["payload_bits"]:
-                                if str_data is None:
-                                    self._logger.error("Detected missing data block in split request")
-                                    break
-                                end_data += str_data
-                            try:
-                                end_data = end_data.replace("$*$", '"')
-                                json_data = json.loads(end_data)
-                                first_req: Request = req_data["start_req"]
-
-                                out_req = Request(first_req.get_path(),
-                                                  first_req.get_session_id(),
-                                                  first_req.get_sender(),
-                                                  first_req.get_receiver(),
-                                                  json_data)
-
-                                out_req.set_callback_method(first_req.get_callback())
-
-                                self.__forward_request(out_req)
-                                del self.__part_data[id_str]
-                            except json.decoder.JSONDecodeError:
-                                self._logger.error("Received illegal payload")
-
-                    else:
-                        self._logger.error("Received a followup-block with no entry in storage")
+                self.__handle_split_request(received_request)
 
             else:
-                self.__forward_request(received_request)
+                self.__handle_single_request(received_request)
+
+    def __handle_single_request(self, received_request: Request):
+        self.__forward_request(received_request)
+
+    def __handle_split_request(self, received_request: Request):
+        req_payload = received_request.get_payload()
+        id_str = str(received_request.get_session_id())
+        p_index = req_payload["package_index"]
+        split_payload = req_payload["split_payload"]
+        if p_index == 0:
+            if "last_index" in req_payload:
+                l_index = req_payload["last_index"]
+                buf_json = {"start_req": received_request, "last_index": l_index, "payload_bits": []}
+                for i in range(l_index + 1):
+                    buf_json["payload_bits"].append(None)
+                buf_json["payload_bits"][0] = split_payload
+                self.__part_data[id_str] = buf_json
+            else:
+                self._logger.error("Received first block of split request without last_index")
+        else:
+            if id_str in self.__part_data:
+                req_data = self.__part_data[id_str]
+                req_data["payload_bits"][p_index] = split_payload
+                if p_index >= req_data["last_index"] - 1:
+                    end_data = ""
+                    for str_data in req_data["payload_bits"]:
+                        if str_data is None:
+                            self._logger.error("Detected missing data block in split request")
+                            break
+                        end_data += str_data
+                    try:
+                        end_data = end_data.replace("$*$", '"')
+                        json_data = json.loads(end_data)
+                        first_req: Request = req_data["start_req"]
+
+                        out_req = Request(first_req.get_path(),
+                                          first_req.get_session_id(),
+                                          first_req.get_sender(),
+                                          first_req.get_receiver(),
+                                          json_data)
+
+                        out_req.set_callback_method(first_req.get_callback())
+
+                        self.__forward_request(out_req)
+                        del self.__part_data[id_str]
+                    except json.decoder.JSONDecodeError:
+                        self._logger.error("Received illegal payload")
+
+            else:
+                self._logger.error("Received a followup-block with no entry in storage")
 
     def __forward_request(self, req: Request):
+        self._logger.debug(f"Forwarding Request to {self._get_client_number()} clients")
         self._publish(req)
 
     def _validate_request(self, data: dict):
@@ -174,6 +182,7 @@ class NetworkConnector(Publisher):
         self._logger.debug(f"Sending Request to '{req.get_path()}'")
         self._send_data(req)
         if timeout > 0:
+            self._logger.debug(f"Waiting for Response ({timeout})...")
             req_receiver = NetworkReceiver(self)
             responses = req_receiver.wait_for_responses(req, timeout)
             if not responses:
@@ -181,6 +190,22 @@ class NetworkConnector(Publisher):
             return responses[0]
 
         return None
+
+    def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
+        if path:
+            out_path = path
+        else:
+            out_path = req.get_path()
+
+        receiver = req.get_sender()
+
+        out_req = Request(out_path,
+                          req.get_session_id(),
+                          self._name,
+                          receiver,
+                          payload)
+
+        self.__send_request_obj(out_req, 0)
 
     def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
         """
@@ -246,18 +271,5 @@ class NetworkConnector(Publisher):
             sleep(0.1)
         return None
 
-    def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
-        if path:
-            out_path = path
-        else:
-            out_path = req.get_path()
-
-        receiver = req.get_sender()
-
-        out_req = Request(out_path,
-                          req.get_session_id(),
-                          self._name,
-                          receiver,
-                          payload)
-
-        self.__send_request_obj(out_req, 0)
+    def get_name(self) -> str:
+        return self._name

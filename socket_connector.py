@@ -9,6 +9,7 @@ from queue import Queue
 
 from network_connector import NetworkConnector, Request, response_callback_type, req_validation_scheme_name, Validator
 
+_socket_timeout = 3
 _socket_receive_len = 3000
 _socket_request_scheme = "socket_request_structure"
 
@@ -29,7 +30,10 @@ class SocketConnector(NetworkConnector, ABC):
     @staticmethod
     def _receive_req_from_socket(client: socket.socket, logger: logging.Logger, validator: Validator,
                                  respond_method: Callable) -> Optional[Request]:
-        buf_rec_data = client.recv(_socket_receive_len).decode()
+        try:
+            buf_rec_data = client.recv(_socket_receive_len).decode()
+        except socket.timeout:
+            return None
 
         try:
             buf_json = json.loads(buf_rec_data)
@@ -46,9 +50,9 @@ class SocketConnector(NetworkConnector, ABC):
         req_body = buf_json['body']
 
         try:
-            validator.validate(buf_json, req_validation_scheme_name)
+            validator.validate(req_body, req_validation_scheme_name)
         except ValidationError:
-            logger.info(f"Received JSON is no valid Request: '{buf_json}'")
+            logger.info(f"Received JSON is no valid Request: '{req_body}'")
             return None
 
         buf_req = Request(buf_json["path"],
@@ -116,24 +120,33 @@ class SocketServer(SocketConnector):
         self.__id_map = {}
         self.__buf_queue = Queue()
 
+        self._start_server()
+
+        self._thread_manager.add_thread("socket_server_accept", self._accept_new_clients)
+        self._thread_manager.start_threads()
+
+    def __del__(self):
+        super().__del__()
+        while self._clients:
+            client, client_address, task_id = self._clients[0]
+            self._remove_client(client_address)
+        self._stop_server()
+
+    def _start_server(self):
         self._logger.info(f"SocketServer is binding to {self._host} @ {self._port}")
         self._server_socket = socket.socket()
+        self._server_socket.settimeout(_socket_timeout)
         try:
             self._server_socket.bind((self._host, self._port))
         except OSError:
             raise SocketServerCreationFailedException(self._host, self._port)
 
-        self._thread_manager.add_thread("socket_server_accept", self._accept_new_clients)
-
         # configure how many client the server can listen simultaneously
         self._server_socket.listen(5)
         self._logger.info("SocketServer is listening for clients...")
-        self._thread_manager.start_threads()
 
-    def __del__(self):
-        with self._lock:
-            for client, client_address, task_id in self._clients:
-                self._remove_client(client_address)
+    def _stop_server(self):
+        self._logger.info("Shutting down SocketServer")
         self._server_socket.close()
 
     def _add_client(self, client: socket, address: str, thread_id: str):
@@ -143,21 +156,25 @@ class SocketServer(SocketConnector):
 
     def _remove_client(self, address: str):
         client_id = 0
+        self._logger.info(f"Removing Client '{address}'")
         with self._lock:
             for client, client_address, task_id in self._clients:
                 if address == client_address:
                     self._clients.pop(client_id)
-                    self._thread_manager.remove_thread(task_id)
                     return
 
     def _accept_new_clients(self):
-        new_client, address = self._server_socket.accept()  # accept new connection
-        if new_client:
-            client_thread_method = self._create_client_handler_thread(new_client, address)
-            thread_name = f"client_receiver_{address}"
-            client_thread_controller = self._thread_manager.add_thread(thread_name, client_thread_method)
-            client_thread_controller.start()
-            self._add_client(new_client, str(address), thread_name)
+        try:
+            new_client, address = self._server_socket.accept()  # accept new connection
+            if new_client:
+                new_client.settimeout(_socket_timeout)
+                client_thread_method = self._create_client_handler_thread(new_client, address)
+                thread_name = f"client_receiver_{address}"
+                client_thread_controller = self._thread_manager.add_thread(thread_name, client_thread_method)
+                client_thread_controller.start()
+                self._add_client(new_client, str(address), thread_name)
+        except socket.timeout:
+            pass
 
     def _send_data(self, req: Request):
         req_str = _format_request(req)
@@ -193,13 +210,23 @@ class SocketClient(SocketConnector):
         self._connect()
 
         client_thread_method = self._create_client_handler_thread(self._socket_client, address)
-        thread_name = f"client_receiver_{address}"
+        thread_name = f"receive_thread"
         self._thread_manager.add_thread(thread_name, client_thread_method)
         self._thread_manager.start_threads()
 
+    def __del__(self):
+        super().__del__()
+        self._disconnect()
+
     def _connect(self):
+        self._logger.info("Starting SocketClient")
         self._socket_client = socket.socket()
+        self._socket_client.settimeout(_socket_timeout)
         self._socket_client.connect((self._address, self._port))
+
+    def _disconnect(self):
+        self._logger.info("Shutting down SocketClient")
+        self._socket_client.close()
 
     def _send_data(self, req: Request):
         req_str = _format_request(req)

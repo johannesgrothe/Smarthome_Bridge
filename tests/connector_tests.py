@@ -16,5 +16,17 @@ LOREM_IPSUM_SHORT = "Lorem ipsum, digga"
 
 
 @pytest.fixture
-def test_payload():
-    return {"data": 12345, "lorem": LOREM_IPSUM}
+def test_payload_big() -> dict:
+    return {"data": 12345,
+            "list": [1, 2, 3, 4, 5],
+            "strings":
+                {
+                    "lorem_long": LOREM_IPSUM,
+                    "lorem_short": LOREM_IPSUM_SHORT
+                }
+            }
+
+
+@pytest.fixture
+def test_payload_small() -> dict:
+    return {"lorem": LOREM_IPSUM_SHORT}
