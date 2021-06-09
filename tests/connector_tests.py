@@ -1,8 +1,6 @@
 import pytest
-from network_connector import Request
+from network_connector import NetworkConnector
 
-TEST_ECHO_CLIENT_NAME = "pytest_echo_client"
-TEST_SENDER_NAME = "pytest_sender"
 TEST_PATH = "smarthome/unittest"
 
 LOREM_IPSUM = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut " \
@@ -30,3 +28,31 @@ def test_payload_big() -> dict:
 @pytest.fixture
 def test_payload_small() -> dict:
     return {"lorem": LOREM_IPSUM_SHORT}
+
+
+def send_test(connector: NetworkConnector, receiver_name: str, payload: dict):
+    response = connector.send_request(TEST_PATH, receiver_name, payload)
+    assert response is not None
+    assert response.get_payload() == payload
+    return
+
+
+def send_split_test(connector: NetworkConnector, receiver_name: str, payload: dict):
+    response = connector.send_request_split(TEST_PATH, receiver_name, payload)
+    assert response is not None
+    assert response.get_payload() == payload
+    return
+
+
+def broadcast_test(connector: NetworkConnector, payload: dict):
+    responses = connector.send_broadcast(TEST_PATH, payload)
+    assert len(responses) >= 1
+    assert responses[0].get_payload() == payload
+    return
+
+
+def broadcast_single_response_test(connector: NetworkConnector, payload: dict):
+    responses = connector.send_broadcast(TEST_PATH, payload, max_responses=1)
+    assert len(responses) == 1
+    assert responses[0].get_payload() == payload
+    return

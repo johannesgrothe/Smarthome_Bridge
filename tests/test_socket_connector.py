@@ -1,10 +1,9 @@
-import logging
 import pytest
 
-from network_connector import NetworkConnector
 from socket_connector import SocketServer, SocketClient
 from test_helpers.echo_client import TestEchoClient
 from tests.connector_tests import TEST_PATH, test_payload_big, test_payload_small
+from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
 
 
 SERVER_PORT = 5781
@@ -41,34 +40,6 @@ def echo_client(client):
 def echo_server(server):
     echo_server = TestEchoClient(server)
     return echo_server
-
-
-def send_test(connector: NetworkConnector, receiver_name: str, payload: dict):
-    response = connector.send_request(TEST_PATH, receiver_name, payload)
-    assert response is not None
-    assert response.get_payload() == payload
-    return
-
-
-def send_split_test(connector: NetworkConnector, receiver_name: str, payload: dict):
-    response = connector.send_request_split(TEST_PATH, receiver_name, payload)
-    assert response is not None
-    assert response.get_payload() == payload
-    return
-
-
-def broadcast_test(connector: NetworkConnector, payload: dict):
-    responses = connector.send_broadcast(TEST_PATH, payload)
-    assert len(responses) >= 1
-    assert responses[0].get_payload() == payload
-    return
-
-
-def broadcast_single_response_test(connector: NetworkConnector, payload: dict):
-    responses = connector.send_broadcast(TEST_PATH, payload, max_responses=1)
-    assert len(responses) == 1
-    assert responses[0].get_payload() == payload
-    return
 
 
 def test_socket_server_send(server: SocketServer, test_payload_big: dict, echo_client: TestEchoClient):

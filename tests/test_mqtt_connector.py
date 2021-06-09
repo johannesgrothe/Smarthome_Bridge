@@ -3,14 +3,17 @@ import pytest
 
 from mqtt_connector import MQTTConnector
 from test_helpers.echo_client import TestEchoClient
-from tests.connector_tests import TEST_ECHO_CLIENT_NAME, TEST_SENDER_NAME, TEST_PATH,\
-    test_payload_big, test_payload_small
+from tests.connector_tests import TEST_PATH, test_payload_big, test_payload_small
+from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
 
 # Data for the MQTT Broker
 BROKER_IP = "192.168.178.111"
 BROKER_PORT = 1883
 BROKER_USER = None
 BROKER_PW = None
+
+TEST_ECHO_CLIENT_NAME = "pytest_echo_client"
+TEST_SENDER_NAME = "pytest_sender"
 
 
 @pytest.fixture
@@ -37,35 +40,20 @@ def sender():
 
 
 def test_mqtt_connector_send(sender: MQTTConnector, test_payload_big, echo_client):
-    response = sender.send_request(TEST_PATH, TEST_ECHO_CLIENT_NAME, test_payload_big)
-    assert response is not None
-    assert response.get_payload() == test_payload_big
-    return
+    send_test(sender, TEST_ECHO_CLIENT_NAME, test_payload_big)
 
 
 def test_mqtt_connector_send_split_long(sender: MQTTConnector, test_payload_big, echo_client):
-    response = sender.send_request_split(TEST_PATH, TEST_ECHO_CLIENT_NAME, test_payload_big)
-    assert response is not None
-    assert response.get_payload() == test_payload_big
-    return
+    send_split_test(sender, TEST_ECHO_CLIENT_NAME, test_payload_big)
 
 
 def test_mqtt_connector_send_split_short(sender: MQTTConnector, test_payload_small, echo_client):
-    response = sender.send_request_split(TEST_PATH, TEST_ECHO_CLIENT_NAME, test_payload_small)
-    assert response is not None
-    assert response.get_payload() == test_payload_small
-    return
+    send_split_test(sender, TEST_ECHO_CLIENT_NAME, test_payload_small)
 
 
 def test_mqtt_connector_broadcast(sender: MQTTConnector, test_payload_big, echo_client):
-    responses = sender.send_broadcast(TEST_PATH, test_payload_big)
-    assert len(responses) >= 1
-    assert responses[0].get_payload() == test_payload_big
-    return
+    broadcast_test(sender, test_payload_big)
 
 
 def test_mqtt_connector_broadcast_max_responses(sender: MQTTConnector, test_payload_big, echo_client):
-    responses = sender.send_broadcast(TEST_PATH, test_payload_big, max_responses=1)
-    assert len(responses) == 1
-    assert responses[0].get_payload() == test_payload_big
-    return
+    broadcast_single_response_test(sender, test_payload_big)
