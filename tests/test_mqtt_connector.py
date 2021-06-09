@@ -69,8 +69,3 @@ def test_mqtt_connector_broadcast_max_responses(sender: MQTTConnector, test_payl
     assert len(responses) == 1
     assert responses[0].get_payload() == test_payload_big
     return
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    pytest.main()

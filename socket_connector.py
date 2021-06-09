@@ -35,6 +35,9 @@ class SocketConnector(NetworkConnector, ABC):
         except socket.timeout:
             return None
 
+        if not buf_rec_data:
+            return None
+
         try:
             buf_json = json.loads(buf_rec_data)
         except json.decoder.JSONDecodeError:
@@ -87,7 +90,7 @@ class SocketConnector(NetworkConnector, ABC):
 
         return respond_to
 
-    def _create_client_handler_thread(self, client: socket.socket, address: str) -> Callable:
+    def _create_client_handler_thread(self, client: socket.socket) -> Callable:
         register_method = self._handle_request
         receive_method = self._receive_req_from_socket
         logger = self._logger
@@ -168,7 +171,7 @@ class SocketServer(SocketConnector):
             new_client, address = self._server_socket.accept()  # accept new connection
             if new_client:
                 new_client.settimeout(_socket_timeout)
-                client_thread_method = self._create_client_handler_thread(new_client, address)
+                client_thread_method = self._create_client_handler_thread(new_client)
                 thread_name = f"client_receiver_{address}"
                 client_thread_controller = self._thread_manager.add_thread(thread_name, client_thread_method)
                 client_thread_controller.start()
@@ -209,7 +212,7 @@ class SocketClient(SocketConnector):
         self._address = address
         self._connect()
 
-        client_thread_method = self._create_client_handler_thread(self._socket_client, address)
+        client_thread_method = self._create_client_handler_thread(self._socket_client)
         thread_name = f"receive_thread"
         self._thread_manager.add_thread(thread_name, client_thread_method)
         self._thread_manager.start_threads()
