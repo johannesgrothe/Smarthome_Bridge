@@ -2,7 +2,7 @@ import pytest
 
 from socket_connector import SocketServer, SocketClient
 from test_helpers.echo_client import TestEchoClient
-from tests.connector_tests import TEST_PATH, test_payload_big, test_payload_small
+from tests.connector_tests import test_payload_big, test_payload_small
 from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
 
 

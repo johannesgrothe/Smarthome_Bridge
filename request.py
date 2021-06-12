@@ -107,28 +107,6 @@ class Request:
             return self._payload["status_msg"]
         return None
 
-    def get_response(self, ack: bool = None, payload: dict = None, path: str = None):  # -> Request:
-        """Generates a response"""
-
-        if not path:
-            new_path = self._path
-        else:
-            new_path = path
-
-        if not payload:
-            new_payload = {}
-        else:
-            new_payload = payload
-
-        if ack is not None:
-            new_payload["ack"] = ack
-
-        return Request(path=new_path,
-                       session_id=self._session_id,
-                       sender=self._receiver,
-                       receiver=self._sender,
-                       payload=new_payload)
-
     def to_string(self) -> str:
         """Converts the request to a string"""
         return "<'{}': {}>".format(self.get_path(), self.get_body())

@@ -117,24 +117,3 @@ class SerialConnector(ThreadedNetworkConnector):
 
     def _receive_data(self) -> Optional[Request]:
         return self.__read_serial()
-
-    def _get_respond_callback_for_id(self, req_id: int) -> Optional[response_callback_type]:
-        return self._respond_to
-
-
-def main():
-    import sys
-
-    port = '/dev/cu.usbserial-0001'
-    baud_rate = 115200
-    try:
-        network_gadget = SerialConnector("TesTeR", port, baud_rate)
-    except OSError:
-        print("Cannot connect to '{}'".format(port))
-        sys.exit(1)
-
-    network_gadget.send_request("smarthome/debug", "you", {"yolo": "xD"})
-
-
-if __name__ == '__main__':
-    main()

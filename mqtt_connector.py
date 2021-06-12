@@ -38,14 +38,14 @@ class MQTTConnector(NetworkConnector):
             try:
                 self.__client.connect(self.__ip, self.__port, 10)
             except OSError:
-                print("Could not connect to MQTT Server.")
+                self._logger.error("Could not connect to MQTT Server.")
 
             self.__client.loop_start()
             self.__client.subscribe("smarthome/#")
             self._thread_manager.start_threads()
 
         except ConnectionRefusedError as err:
-            print(err)
+            self._logger.error(err)
 
     def __del__(self):
         super().__del__()
