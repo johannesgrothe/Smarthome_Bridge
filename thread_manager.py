@@ -74,8 +74,9 @@ class ThreadManager:
         return controller
 
     def remove_thread(self, thread_id: str):
-        self._threads[thread_id].kill()
-        del self._threads[thread_id]
+        if thread_id in self._threads:
+            self._threads[thread_id].kill()
+            del self._threads[thread_id]
 
     def get_thread(self, thread_id: str) -> ThreadController:
         return self._threads[thread_id]
