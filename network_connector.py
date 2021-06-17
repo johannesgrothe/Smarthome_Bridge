@@ -102,7 +102,7 @@ class NetworkConnector(Publisher):
     def __task_handle_request(self):
         if not self.__in_queue.empty():
             received_request: Request = self.__in_queue.get()
-            self._logger.info(f"Received Request {received_request.get_payload()}")
+            self._logger.info(f"Received Request at '{received_request.get_path()}': {received_request.get_payload()}")
             if received_request.get_receiver() is not None and received_request.get_receiver() != self._name:
                 return  # Request is not for me
 
@@ -164,7 +164,7 @@ class NetworkConnector(Publisher):
                 self._logger.error("Received a followup-block with no entry in storage")
 
     def __forward_request(self, req: Request):
-        self._logger.debug(f"Forwarding Request to {self._get_client_number()} clients")
+        # self._logger.debug(f"Forwarding Request to {self._get_client_number()} clients")
         self._publish(req)
 
     def _validate_request(self, data: dict):

@@ -31,9 +31,50 @@ class SocketServerClient(NetworkServerClient):
 
     _socket_client: socket.socket
 
-    def __init__(self, address: str, thread_method: Callable, client: socket.socket):
-        super().__init__(address, thread_method)
+    def __init__(self, host_name: str, address: str, client: socket.socket):
         self._socket_client = client
+        super().__init__(host_name, address)
+
+    def __del__(self):
+        super().__del__()
+        self._socket_client.close()
+
+    def _receive(self) -> Optional[Request]:
+        try:
+            buf_rec_data = self._socket_client.recv(_socket_receive_len).decode()
+        except socket.timeout:
+            return None
+
+        if not buf_rec_data:
+            return None
+
+        try:
+            buf_json = json.loads(buf_rec_data)
+        except json.decoder.JSONDecodeError:
+            self._logger.info(f"Could not decode JSON: '{buf_rec_data}'")
+            return None
+
+        try:
+            self._validator.validate(buf_json, _socket_request_scheme)
+        except ValidationError:
+            self._logger.info(f"Received JSON is no valid Socket Request: '{buf_rec_data}'")
+            return None
+
+        req_body = buf_json['body']
+
+        try:
+            self._validator.validate(req_body, req_validation_scheme_name)
+        except ValidationError:
+            self._logger.info(f"Received JSON is no valid Request: '{req_body}'")
+            return None
+
+        buf_req = Request(buf_json["path"],
+                          req_body["session_id"],
+                          req_body["sender"],
+                          req_body["receiver"],
+                          req_body["payload"])
+
+        return buf_req
 
     def send_request(self, req: Request):
         try:
@@ -162,8 +203,7 @@ class SocketServer(SocketConnector):
             new_client, address = self._server_socket.accept()  # accept new connection
             if new_client:
                 new_client.settimeout(_socket_timeout)
-                thread_method = self._create_client_handler_thread(new_client)
-                client = SocketServerClient(str(address), thread_method, new_client)
+                client = SocketServerClient(self._name, str(address), new_client)
                 self._add_client(client)
         except socket.timeout:
             pass

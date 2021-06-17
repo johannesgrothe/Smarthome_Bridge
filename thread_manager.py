@@ -26,6 +26,9 @@ class ThreadController:
 
         return buffer_thread
 
+    def get_name(self):
+        return self._name
+
     def is_running(self):
         return self._thread.is_alive()
 
@@ -35,7 +38,7 @@ class ThreadController:
 
     def kill(self):
         self._thread_running = False
-        if self.is_running():
+        if self._thread.is_alive():
             self._thread.join()
 
 
@@ -65,7 +68,7 @@ class ThreadManager:
         for thread_id in self._threads:
             thread = self._threads[thread_id]
             if not thread.is_running():
-                self._logger.info("Launching Thread")
+                # self._logger.info("Launching Thread")
                 thread.start()
 
     def add_thread(self, thread_id: str, thread_method: Callable) -> ThreadController:

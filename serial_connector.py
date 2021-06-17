@@ -1,8 +1,9 @@
 import threading
 
 import socket_connector
-from network_connector import NetworkConnector, Request, response_callback_type
-from typing import Optional
+from network_server import NetworkServer, NetworkServerClient, Request,\
+    response_callback_type, ClientDisconnectedException
+from typing import Optional, Callable
 import serial
 import re
 import os
@@ -16,38 +17,42 @@ class SerialConnectionFailedException(Exception):
         super().__init__()
 
 
-class SerialServer(NetworkConnector):
+class SerialServerClient(NetworkServerClient):
+
+    _serial_client: serial.Serial
+
+    def __init__(self, address: str, thread_method: Callable, client: serial.Serial):
+        super().__init__(address, thread_method)
+        self._socket_client = client
+
+    @staticmethod
+    def _format_request(req: Request) -> str:
+        json_str = json.dumps(req.get_body())
+
+        req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
+                                              json_str)
+        return req_line
+
+    def send_request(self, req: Request):
+        req_str = self._format_request(req)
+        try:
+            self._serial_client.write(req_str)
+        except serial.PortNotOpenError:
+            raise ClientDisconnectedException
+
+
+class SerialServer(NetworkServer):
 
     _baud_rate: int
-    _clients: [(socket.socket, str, str)]
-    _lock: threading.Lock
 
     def __init__(self, name: str, baud_rate: int):
         super().__init__(name)
         self._baud_rate = baud_rate
-        self._clients = {}
-        self._lock = threading.Lock()
 
     def __del__(self):
         super().__del__()
         for client_address in self._clients:
             self._remove_client(client_address)
-
-    def _add_client(self, client: socket, address: str, thread_id: str):
-        with self._lock:
-            self._clients.append((client, address, thread_id))
-        self._logger.info("New connection from: " + str(address))
-
-    def _remove_client(self, address: str):
-        client_index = 0
-        self._logger.info(f"Removing Client '{address}'")
-        with self._lock:
-            for client, client_address, task_id in self._clients:
-                if address == client_address:
-                    self._thread_manager.remove_thread(task_id)
-                    self._clients.pop(client_index)
-                    return
-                client_index += 1
 
     def _decode_line(self, line) -> Optional[Request]:
         """Decodes a line and extracts a request if there is any"""
@@ -128,7 +133,7 @@ class SerialServer(NetworkConnector):
         self._logger.debug("Sending: {}".format(req_line[:-1]))
         serial_adapter.write(req_line.encode())
 
-    def _accept_new_clients_thread(self):
+    def _accept_new_clients(self):
         for port in self.get_serial_ports():
             print(f"checking {port}")
             new_client = serial.Serial(port, self._baud_rate)
@@ -136,9 +141,7 @@ class SerialServer(NetworkConnector):
             thread_name = f"client_receiver_{port}"
             client_thread_controller = self._thread_manager.add_thread(thread_name, client_thread_method)
             client_thread_controller.start()
-            self._add_client(new_client, str(address), thread_name)
-
-    def _client_handler_thread
+            self._add_client(new_client, str(address))
 
     def _add_client(self, client: serial.Serial, address: str):
         self._clients[address] = client
