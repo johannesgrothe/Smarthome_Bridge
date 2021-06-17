@@ -11,6 +11,7 @@ from queue import Queue
 from network_server import NetworkServer, NetworkServerClient, Request,\
     response_callback_type, req_validation_scheme_name, Validator, ClientDisconnectedException
 
+_socket_server_max_clients = 10
 _socket_timeout = 3
 _socket_receive_len = 3000
 _socket_request_scheme = "socket_request_structure"
@@ -195,7 +196,7 @@ class SocketServer(SocketConnector):
             raise SocketServerCreationFailedException(self._host, self._port)
 
         # configure how many client the server can listen simultaneously
-        self._server_socket.listen(5)
+        self._server_socket.listen(_socket_server_max_clients)
         self._logger.info("SocketServer is listening for clients...")
 
     def _accept_new_clients(self):

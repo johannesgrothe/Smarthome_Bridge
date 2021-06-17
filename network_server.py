@@ -108,7 +108,7 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
         with self.__lock:
             self._clients.append(client)
             client.subscribe(self)
-        self._logger.info("New connection from: " + client.get_address())
+        self._logger.info(f"New connection from: {client.get_address()}")
 
     def _remove_client(self, address: str):
         client_index = 0
@@ -122,8 +122,9 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
                 client_index += 1
 
     def _send_data(self, req: Request):
+        remove_clients: [str] = []
+
         with self.__lock:
-            remove_clients: [str] = []
             for client in self._clients:
                 try:
                     client.send_request(req)
@@ -132,11 +133,11 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
                     # Save clients index for removal
                     remove_clients.append(client.get_address())
 
-            # remove 'dead' clients
-            if remove_clients:
-                self._logger.info(f"Removing stored data of {len(remove_clients)} clients")
-                for client_address in remove_clients:
-                    self._remove_client(client_address)
+        # remove 'dead' clients
+        if remove_clients:
+            self._logger.info(f"Removing stored data of {len(remove_clients)} clients")
+            for client_address in remove_clients:
+                self._remove_client(client_address)
 
     def receive(self, req: Request):
         """Used to receive Requests from ServerClients and forward them"""
