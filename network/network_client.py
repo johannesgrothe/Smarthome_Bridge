@@ -9,6 +9,7 @@ class NetworkClient(NetworkConnector, Subscriber):
 
     _logger: logging.Logger
     _client: NetworkServerClient
+    _address: str
 
     def __init__(self, hostname: str, client: NetworkServerClient):
         super().__init__(hostname)

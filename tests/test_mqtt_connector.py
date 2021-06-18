@@ -2,7 +2,8 @@ import pytest
 
 from network.mqtt_connector import MQTTConnector
 from network.echo_client import TestEchoClient
-from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
+from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test,\
+    test_payload_small, test_payload_big
 
 # Data for the MQTT Broker
 BROKER_IP = "192.168.178.111"

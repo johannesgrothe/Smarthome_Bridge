@@ -5,8 +5,9 @@ from typing import Optional
 from jsonschema import ValidationError
 
 from network.network_connector import req_validation_scheme_name
+from network.network_server_client import ClientDisconnectedException
 from network.request import Request
-from network.network_server import NetworkServerClient, ClientDisconnectedException
+from network.network_server import NetworkServerClient
 
 
 _socket_timeout = 1
@@ -19,8 +20,9 @@ class SocketServerClient(NetworkServerClient):
     _socket_client: socket.socket
 
     def __init__(self, host_name: str, address: str, client: socket.socket):
-        self._socket_client = client
         super().__init__(host_name, address)
+        self._socket_client = client
+        self._thread_manager.start_threads()
 
     def __del__(self):
         super().__del__()

@@ -25,6 +25,9 @@ class NetworkConnector(Publisher, Subscriber):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._validator = Validator()
 
+    def __del__(self):
+        pass
+
     def _validate_request(self, data: dict):
         self._validator.validate(data, req_validation_scheme_name)
 
