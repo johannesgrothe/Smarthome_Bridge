@@ -1,12 +1,11 @@
 """Module to contain all sorts of client-write-functions to be shared between bridge and command line tool"""
 
-import random
 from jsonschema import validate, ValidationError
 import json
 import logging
-from request import Request, NoClientResponseException
+from network.request import Request, NoClientResponseException
 from typing import Optional, Callable
-from network_connector import NetworkConnector
+from network.network_connector import NetworkConnector
 
 # Declare Type of callback function for hinting
 CallbackFunction = Optional[Callable[[str, int, str], None]]

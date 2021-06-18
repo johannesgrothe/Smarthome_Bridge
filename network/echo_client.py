@@ -1,17 +1,15 @@
-from typing import Optional
-
-from network.network_client import NetworkClient
+from network.network_connector import NetworkConnector
 from pubsub import Subscriber
-from request import Request
+from network.request import Request
 import logging
 
 
 class TestEchoClient(Subscriber):
 
-    _network: NetworkClient
+    _network: NetworkConnector
     _logger: logging.Logger
 
-    def __init__(self, network: NetworkClient):
+    def __init__(self, network: NetworkConnector):
         self._network = network
         self._logger = logging.getLogger(self.__class__.__name__)
         self._network.subscribe(self)

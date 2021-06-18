@@ -1,5 +1,5 @@
 import logging
-from network_connector import NetworkConnector, Request, response_callback_type
+from network.network_connector import NetworkConnector, Request, response_callback_type
 from typing import Optional, Callable
 import paho.mqtt.client as mqtt
 import json

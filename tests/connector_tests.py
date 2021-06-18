@@ -1,6 +1,5 @@
 import pytest
-from network_connector import NetworkConnector
-from network_server import NetworkServer
+from network.network_connector import NetworkConnector
 
 TEST_PATH = "smarthome/unittest"
 

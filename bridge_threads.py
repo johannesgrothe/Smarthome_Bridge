@@ -3,12 +3,11 @@ import logging
 from chip_flasher import ChipFlasher, UploadFailedException, RepositoryAccessTimeout
 from bridge import MainBridge
 
-from network_connector import NetworkConnector
+from network.network_connector import NetworkConnector
 from typing import Optional
-from mqtt_connector import MQTTConnector
-from request import Request
+from network.mqtt_connector import MQTTConnector
+from network.request import Request
 import api
-import socket_api
 from client_controller import ClientController, NoClientResponseException
 
 

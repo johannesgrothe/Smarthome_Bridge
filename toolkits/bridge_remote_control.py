@@ -2,7 +2,6 @@ import os
 import socket
 import argparse
 import sys
-import threading
 
 import requests
 import json
@@ -14,10 +13,10 @@ from abc import ABCMeta, abstractmethod
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
-from serial_connector import SerialConnector
-from mqtt_connector import MQTTConnector
-from network_connector import NetworkConnector, Request
-from request import NoClientResponseException
+from network.serial_connector import SerialConnector
+from network.mqtt_connector import MQTTConnector
+from network.network_connector import NetworkConnector, Request
+from network.request import NoClientResponseException
 from loading_indicator import LoadingIndicator
 from chip_flasher import ChipFlasher
 from client_controller import ClientController

@@ -1,6 +1,6 @@
 """Module for the publisher/subscriber pattern metaclasses"""
 from abc import abstractmethod, ABCMeta
-from request import Request
+from network.request import Request
 
 
 class Subscriber(metaclass=ABCMeta):

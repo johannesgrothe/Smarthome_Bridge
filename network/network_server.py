@@ -1,13 +1,13 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
-from thread_manager import ThreadController, ThreadManager
+from typing import Optional
+from thread_manager import ThreadManager
 from queue import Queue
 
 from pubsub import Publisher, Subscriber
 
-from network_connector import NetworkConnector, Request, response_callback_type, req_validation_scheme_name,\
-    Validator, SplitRequestHandler
+from network.network_connector import NetworkConnector, Request, response_callback_type, Validator
+from network.split_request_handler import SplitRequestHandler
 import threading
 
 

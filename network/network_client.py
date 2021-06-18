@@ -1,8 +1,8 @@
 import logging
 from pubsub import Subscriber
-from request import Request
-from network_server import NetworkServerClient
-from network_connector import NetworkConnector
+from network.request import Request
+from network.network_server import NetworkServerClient
+from network.network_connector import NetworkConnector
 
 
 class NetworkClient(NetworkConnector, Subscriber):

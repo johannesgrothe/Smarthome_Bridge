@@ -8,22 +8,21 @@ import time
 import config_functions
 import threading
 from datetime import datetime
-from chip_flasher import ChipFlasher
 from bridge_threads import *
 from tools import system_tools, git_tools
 from jsonschema import validate, ValidationError
 import logging
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
-from serial_connector import SerialConnector
+from network.serial_connector import SerialConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional
-from mqtt_connector import MQTTConnector
-from request import Request
+from network.mqtt_connector import MQTTConnector
+from network.request import Request
 from pubsub import Subscriber
 import client_controller
-from socket_connector import SocketServer
+from network.socket_server import SocketServer
 
 
 def get_connected_chip_id(network: SerialConnector, sender: str) -> Optional[str]:

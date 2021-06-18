@@ -1,8 +1,5 @@
-import threading
-
-import socket_connector
-from network_server import NetworkServer, NetworkServerClient, Request,\
-    response_callback_type, ClientDisconnectedException
+from network.network_server import NetworkServer, NetworkServerClient, Request, \
+    ClientDisconnectedException
 from typing import Optional, Callable
 import serial
 import re
@@ -21,8 +18,8 @@ class SerialServerClient(NetworkServerClient):
 
     _serial_client: serial.Serial
 
-    def __init__(self, address: str, thread_method: Callable, client: serial.Serial):
-        super().__init__(address, thread_method)
+    def __init__(self, host_name: str, address: str, thread_method: Callable, client: serial.Serial):
+        super().__init__(host_name, address)
         self._socket_client = client
 
     @staticmethod
@@ -39,6 +36,12 @@ class SerialServerClient(NetworkServerClient):
             self._serial_client.write(req_str)
         except serial.PortNotOpenError:
             raise ClientDisconnectedException
+
+    def _receive(self) -> Optional[Request]:
+        pass
+
+    def is_connected(self) -> bool:
+        pass
 
 
 class SerialServer(NetworkServer):

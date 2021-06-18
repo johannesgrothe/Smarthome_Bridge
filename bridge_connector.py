@@ -6,7 +6,7 @@ import enum
 from typing import Optional, Callable
 from queue import Queue
 
-from socket_connector import SocketConnector
+from network.socket_server import SocketConnector
 from pubsub import Subscriber, Request
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from mqtt_connector import MQTTConnector
+from network.mqtt_connector import MQTTConnector
 from network.echo_client import TestEchoClient
 from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
 

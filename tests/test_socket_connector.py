@@ -1,9 +1,10 @@
 import pytest
 
-from socket_connector import SocketServer, SocketConnector
+from network.socket_server import SocketServer
+from network.socket_connector import SocketConnector
 from network.echo_client import TestEchoClient
-from tests.connector_tests import test_payload_big, test_payload_small
-from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
+from tests.connector_tests import send_test, send_split_test, broadcast_test,\
+    broadcast_single_response_test, test_payload_small, test_payload_big
 
 
 SERVER_PORT = 5780
