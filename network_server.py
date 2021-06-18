@@ -66,6 +66,8 @@ class NetworkServerClient(Publisher):
         response_method = self._response_method
 
         def thread_method():
+            # if not self._is_connected():
+            #     print("DISCONNECTED")
             buf_req = receive_method()
             if buf_req:
                 buf_req.set_callback_method(response_method)
@@ -86,6 +88,10 @@ class NetworkServerClient(Publisher):
 
     @abstractmethod
     def _receive(self) -> Optional[Request]:
+        pass
+
+    @abstractmethod
+    def _is_connected(self) -> bool:
         pass
 
 
@@ -138,6 +144,9 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
             self._logger.info(f"Removing stored data of {len(remove_clients)} clients")
             for client_address in remove_clients:
                 self._remove_client(client_address)
+
+    def get_client_count(self) -> int:
+        return len(self._clients)
 
     def receive(self, req: Request):
         """Used to receive Requests from ServerClients and forward them"""

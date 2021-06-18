@@ -12,7 +12,7 @@ from network_server import NetworkServer, NetworkServerClient, Request,\
     response_callback_type, req_validation_scheme_name, Validator, ClientDisconnectedException
 
 _socket_server_max_clients = 10
-_socket_timeout = 3
+_socket_timeout = 1
 _socket_receive_len = 3000
 _socket_request_scheme = "socket_request_structure"
 
@@ -44,6 +44,8 @@ class SocketServerClient(NetworkServerClient):
         try:
             buf_rec_data = self._socket_client.recv(_socket_receive_len).decode()
         except socket.timeout:
+            return None
+        except (ConnectionResetError, BrokenPipeError):
             return None
 
         if not buf_rec_data:
@@ -83,6 +85,13 @@ class SocketServerClient(NetworkServerClient):
             self._socket_client.sendall(req_str.encode())
         except (ConnectionResetError, BrokenPipeError):
             raise ClientDisconnectedException
+
+    def _is_connected(self) -> bool:
+        try:
+            self._socket_client.send(".".encode())
+            return True
+        except (ConnectionResetError, BrokenPipeError):
+            return False
 
 
 class SocketConnector(NetworkServer, ABC):

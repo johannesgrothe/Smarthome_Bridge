@@ -6,7 +6,7 @@ from tests.connector_tests import test_payload_big, test_payload_small
 from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
 
 
-SERVER_PORT = 5781
+SERVER_PORT = 5780
 SERVER_IP = "localhost"
 
 SERVER_NAME = "pytest_socket_server"
@@ -80,3 +80,24 @@ def test_socket_client_send_broadcast(echo_server: TestEchoClient, test_payload_
 
 def test_socket_client_send_broadcast_single_resp(echo_server: TestEchoClient, test_payload_small: dict, client: SocketClient):
     broadcast_single_response_test(client, test_payload_small)
+
+
+# def test_server_client_count(server: SocketServer):
+#     assert server.get_client_count() == 0
+#     client1 = SocketClient(CLIENT_NAME,
+#                            SERVER_IP,
+#                            SERVER_PORT)
+#     assert server.get_client_count() == 1
+#     client1.__del__()
+#     assert server.get_client_count() == 0
+#     client2 = SocketClient(CLIENT_NAME,
+#                            SERVER_IP,
+#                            SERVER_PORT)
+#     assert server.get_client_count() == 1
+#     client3 = SocketClient(CLIENT_NAME,
+#                            SERVER_IP,
+#                            SERVER_PORT)
+#     assert server.get_client_count() == 2
+#     client2.__del__()
+#     client3.__del__()
+#     assert server.get_client_count() == 0
