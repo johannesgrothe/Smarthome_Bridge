@@ -1,0 +1,107 @@
+import json
+import re
+import time
+from typing import Optional
+
+import serial
+from jsonschema import ValidationError
+
+from network.network_connector import req_validation_scheme_name
+from network.network_server_client import NetworkServerClient, ClientDisconnectedException
+from network.request import Request
+
+
+class SerialConnectionFailedException(Exception):
+    def __init__(self):
+        super().__init__()
+
+
+class SerialServerClient(NetworkServerClient):
+
+    _serial_client: serial.Serial
+
+    def __init__(self, host_name: str, address: str, client: serial.Serial):
+        super().__init__(host_name, address)
+        self._serial_client = client
+        self._thread_manager.start_threads()
+
+    def __del__(self):
+        super().__del__()
+        self._serial_client.close()
+
+    @staticmethod
+    def _format_request(req: Request) -> str:
+        json_str = json.dumps(req.get_body())
+
+        req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
+                                              json_str)
+        return req_line
+
+    def _send(self, req: Request):
+        """Sends a request on the serial port"""
+
+        json_str = json.dumps(req.get_body())
+
+        req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
+                                              json_str)
+        self._logger.debug("Sending: {}".format(req_line[:-1]))
+        self._serial_client.write(req_line.encode())
+
+    def _decode_line(self, line) -> Optional[Request]:
+        """Decodes a line and extracts a request if there is any"""
+
+        if line[:3] == "!r_":
+            elems = re.findall("_([a-z])\[(.+?)\]", line)
+            req_dict = {}
+            for elem_type, val in elems:
+                if elem_type in req_dict:
+                    self._logger.warning("Double key in request: '{}'".format(elem_type))
+                    return None
+                else:
+                    req_dict[elem_type] = val
+            for key in ["p", "b"]:
+                if key not in req_dict:
+                    self._logger.warning("Missing key in request: '{}'".format(key))
+                    return None
+            try:
+                json_body = json.loads(req_dict["b"])
+
+                try:
+                    self._validator.validate(json_body, req_validation_scheme_name)
+                except ValidationError:
+                    self._logger.warning("Could not decode Request, Schema Validation failed.")
+                    return None
+
+                out_req = Request(path=req_dict["p"],
+                                  session_id=json_body["session_id"],
+                                  sender=json_body["sender"],
+                                  receiver=json_body["receiver"],
+                                  payload=json_body["payload"])
+
+                return out_req
+            except ValueError:
+                return None
+        return None
+
+    def _receive(self) -> Optional[Request]:
+        try:
+            ser_bytes = self._serial_client.readline().decode()
+            message = ser_bytes[:-1]
+            if message:
+                self._logger.debug(f"Received: {message}")
+            else:
+                if message.startswith("Backtrace: 0x"):
+                    self._logger.info("Client crashed with {}".format(message))
+                    return None
+                read_buf_req = self._decode_line(ser_bytes)
+                if read_buf_req:
+                    return read_buf_req
+        except (FileNotFoundError, serial.serialutil.SerialException):
+            self._logger.error("Lost connection to serial ports")
+            return None
+        except UnicodeDecodeError:
+            self._logger.error("Unable to decode message")
+            return None
+
+    def is_connected(self) -> bool:
+        return self._serial_client.isOpen()

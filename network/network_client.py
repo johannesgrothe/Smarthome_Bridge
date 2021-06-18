@@ -7,13 +7,11 @@ from network.network_connector import NetworkConnector
 
 class NetworkClient(NetworkConnector, Subscriber):
 
-    _logger: logging.Logger
     _client: NetworkServerClient
     _address: str
 
     def __init__(self, hostname: str, client: NetworkServerClient):
         super().__init__(hostname)
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._hostname = hostname
         self._client = client
         self._client.subscribe(self)

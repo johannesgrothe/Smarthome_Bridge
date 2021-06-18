@@ -27,7 +27,6 @@ class SocketServer(NetworkServer):
         self._thread_manager.start_threads()
 
     def __del__(self):
-        self._logger.info("Shutting down SocketServer")
         super().__del__()
         self._thread_manager.__del__()
         self._server_socket.close()

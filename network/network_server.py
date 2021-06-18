@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from network.network_server_client import NetworkServerClient
+from network.network_server_client import NetworkServerClient, ClientDisconnectedException
 from thread_manager import ThreadManager
 from queue import Queue
 
@@ -20,11 +20,14 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
 
     def __init__(self, hostname: str):
         super().__init__(hostname)
+        self._logger.info(f"Starting {self.__class__.__name__}")
         self._clients = []
         self.__lock = threading.Lock()
         self._thread_manager = ThreadManager()
 
     def __del__(self):
+        self._logger.info(f"Stopping {self.__class__.__name__}")
+        super().__del__()
         while self._clients:
             client = self._clients[0]
             self._remove_client(client.get_address())
@@ -66,3 +69,9 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
 
     def get_client_count(self) -> int:
         return len(self._clients)
+
+    def get_client_addresses(self) -> list[str]:
+        addresses = []
+        for client in self._clients:
+            addresses.append(client.get_address())
+        return addresses
