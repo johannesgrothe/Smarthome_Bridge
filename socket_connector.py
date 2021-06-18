@@ -79,14 +79,14 @@ class SocketServerClient(NetworkServerClient):
 
         return buf_req
 
-    def send_request(self, req: Request):
+    def _send(self, req: Request):
         try:
             req_str = _format_request(req)
             self._socket_client.sendall(req_str.encode())
         except (ConnectionResetError, BrokenPipeError):
             raise ClientDisconnectedException
 
-    def _is_connected(self) -> bool:
+    def is_connected(self) -> bool:
         try:
             self._socket_client.send(".".encode())
             return True

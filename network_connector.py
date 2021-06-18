@@ -136,7 +136,6 @@ class NetworkConnector(Publisher):
     _name: str
     _thread_manager: ThreadManager
 
-    # __part_data: dict
     __split_handler: SplitRequestHandler
 
     __out_queue: Queue

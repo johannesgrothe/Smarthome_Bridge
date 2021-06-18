@@ -1,11 +1,13 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import Callable, Optional
-from thread_manager import ThreadController
+from thread_manager import ThreadController, ThreadManager
+from queue import Queue
 
 from pubsub import Publisher, Subscriber
 
-from network_connector import NetworkConnector, Request, response_callback_type, req_validation_scheme_name, Validator
+from network_connector import NetworkConnector, Request, response_callback_type, req_validation_scheme_name,\
+    Validator, SplitRequestHandler
 import threading
 
 
@@ -18,9 +20,15 @@ class NetworkServerClient(Publisher):
     _host_name: str
     _address: str
     _response_method: response_callback_type
-    _thread: ThreadController
     _validator: Validator
     _logger: logging.Logger
+
+    _thread_manager: ThreadManager
+
+    __split_handler: SplitRequestHandler
+
+    __out_queue: Queue
+    __in_queue: Queue
 
     def __init__(self, host_name: str, address: str):
         super().__init__()
@@ -28,52 +36,48 @@ class NetworkServerClient(Publisher):
         self._host_name = host_name
         self._address = address
         self._validator = Validator()
-        self._response_method = self._generate_response_method()
 
-        thread_id = f"client_receiver_{address}"
-        thread_method = self._create_thread_method()
-        self._thread = ThreadController(thread_method, thread_id)
-        self._thread.start()
+        self.__split_handler = SplitRequestHandler()
+
+        self.__out_queue = Queue()
+        self.__in_queue = Queue()
+
+        self._thread_manager = ThreadManager()
+        self._thread_manager.add_thread("send_thread", self.__task_send)
+        self._thread_manager.add_thread("receive_thread", self.__task_receive)
+        self._thread_manager.start_threads()
+
+    def __task_send(self):
+        if not self.__out_queue.empty():
+            out_req = self.__out_queue.get()
+            self._send(out_req)
+
+    def __task_receive(self):
+        in_req = self._receive()
+        if in_req:
+            req = self.__split_handler.handle(in_req)
+            if req:
+                req.set_callback_method(self._respond_to)
+                self._publish(req)
 
     def __del__(self):
-        self._thread.__del__()
+        self._thread_manager.__del__()
 
-    def _generate_response_method(self) -> response_callback_type:
-        sender_method = self.send_request
-        name = self._host_name
+    def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
+        if path:
+            out_path = path
+        else:
+            out_path = req.get_path()
 
-        def respond_to(req: Request, payload: dict, path: Optional[str] = None):
-            if path:
-                out_path = path
-            else:
-                out_path = req.get_path()
+        receiver = req.get_sender()
 
-            receiver = req.get_sender()
+        out_req = Request(out_path,
+                          req.get_session_id(),
+                          self._host_name,
+                          receiver,
+                          payload)
 
-            out_req = Request(out_path,
-                              req.get_session_id(),
-                              name,
-                              receiver,
-                              payload)
-
-            sender_method(out_req)
-
-        return respond_to
-
-    def _create_thread_method(self) -> Callable:
-        forward_method = self._forward_request
-        receive_method = self._receive
-        response_method = self._response_method
-
-        def thread_method():
-            # if not self._is_connected():
-            #     print("DISCONNECTED")
-            buf_req = receive_method()
-            if buf_req:
-                buf_req.set_callback_method(response_method)
-                forward_method(buf_req)
-
-        return thread_method
+        self._send(out_req)
 
     def _forward_request(self, req: Request):
         self._logger.info(f"Received Request at '{req.get_path()}'")
@@ -82,8 +86,11 @@ class NetworkServerClient(Publisher):
     def get_address(self):
         return self._address
 
-    @abstractmethod
     def send_request(self, req: Request):
+        self.__out_queue.put(req)
+
+    @abstractmethod
+    def _send(self, req: Request):
         pass
 
     @abstractmethod
@@ -91,7 +98,7 @@ class NetworkServerClient(Publisher):
         pass
 
     @abstractmethod
-    def _is_connected(self) -> bool:
+    def is_connected(self) -> bool:
         pass
 
 

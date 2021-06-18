@@ -33,7 +33,7 @@ class SerialServerClient(NetworkServerClient):
                                               json_str)
         return req_line
 
-    def send_request(self, req: Request):
+    def _send(self, req: Request):
         req_str = self._format_request(req)
         try:
             self._serial_client.write(req_str)
