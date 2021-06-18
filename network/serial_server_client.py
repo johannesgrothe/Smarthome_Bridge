@@ -19,10 +19,12 @@ class SerialConnectionFailedException(Exception):
 class SerialServerClient(NetworkServerClient):
 
     _serial_client: serial.Serial
+    _is_closed: bool
 
     def __init__(self, host_name: str, address: str, client: serial.Serial):
         super().__init__(host_name, address)
         self._serial_client = client
+        self._is_closed = False
         self._thread_manager.start_threads()
 
     def __del__(self):
@@ -87,21 +89,23 @@ class SerialServerClient(NetworkServerClient):
         try:
             ser_bytes = self._serial_client.readline().decode()
             message = ser_bytes[:-1]
-            if message:
-                self._logger.debug(f"Received: {message}")
-            else:
-                if message.startswith("Backtrace: 0x"):
-                    self._logger.info("Client crashed with {}".format(message))
-                    return None
-                read_buf_req = self._decode_line(ser_bytes)
-                if read_buf_req:
-                    return read_buf_req
+            if not message:
+                return None
+            if message.startswith("Backtrace: 0x"):
+                self._logger.info("Client crashed with {}".format(message))
+                return None
+            read_buf_req = self._decode_line(ser_bytes)
+            if not read_buf_req:
+                return None
+
+            return read_buf_req
+
         except (FileNotFoundError, serial.serialutil.SerialException):
-            self._logger.error("Lost connection to serial ports")
+            self._is_closed = True
             return None
         except UnicodeDecodeError:
             self._logger.error("Unable to decode message")
             return None
 
     def is_connected(self) -> bool:
-        return self._serial_client.isOpen()
+        return not self._is_closed and self._serial_client.isOpen()

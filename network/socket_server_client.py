@@ -78,7 +78,7 @@ class SocketServerClient(NetworkServerClient):
             req_str = self._format_request(req)
             self._socket_client.sendall(req_str.encode())
         except (ConnectionResetError, BrokenPipeError):
-            raise ClientDisconnectedException
+            return None
 
     def is_connected(self) -> bool:
         try:

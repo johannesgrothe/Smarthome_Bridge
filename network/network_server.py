@@ -1,29 +1,27 @@
-import logging
-from abc import ABC, abstractmethod
-from typing import Optional
+import time
+from abc import ABC
 
 from network.network_server_client import NetworkServerClient, ClientDisconnectedException
 from thread_manager import ThreadManager
-from queue import Queue
 
-from pubsub import Publisher, Subscriber
+from pubsub import Subscriber
 
-from network.network_connector import NetworkConnector, Request, response_callback_type, Validator
-from network.split_request_handler import SplitRequestHandler
+from network.network_connector import NetworkConnector, Request
 import threading
 
 
 class NetworkServer(NetworkConnector, Subscriber, ABC):
     _clients: [NetworkServerClient]
     _thread_manager: ThreadManager
-    __lock: threading.Lock
+    __client_list_lock: threading.Lock
 
     def __init__(self, hostname: str):
         super().__init__(hostname)
         self._logger.info(f"Starting {self.__class__.__name__}")
         self._clients = []
-        self.__lock = threading.Lock()
+        self.__client_list_lock = threading.Lock()
         self._thread_manager = ThreadManager()
+        self._thread_manager.add_thread("thread_cleanup", self.__task_cleanup_clients)
 
     def __del__(self):
         self._logger.info(f"Stopping {self.__class__.__name__}")
@@ -32,8 +30,15 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
             client = self._clients[0]
             self._remove_client(client.get_address())
 
+    def __task_cleanup_clients(self):
+        for client in self._clients:
+            if not client.is_connected():
+                self._logger.info(f"Lost connection to '{client.get_address()}'")
+                self._remove_client(client.get_address())
+        time.sleep(1)
+
     def _add_client(self, client: NetworkServerClient):
-        with self.__lock:
+        with self.__client_list_lock:
             self._clients.append(client)
             client.subscribe(self)
         self._logger.info(f"New connection from: {client.get_address()}")
@@ -41,7 +46,7 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
     def _remove_client(self, address: str):
         client_index = 0
         self._logger.info(f"Removing Client '{address}'")
-        with self.__lock:
+        with self.__client_list_lock:
             for client in self._clients:
                 if address == client.get_address():
                     buf_client: NetworkServerClient = self._clients.pop(client_index)
@@ -52,7 +57,7 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
     def _send_data(self, req: Request):
         remove_clients: [str] = []
 
-        with self.__lock:
+        with self.__client_list_lock:
             for client in self._clients:
                 try:
                     client.send_request(req)

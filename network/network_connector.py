@@ -4,7 +4,7 @@ from typing import Optional
 from time import sleep
 from abc import abstractmethod
 
-from network.request import Request, response_callback_type
+from network.request import Request
 from pubsub import Publisher, Subscriber
 from json_validator import Validator
 from network.network_receiver import NetworkReceiver

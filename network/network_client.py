@@ -1,4 +1,3 @@
-import logging
 from pubsub import Subscriber
 from network.request import Request
 from network.network_server import NetworkServerClient

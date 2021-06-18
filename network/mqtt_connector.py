@@ -1,12 +1,10 @@
-import logging
-
 from network.network_client import NetworkClient
-from network.network_connector import NetworkConnector, Request, response_callback_type
 from network.mqtt_server_client import MQTTServerClient
-from typing import Optional, Callable
+from typing import Optional
 import paho.mqtt.client as mqtt
 import json
-from jsonschema import ValidationError
+
+from network.request import Request
 
 
 class MQTTConnector(NetworkClient):
