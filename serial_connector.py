@@ -45,8 +45,8 @@ class SerialServer(NetworkServer):
 
     _baud_rate: int
 
-    def __init__(self, name: str, baud_rate: int):
-        super().__init__(name)
+    def __init__(self, hostname: str, baud_rate: int):
+        super().__init__(hostname)
         self._baud_rate = baud_rate
 
     def __del__(self):

@@ -338,7 +338,7 @@ class MainBridge(Subscriber):
 
                 for gadget in self.__gadgets:
                     if gadget.get_host_client() == req.get_sender():
-                        if gadget.get_name() not in updated_gadgets:
+                        if gadget.get_hostname() not in updated_gadgets:
                             self.delete_gadget(gadget)
                             deleted_gadgets += 1
 
@@ -551,7 +551,7 @@ class MainBridge(Subscriber):
         """
         with self.__lock:
             for client in self.__clients:
-                if client.get_name() == name:
+                if client.get_hostname() == name:
                     return client
         return None
 
@@ -647,7 +647,7 @@ class MainBridge(Subscriber):
         """Updates a single characteristic of the selected gadget"""
         with self.__lock:
             for buf_gadget in self.__gadgets:
-                if buf_gadget.get_name() == gadget_name:
+                if buf_gadget.get_hostname() == gadget_name:
                     return buf_gadget.update_characteristic(characteristic, value), buf_gadget
         return CharacteristicUpdateStatus.general_error, None
 
@@ -707,7 +707,7 @@ class MainBridge(Subscriber):
         """Returns the data for the selected gadget"""
         with self.__lock:
             for buf_gadget in self.__gadgets:
-                if buf_gadget.get_name() == gadget_name:
+                if buf_gadget.get_hostname() == gadget_name:
                     return buf_gadget
             return None
 

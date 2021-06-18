@@ -6,7 +6,7 @@ import enum
 from typing import Optional, Callable
 from queue import Queue
 
-from socket_connector import SocketClient
+from socket_connector import SocketConnector
 from pubsub import Subscriber, Request
 
 
@@ -23,7 +23,7 @@ class SocketReader(Subscriber):
     _logger: logging.Logger
     _msg_queue: Queue
 
-    def __init__(self, callback: Optional[Callable[[dict], None]], socket_client: SocketClient):
+    def __init__(self, callback: Optional[Callable[[dict], None]], socket_client: SocketConnector):
         super().__init__()
         self._callback = callback
         self._msg_queue = Queue()
@@ -95,7 +95,7 @@ class SoftwareWritingFailedException(Exception):
 
 
 class BridgeConnector:
-    _socket_client: Optional[SocketClient]
+    _socket_client: Optional[SocketConnector]
     _logger: logging.Logger
 
     _connected: bool
@@ -289,7 +289,7 @@ class BridgeConnector:
             raise BridgeRestApiException
 
         try:
-            self._socket_client = SocketClient("<bridge>", self._address, self._socket_port)
+            self._socket_client = SocketConnector("<bridge>", self._address, self._socket_port)
         except ConnectionRefusedError:
             self._logger.error("Could not connect to remote socket")
             raise BridgeSocketApiException

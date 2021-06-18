@@ -128,65 +128,25 @@ class NetworkReceiver(Subscriber):
         return responses
 
 
-class NetworkConnector(Publisher):
+class NetworkConnector(Publisher, Subscriber):
     """Class to implement an network interface prototype"""
 
     _logger: logging.Logger
     _validator: Validator
-    _name: str
-    _thread_manager: ThreadManager
+    _hostname: str
 
-    __split_handler: SplitRequestHandler
-
-    __out_queue: Queue
-    __in_queue: Queue
-
-    def __init__(self, name: str):
+    def __init__(self, hostname: str):
         super().__init__()
-        self._name = name
+        self._hostname = hostname
         self._logger = logging.getLogger(self.__class__.__name__)
         self._validator = Validator()
-
-        self.__split_handler = SplitRequestHandler()
-
-        self.__out_queue = Queue()
-        self.__in_queue = Queue()
-
-        self._thread_manager = ThreadManager()
-
-        self._thread_manager.add_thread("send_thread", self.__task_send_request)
-        self._thread_manager.add_thread("handler_thread", self.__task_handle_request)
-
-    def __del__(self):
-        self._thread_manager.__del__()
-
-    def __task_send_request(self):
-        if not self.__out_queue.empty():
-            out_req = self.__out_queue.get()
-            self._send_data(out_req)
-
-    def __task_handle_request(self):
-        if not self.__in_queue.empty():
-            received_request: Request = self.__in_queue.get()
-            self._logger.info(f"Received Request at '{received_request.get_path()}': {received_request.get_payload()}")
-            if received_request.get_receiver() is not None and received_request.get_receiver() != self._name:
-                return  # Request is not for me
-
-            out_req = self.__split_handler.handle(received_request)
-
-            if out_req:
-                self._publish(out_req)
 
     def _validate_request(self, data: dict):
         self._validator.validate(data, req_validation_scheme_name)
 
-    def _handle_request(self, req: Request):
-        self._logger.info(f"Received Request at '{req.get_path()}'")
-        self.__in_queue.put(req)
-
     @abstractmethod
     def _send_data(self, req: Request):
-        self._logger.error(f"Not implemented: '_send_data'")
+        pass
 
     def __send_request_obj(self, req: Request, timeout: int = 6) -> Optional[Request]:
         self._logger.debug(f"Sending Request to '{req.get_path()}'")
@@ -198,37 +158,19 @@ class NetworkConnector(Publisher):
             if not responses:
                 return None
             return responses[0]
-
         return None
-
-    def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
-        if path:
-            out_path = path
-        else:
-            out_path = req.get_path()
-
-        receiver = req.get_sender()
-
-        out_req = Request(out_path,
-                          req.get_session_id(),
-                          self._name,
-                          receiver,
-                          payload)
-
-        self.__send_request_obj(out_req, 0)
 
     def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
         """
         Sends a request and waits for a response by default.
-
-        Returns the Ack-Status of the response, the status message of the response and the response itself.
+        Returns the Response (if there is any).
         """
-        req = Request(path, None, self._name, receiver, payload)
+        req = Request(path, None, self._hostname, receiver, payload)
         return self.__send_request_obj(req, timeout)
 
     def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
                        max_responses: Optional[int] = None) -> list[Request]:
-        req = Request(path, None, self._name, None, payload)
+        req = Request(path, None, self._hostname, None, payload)
         self._send_data(req)
         req_receiver = NetworkReceiver(self)
         responses = req_receiver.wait_for_responses(req, timeout, max_responses)
@@ -236,7 +178,7 @@ class NetworkConnector(Publisher):
 
     def send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
                            timeout: int = 6) -> Optional[Request]:
-        req = Request(path, None, self._name, receiver, payload)
+        req = Request(path, None, self._hostname, receiver, payload)
         session_id = req.get_session_id()
         path = req.get_path()
         sender = req.get_sender()
@@ -281,5 +223,8 @@ class NetworkConnector(Publisher):
             sleep(0.1)
         return None
 
-    def get_name(self) -> str:
-        return self._name
+    def get_hostname(self) -> str:
+        return self._hostname
+
+    def receive(self, req: Request):
+        self._publish(req)

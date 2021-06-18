@@ -104,15 +104,16 @@ class NetworkServerClient(Publisher):
 
 class NetworkServer(NetworkConnector, Subscriber, ABC):
     _clients: [NetworkServerClient]
+    _thread_manager: ThreadManager
     __lock: threading.Lock
 
-    def __init__(self, name: str):
-        super().__init__(name)
+    def __init__(self, hostname: str):
+        super().__init__(hostname)
         self._clients = []
         self.__lock = threading.Lock()
+        self._thread_manager = ThreadManager()
 
     def __del__(self):
-        super().__del__()
         while self._clients:
             client = self._clients[0]
             self._remove_client(client.get_address())
@@ -154,7 +155,3 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
 
     def get_client_count(self) -> int:
         return len(self._clients)
-
-    def receive(self, req: Request):
-        """Used to receive Requests from ServerClients and forward them"""
-        self._handle_request(req)

@@ -1,7 +1,7 @@
 import pytest
 
-from socket_connector import SocketServer, SocketClient
-from test_helpers.echo_client import TestEchoClient
+from socket_connector import SocketServer, SocketConnector
+from network.echo_client import TestEchoClient
 from tests.connector_tests import test_payload_big, test_payload_small
 from tests.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
 
@@ -23,9 +23,9 @@ def server():
 
 @pytest.fixture
 def client():
-    client = SocketClient(CLIENT_NAME,
-                          SERVER_IP,
-                          SERVER_PORT)
+    client = SocketConnector(CLIENT_NAME,
+                             SERVER_IP,
+                             SERVER_PORT)
     yield client
     client.__del__()
 
@@ -62,23 +62,23 @@ def test_socket_server_send_broadcast_single_resp(server: SocketServer, test_pay
     broadcast_single_response_test(server, test_payload_small)
 
 
-def test_socket_client_send(echo_server: TestEchoClient, test_payload_big: dict, client: SocketClient):
+def test_socket_client_send(echo_server: TestEchoClient, test_payload_big: dict, client: SocketConnector):
     send_test(client, SERVER_NAME, test_payload_big)
 
 
-def test_socket_client_send_split_long(echo_server: TestEchoClient, test_payload_big: dict, client: SocketClient):
+def test_socket_client_send_split_long(echo_server: TestEchoClient, test_payload_big: dict, client: SocketConnector):
     send_split_test(client, SERVER_NAME, test_payload_big)
 
 
-def test_socket_client_send_split_short(echo_server: TestEchoClient, test_payload_small: dict, client: SocketClient):
+def test_socket_client_send_split_short(echo_server: TestEchoClient, test_payload_small: dict, client: SocketConnector):
     send_split_test(client, SERVER_NAME, test_payload_small)
 
 
-def test_socket_client_send_broadcast(echo_server: TestEchoClient, test_payload_small: dict, client: SocketClient):
+def test_socket_client_send_broadcast(echo_server: TestEchoClient, test_payload_small: dict, client: SocketConnector):
     broadcast_test(client, test_payload_small)
 
 
-def test_socket_client_send_broadcast_single_resp(echo_server: TestEchoClient, test_payload_small: dict, client: SocketClient):
+def test_socket_client_send_broadcast_single_resp(echo_server: TestEchoClient, test_payload_small: dict, client: SocketConnector):
     broadcast_single_response_test(client, test_payload_small)
 
 
