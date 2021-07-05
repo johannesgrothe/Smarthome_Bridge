@@ -37,8 +37,8 @@ def send_test(connector: NetworkConnector, receiver_name: str, payload: dict):
     return
 
 
-def send_split_test(connector: NetworkConnector, receiver_name: str, payload: dict):
-    response = connector.send_request_split(TEST_PATH, receiver_name, payload)
+def send_split_test(connector: NetworkConnector, receiver_name: str, payload: dict, part_max_len: int = 30):
+    response = connector.send_request_split(TEST_PATH, receiver_name, payload, part_max_size=part_max_len)
     assert response is not None
     assert response.get_payload() == payload
     return

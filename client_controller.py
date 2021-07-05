@@ -59,13 +59,7 @@ class ClientController:
 
         payload = {"subject": "reboot"}
 
-        out_request = Request(path="smarthome/sys",
-                              session_id=None,
-                              sender=self._sender_id,
-                              receiver=self._client_name,
-                              payload=payload)
-
-        result = self._network.send_request(out_request)
+        result = self._network.send_request("smarthome/sys", self._client_name, payload)
         if not result:
             raise NoClientResponseException
         else:

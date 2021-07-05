@@ -14,10 +14,17 @@ from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
 
-from network.serial_server import SerialServer
-from network.mqtt_connector import MQTTConnector
+from toolkits.direct_connection_toolkit import DirectConnectionToolkit
+from toolkits.direct_mqtt_connection_toolkit import DirectMqttConnectionToolkit
+from toolkits.direct_serial_connection_toolkit import DirectSerialConnectionToolkit
+from toolkits.toolkit_helpers import ask_for_continue, select_option
+from toolkits.toolkit_exceptions import ToolkitException
+from toolkits.toolkit_meta import TOOLKIT_NETWORK_NAME
+
+
 from network.network_connector import NetworkConnector, Request
 from network.request import NoClientResponseException
+from network.network_server import NetworkServer
 
 from loading_indicator import LoadingIndicator
 from chip_flasher import ChipFlasher
@@ -27,72 +34,16 @@ from toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigExcept
 from bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
     SoftwareWritingFailedException, ConfigWritingFailedException
 
-TOOLKIT_NETWORK_NAME = "ConsoleToolkit"
-
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
 BRIDGE_FUNCTIONS = ["Write software to chip", "Write config to chip", "Reboot chip", "Update Toolkit"]
 DEFAULT_SW_BRANCH_NAMES = ["Enter own branch name", "master", "develop"]
 CONFIG_FLASH_OPTIONS = ["Direct", "Wifi"]
 
 
-def ask_for_continue(message: str) -> bool:
-    """Asks the user if he wishes to continue."""
-    while True:
-        print(f"{message} [y/n]")
-        res = input().strip().lower()
-        if res == "y":
-            return True
-        elif res == "n":
-            return False
-        print("Illegal Input, please try again.")
-
-
-def enter_file_path() -> Optional[str]:
-    """Asks the User to enter a file path. Returns None if the input is no valid file path."""
-    print("Please enter the path to the file or drag it into the terminal window:")
-    f_path = input()
-    if not f_path or not os.path.isfile(f_path):
-        return None
-    return f_path
-
-
 def gen_req_id() -> int:
     """Generates a random Request ID"""
 
     return random.randint(0, 1000000)
-
-
-def select_option(input_list: [str], category: Optional[str] = None, back_option: Optional[str] = None) -> int:
-    """Presents every elem from the list and lets the user select one"""
-
-    if category is None:
-        print("Please select:")
-    else:
-        print("Please select {} {}:".format(
-            'an' if category[0].lower() in ['a', 'e', 'i', 'o', 'u'] else 'a',
-            category))
-    max_i = 0
-    for i in range(len(input_list)):
-        print("    {}: {}".format(i, input_list[i]))
-        max_i += 1
-    if back_option:
-        print("    {}: {}".format(max_i + 1, back_option))
-        max_i += 1
-
-    selection = None
-    while selection is None:
-        selection = input("Please select an option by entering its number:\n")
-        try:
-            selection = int(selection)
-        except (TypeError, ValueError):
-            selection = None
-
-        if selection is None or selection < 0 or selection > max_i:
-            print("Illegal input, try again.")
-            selection = None
-    if selection == max_i:
-        selection = -1
-    return selection
 
 
 def read_serial_ports_from_bridge() -> [str]:
@@ -255,11 +206,6 @@ def upload_software_to_client(serial_port: str) -> bool:
                 return False
         else:
             return False
-
-
-class ToolkitException(Exception):
-    def __init__(self):
-        super().__init__("ToolkitException")
 
 
 _unknown_data_replacement = "unknown"
@@ -552,242 +498,6 @@ class BridgeConnectionToolkit:
         except BridgeRestApiException:
             print("Error fetching information about bridge")
             return
-
-
-class DirectConnectionToolkit(metaclass=ABCMeta):
-    _network: Optional[NetworkConnector]
-    _client_name: Optional[str]
-
-    def __init__(self):
-        self._network = None
-        self._client_name = None
-
-    def __del__(self):
-        if self._network:
-            self._network.__del__()
-
-    def run(self):
-        """Runs the toolkit, accepting user inputs and executing the selcted tasks"""
-
-        self._get_ready()
-
-        self._connect_to_client()
-
-        print("Connected to '{}'".format(self._client_name))
-
-        while True:
-            if not self._select_task():
-                break
-
-    def _select_task(self) -> bool:
-        task_option = select_option(["Overwrite EEPROM", "Write Config", "Reboot"],
-                                    "what to do",
-                                    "Quit")
-
-        if task_option == -1:
-            return False
-
-        elif task_option == 0:  # Overwrite EEPROM
-            self._erase_config()
-            return True
-
-        elif task_option == 1:  # Write Config
-            self._write_config()
-            return True
-
-        elif task_option == 2:  # Reboot
-            self._reboot_client()
-            print("Reconnecting might be required.")
-            return True
-
-    def _erase_config(self):
-        print()
-        print("Overwriting EEPROM:")
-
-        erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
-
-        try:
-            ack = erase_controller.reset_config()
-            if ack is False:
-                print("Failed to reset EEPROM\n")
-                return
-
-            print("Config was successfully erased\n")
-
-        except NoClientResponseException:
-            print("Received no Response to Reset Request\n")
-            return
-
-    def _write_config(self):
-
-        manager = ClientConfigManager()
-        config_names = manager.get_config_names()
-
-        config_path: Optional[str]
-        config_data: Optional[dict] = None
-
-        while not config_data:
-
-            config_index = select_option(config_names,
-                                         "which config to write",
-                                         "Quit")
-
-            if config_index == -1:
-                return
-
-            config_data = manager.get_config(config_names[config_index])
-
-            if not config_data:
-                response = ask_for_continue("Config file could either not be loaded, isn no valid json file or"
-                                            "no valid config. Try again?")
-                if not response:
-                    return
-                else:
-                    continue
-
-        print(f"Loaded config '{config_data['name']}'")
-        print()
-        print("Writing config:")
-
-        write_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
-
-        try:
-            with LoadingIndicator():
-                ack = write_controller.write_config(config_data)
-            if ack is False:
-                print("Failed to write config\n")
-                return
-
-            print("Config was successfully written\n")
-
-        except NoClientResponseException:
-            print("Received no response to config write request\n")
-            return
-
-    def _reboot_client(self):
-        print()
-        print("Rebooting Client:")
-
-        reboot_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
-
-        try:
-            with LoadingIndicator():
-                ack = reboot_controller.reboot_client()
-            if ack is False:
-                print("Failed to reboot client\n")
-                return
-
-            print("Client reboot successful\n")
-
-        except NoClientResponseException:
-            print("Received no response to reboot request\n")
-            return
-
-    def _connect_to_client(self):
-        """Scans for clients and lets the user select one if needed and possible."""
-        while not self._client_name:
-
-            with LoadingIndicator():
-                client_id = None
-                client_list = self._scan_for_clients()
-
-                if len(client_list) == 0:
-                    print("No client answered to broadcast")
-                elif len(client_list) > 1:
-                    client_id = select_option(client_list, "client to connect to")
-                else:
-                    client_id = client_list[0]
-                self._client_name = client_id
-
-            if not self._client_name:
-                response = ask_for_continue("Could not find any gadget. Try again?")
-                if not response:
-                    raise ToolkitException
-
-    @abstractmethod
-    def _get_ready(self):
-        pass
-
-    @abstractmethod
-    def _scan_for_clients(self) -> [str]:
-        """Sends a broadcast and waits for clients to answer.
-
-        Returns a list containing the names of all available clients."""
-        pass
-
-
-class DirectSerialConnectionToolkit(DirectConnectionToolkit):
-
-    _serial_port: str
-
-    def __init__(self, serial_port: str):
-        super().__init__()
-        self._serial_port = serial_port
-        self._network = SerialServer(TOOLKIT_NETWORK_NAME,
-                                     115200)
-
-    def __del__(self):
-        super().__del__()
-
-    def _get_ready(self):
-        print("Waiting for Clients to boot up")
-
-        with LoadingIndicator():
-            time.sleep(5)
-
-        print("Please make sure your Client is connected to this machine and can receive serial requests")
-
-    def _scan_for_clients(self) -> [str]:
-        responses = self._network.send_broadcast("smarthome/broadcast/req",
-                                                 {})
-
-        client_names = []
-        for broadcast_res in responses:
-            client_names.append(broadcast_res.get_sender())
-
-        return client_names
-
-
-class DirectMqttConnectionToolkit(DirectConnectionToolkit):
-    _mqtt_ip: str
-    _mqtt_port: int
-    _mqtt_username: Optional[str]
-    _mqtt_password: Optional[str]
-
-    def __init__(self, ip: str, port: int, username: Optional[str], password: Optional[str]):
-        super().__init__()
-        self._mqtt_ip = ip
-        self._mqtt_port = port
-        self._mqtt_username = username
-        self._mqtt_password = password
-
-        self._network = MQTTConnector("ConsoleToolkit",
-                                      self._mqtt_ip,
-                                      self._mqtt_port,
-                                      self._mqtt_username,
-                                      self._mqtt_password)
-        pass
-
-    def __del__(self):
-        super().__del__()
-
-    def _get_ready(self):
-        print("Please make sure your Client is connected to the network")
-
-    def _scan_for_clients(self) -> [str]:
-        req = Request("smarthome/broadcast/req",
-                      gen_req_id(),
-                      TOOLKIT_NETWORK_NAME,
-                      None,
-                      {})
-
-        responses = self._network.send_broadcast(req)
-
-        client_names = []
-        for broadcast_res in responses:
-            client_names.append(broadcast_res.get_sender())
-
-        return client_names
 
 
 if __name__ == '__main__':
@@ -1156,7 +866,7 @@ if __name__ == '__main__':
         if ARGS.serial_port:
             print("Using serial port provided by program argument")
             try:
-                toolkit_instance = DirectSerialConnectionToolkit(ARGS.serial_port)
+                toolkit_instance = DirectSerialConnectionToolkit()
             except ToolkitException:
                 sys.exit(1)
 
@@ -1185,14 +895,8 @@ if __name__ == '__main__':
                 sys.exit(0)
 
             if connection_type == 0:  # Serial
-                serial_ports = ChipFlasher.get_serial_ports()
-                serial_port_index = connection_type = select_option(serial_ports, "Serial Port", "Quit")
-                if serial_port_index == -1:
-                    sys.exit(0)
-                serial_port = serial_ports[serial_port_index]
-
                 try:
-                    toolkit_instance = DirectSerialConnectionToolkit(serial_port)
+                    toolkit_instance = DirectSerialConnectionToolkit()
                 except ToolkitException:
                     sys.exit(1)
 
