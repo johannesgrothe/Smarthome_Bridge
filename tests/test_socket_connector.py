@@ -14,6 +14,12 @@ SERVER_NAME = "pytest_socket_server"
 CLIENT_NAME = "pytest_socket_client"
 
 
+def dummy_fixture_usage():
+    """Used to artificially 'use' fixtures to prevent them from being auto-removed"""
+    s = test_payload_small()
+    b = test_payload_big()
+
+
 @pytest.fixture
 def server():
     server = SocketServer(SERVER_NAME,

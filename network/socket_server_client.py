@@ -5,7 +5,6 @@ from typing import Optional
 from jsonschema import ValidationError
 
 from network.network_connector import req_validation_scheme_name
-from network.network_server_client import ClientDisconnectedException
 from network.request import Request
 from network.network_server import NetworkServerClient
 
@@ -63,7 +62,8 @@ class SocketServerClient(NetworkServerClient):
                           req_body["session_id"],
                           req_body["sender"],
                           req_body["receiver"],
-                          req_body["payload"])
+                          req_body["payload"],
+                          connection_type=f"Socket")
 
         return buf_req
 

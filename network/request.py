@@ -29,8 +29,10 @@ class Request:
     _receiver: Optional[str]
     _payload: dict
     _response_function: Optional[response_callback_type]
+    _connection_type: Optional[str]
 
-    def __init__(self, path: str, session_id: Optional[int], sender: str, receiver: Optional[str], payload: dict):
+    def __init__(self, path: str, session_id: Optional[int], sender: str, receiver: Optional[str],
+                 payload: dict, connection_type: Optional[str] = None):
         """Constructor for the request"""
 
         if not path:
@@ -48,6 +50,7 @@ class Request:
         self._receiver = receiver
         self._payload = payload
         self._response_function = None
+        self._connection_type = connection_type
 
     def set_callback_method(self, function: response_callback_type):
         self._response_function = function

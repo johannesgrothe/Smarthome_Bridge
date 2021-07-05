@@ -9,18 +9,20 @@ from network.serial_server_client import SerialServerClient
 class SerialServer(NetworkServer):
 
     _baud_rate: int
+    _blocked_addresses: list[str]
 
     def __init__(self, hostname: str, baud_rate: int):
         super().__init__(hostname)
         self._baud_rate = baud_rate
+        self._blocked_addresses = []
 
         self._thread_manager.add_thread("serial_server_accept", self._accept_new_clients)
         self._thread_manager.start_threads()
 
     def __del__(self):
         super().__del__()
-        for client_address in self._clients:
-            self._remove_client(client_address)
+        # for client_address in self._clients:
+        #     self._remove_client(client_address)
 
     @staticmethod
     def get_serial_ports() -> [str]:
@@ -32,8 +34,20 @@ class SerialServer(NetworkServer):
                 valid_ports.append(port)
         return valid_ports
 
+    def block_address(self, address: str):
+        self._logger.info(f"Blocking Address '{address}'")
+        if address not in self._blocked_addresses:
+            self._blocked_addresses.append(address)
+        self._remove_client(address)
+
+    def unblock_address(self, address: str):
+        self._logger.info(f"Unblocking Address '{address}'")
+        self._blocked_addresses.remove(address)
+
     def _accept_new_clients(self):
-        open_ports = [x for x in self.get_serial_ports() if x not in self.get_client_addresses()]
+        open_ports = [x for x in self.get_serial_ports()
+                      if x not in self.get_client_addresses()
+                      and x not in self._blocked_addresses]
         for port in open_ports:
             try:
                 new_client = serial.Serial(port, self._baud_rate)

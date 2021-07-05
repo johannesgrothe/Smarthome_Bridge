@@ -1,7 +1,7 @@
 import time
 from abc import ABC
 
-from network.network_server_client import NetworkServerClient, ClientDisconnectedException
+from network.network_server_client import NetworkServerClient
 from thread_manager import ThreadManager
 
 from pubsub import Subscriber
@@ -26,6 +26,7 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
     def __del__(self):
         self._logger.info(f"Stopping {self.__class__.__name__}")
         super().__del__()
+        self._thread_manager.__del__()
         while self._clients:
             client = self._clients[0]
             self._remove_client(client.get_address())
@@ -59,7 +60,7 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
 
         with self.__client_list_lock:
             for client in self._clients:
-                try:
+                try:  # TODO: Remove if possible
                     client.send_request(req)
                 except ClientDisconnectedException:
                     self._logger.info(f"Connection to '{client.get_address()}' was lost")

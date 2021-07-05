@@ -13,10 +13,12 @@ from abc import ABCMeta, abstractmethod
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
-from network.serial_connector import SerialConnector
+
+from network.serial_server import SerialServer
 from network.mqtt_connector import MQTTConnector
 from network.network_connector import NetworkConnector, Request
 from network.request import NoClientResponseException
+
 from loading_indicator import LoadingIndicator
 from chip_flasher import ChipFlasher
 from client_controller import ClientController
@@ -721,9 +723,8 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
     def __init__(self, serial_port: str):
         super().__init__()
         self._serial_port = serial_port
-        self._network = SerialConnector(TOOLKIT_NETWORK_NAME,
-                                        self._serial_port,
-                                        115200)
+        self._network = SerialServer(TOOLKIT_NETWORK_NAME,
+                                     115200)
 
     def __del__(self):
         super().__del__()
@@ -737,13 +738,8 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
         print("Please make sure your Client is connected to this machine and can receive serial requests")
 
     def _scan_for_clients(self) -> [str]:
-        req = Request("smarthome/broadcast/req",
-                      gen_req_id(),
-                      TOOLKIT_NETWORK_NAME,
-                      None,
-                      {})
-
-        responses = self._network.send_broadcast(req)
+        responses = self._network.send_broadcast("smarthome/broadcast/req",
+                                                 {})
 
         client_names = []
         for broadcast_res in responses:

@@ -15,6 +15,12 @@ TEST_ECHO_CLIENT_NAME = "pytest_echo_client"
 TEST_SENDER_NAME = "pytest_sender"
 
 
+def dummy_fixture_usage():
+    """Used to artificially 'use' fixtures to prevent them from being auto-removed"""
+    s = test_payload_small()
+    b = test_payload_big()
+
+
 @pytest.fixture
 def echo_client():
     sender = MQTTConnector(TEST_ECHO_CLIENT_NAME,

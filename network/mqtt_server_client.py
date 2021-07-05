@@ -65,7 +65,8 @@ class MQTTServerClient(NetworkServerClient):
                                   body["session_id"],
                                   body["sender"],
                                   body["receiver"],
-                                  body["payload"])
+                                  body["payload"],
+                                  connection_type=f"MQTT")
                 inc_req.set_callback_method(respond_method)
 
                 handler_function(inc_req)

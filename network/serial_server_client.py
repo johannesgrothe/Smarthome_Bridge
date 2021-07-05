@@ -1,13 +1,13 @@
 import json
 import re
-import time
 from typing import Optional
 
 import serial
+import threading
 from jsonschema import ValidationError
 
 from network.network_connector import req_validation_scheme_name
-from network.network_server_client import NetworkServerClient, ClientDisconnectedException
+from network.network_server_client import NetworkServerClient
 from network.request import Request
 
 
@@ -19,11 +19,13 @@ class SerialConnectionFailedException(Exception):
 class SerialServerClient(NetworkServerClient):
 
     _serial_client: serial.Serial
+    _client_lock: threading.Lock
     _is_closed: bool
 
     def __init__(self, host_name: str, address: str, client: serial.Serial):
         super().__init__(host_name, address)
         self._serial_client = client
+        self._client_lock = threading.Lock()
         self._is_closed = False
         self._thread_manager.start_threads()
 
@@ -47,7 +49,11 @@ class SerialServerClient(NetworkServerClient):
         req_line = "!r_p[{}]_b[{}]_\n".format(req.get_path(),
                                               json_str)
         self._logger.debug("Sending: {}".format(req_line[:-1]))
-        self._serial_client.write(req_line.encode())
+        out_data = req_line.encode()
+        with self._client_lock:
+            bytes_written = self._serial_client.write(out_data)
+            if not bytes_written == len(out_data):
+                self._logger.error(f"Problem sending request: only {bytes_written} of {len(out_data)} bytes written.")
 
     def _decode_line(self, line) -> Optional[Request]:
         """Decodes a line and extracts a request if there is any"""
@@ -78,7 +84,8 @@ class SerialServerClient(NetworkServerClient):
                                   session_id=json_body["session_id"],
                                   sender=json_body["sender"],
                                   receiver=json_body["receiver"],
-                                  payload=json_body["payload"])
+                                  payload=json_body["payload"],
+                                  connection_type=f"Serial[{self._address}]")
 
                 return out_req
             except ValueError:
@@ -87,7 +94,8 @@ class SerialServerClient(NetworkServerClient):
 
     def _receive(self) -> Optional[Request]:
         try:
-            ser_bytes = self._serial_client.readline().decode()
+            with self._client_lock:
+                ser_bytes = self._serial_client.readline().decode()
             message = ser_bytes[:-1]
             if not message:
                 return None
