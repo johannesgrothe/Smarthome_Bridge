@@ -19,13 +19,11 @@ class SerialConnectionFailedException(Exception):
 class SerialServerClient(NetworkServerClient):
 
     _serial_client: serial.Serial
-    _client_lock: threading.Lock
     _is_closed: bool
 
     def __init__(self, host_name: str, address: str, client: serial.Serial):
         super().__init__(host_name, address)
         self._serial_client = client
-        self._client_lock = threading.Lock()
         self._is_closed = False
         self._thread_manager.start_threads()
 
@@ -50,10 +48,9 @@ class SerialServerClient(NetworkServerClient):
                                               json_str)
         self._logger.debug("Sending: {}".format(req_line[:-1]))
         out_data = req_line.encode()
-        with self._client_lock:
-            bytes_written = self._serial_client.write(out_data)
-            if not bytes_written == len(out_data):
-                self._logger.error(f"Problem sending request: only {bytes_written} of {len(out_data)} bytes written.")
+        bytes_written = self._serial_client.write(out_data)
+        if not bytes_written == len(out_data):
+            self._logger.error(f"Problem sending request: only {bytes_written} of {len(out_data)} bytes written.")
 
     def _decode_line(self, line) -> Optional[Request]:
         """Decodes a line and extracts a request if there is any"""
@@ -94,8 +91,7 @@ class SerialServerClient(NetworkServerClient):
 
     def _receive(self) -> Optional[Request]:
         try:
-            with self._client_lock:
-                ser_bytes = self._serial_client.readline().decode()
+            ser_bytes = self._serial_client.readline().decode()
             message = ser_bytes[:-1]
             if not message:
                 return None
@@ -105,7 +101,6 @@ class SerialServerClient(NetworkServerClient):
             read_buf_req = self._decode_line(ser_bytes)
             if not read_buf_req:
                 return None
-
             return read_buf_req
 
         except (FileNotFoundError, serial.serialutil.SerialException):

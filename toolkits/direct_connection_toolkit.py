@@ -153,7 +153,7 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
                 client_list = self._scan_for_clients()
 
                 if len(client_list) == 0:
-                    print("No client answered to broadcast")
+                    pass
                 elif len(client_list) > 1:
                     client_id = select_option(client_list, "client to connect to")
                 else:

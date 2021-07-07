@@ -12,6 +12,7 @@ class ThreadController:
     def __init__(self, thread_method: Callable, name: str):
         self._thread_running = True
         self._thread = self._create_thread(thread_method)
+        self._thread.name = name
         self._name = name
 
     def __del__(self):

@@ -30,7 +30,7 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
         print("Please make sure your Client is connected to the network")
 
     def _scan_for_clients(self) -> [str]:
-        responses = self._network.send_broadcast("smarthome/broadcast/req", {})
+        responses = self._network.send_broadcast("smarthome/broadcast/req", {}, timeout=3)
 
         client_names = [res.get_sender() for res in responses]
 

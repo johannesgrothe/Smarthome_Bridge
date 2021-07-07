@@ -21,8 +21,6 @@ class SerialServer(NetworkServer):
 
     def __del__(self):
         super().__del__()
-        # for client_address in self._clients:
-        #     self._remove_client(client_address)
 
     @staticmethod
     def get_serial_ports() -> [str]:

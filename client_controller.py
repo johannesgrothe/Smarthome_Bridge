@@ -80,13 +80,7 @@ class ClientController:
 
         payload_dict = {"config": config}
 
-        out_req = Request(path="smarthome/config/write",
-                          session_id=None,
-                          sender=self._sender_id,
-                          receiver=self._client_name,
-                          payload=payload_dict)
-
-        result = self._network.send_request_split(out_req, 50)
+        result = self._network.send_request_split("smarthome/config/write", self._client_name, payload_dict, 50)
 
         if not result:
             if print_callback:

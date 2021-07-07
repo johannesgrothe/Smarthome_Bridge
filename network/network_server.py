@@ -46,10 +46,10 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
 
     def _remove_client(self, address: str):
         client_index = 0
-        self._logger.info(f"Removing Client '{address}'")
         with self.__client_list_lock:
             for client in self._clients:
                 if address == client.get_address():
+                    self._logger.info(f"Removing Client '{address}'")
                     buf_client: NetworkServerClient = self._clients.pop(client_index)
                     buf_client.__del__()
                     return

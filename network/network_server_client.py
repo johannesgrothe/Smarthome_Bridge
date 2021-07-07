@@ -39,6 +39,7 @@ class NetworkServerClient(Publisher):
         self._thread_manager = ThreadManager()
         self._thread_manager.add_thread("send_thread", self.__task_send)
         self._thread_manager.add_thread("receive_thread", self.__task_receive)
+        self._thread_manager.add_thread("publish_thread", self.__task_publish)
 
     def __del__(self):
         self._thread_manager.__del__()
@@ -51,10 +52,15 @@ class NetworkServerClient(Publisher):
     def __task_receive(self):
         in_req = self._receive()
         if in_req:
+            self.__in_queue.put(in_req)
+
+    def __task_publish(self):
+        if not self.__in_queue.empty():
+            in_req = self.__in_queue.get()
             req = self.__split_handler.handle(in_req)
             if req:
                 req.set_callback_method(self._respond_to)
-                self._publish(req)
+                self._forward_request(req)
 
     def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
         if path:
@@ -73,7 +79,7 @@ class NetworkServerClient(Publisher):
         self._send(out_req)
 
     def _forward_request(self, req: Request):
-        self._logger.info(f"Received Request at '{req.get_path()}'")
+        self._logger.info(f"Received Request at '{req.get_path()}': {req.get_payload()}")
         self._publish(req)
 
     def send_request(self, req: Request):
