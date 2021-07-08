@@ -39,7 +39,7 @@ def test_req():
     yield req
 
 
-def test_loading_indicator(subscriber: DummySubscriber, publisher: DummyPublisher, test_req: Request):
+def test_pub_sub(subscriber: DummySubscriber, publisher: DummyPublisher, test_req: Request):
     global _received_request
     _received_request = None
 

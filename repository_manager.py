@@ -4,11 +4,6 @@ import logging
 from typing import Optional
 
 
-class RepositoryNotLockedException(Exception):
-    def __init__(self):
-        super().__init__(f"Action failed because repository is not locked.")
-
-
 class RepositoryUnsafeToDeleteException(Exception):
     def __init__(self, path):
         super().__init__(f"The selected directory is no valid git repository: '{path}'")

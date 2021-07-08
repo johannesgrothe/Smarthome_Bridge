@@ -4,8 +4,8 @@ from typing import Callable, Optional
 
 
 class ThreadIdAlreadyInUseException(Exception):
-    def __init__(self, id):
-        super().__init__(f"Could not add thread: ID '{id}' is already in use")
+    def __init__(self, thread_id):
+        super().__init__(f"Could not add thread: ID '{thread_id}' is already in use")
 
 
 class ThreadController:
