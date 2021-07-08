@@ -17,7 +17,7 @@ def validator():
     yield validator
 
 
-def test_mqtt_connector_send(validator: Validator):
+def test_json_validator(validator: Validator):
     validation_error = None
     try:
         validator.validate(TEST_REQ_OK, REQ_SCHEMA_NAME)

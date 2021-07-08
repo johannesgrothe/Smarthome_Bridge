@@ -38,9 +38,10 @@ class LoadingIndicator:
         print("[", end="")
         self._running = True
         self._run_thread = threading.Thread(target=self._thread_runner)
+        self._run_thread.name = self.__class__.__name__
         self._run_thread.start()
 
     def stop(self):
         if self._running:
-            print("]")
             self._stop_thread()
+            print("]")
