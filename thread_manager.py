@@ -1,5 +1,4 @@
 import logging
-from logging import Logger
 from threading import Thread
 from typing import Callable
 

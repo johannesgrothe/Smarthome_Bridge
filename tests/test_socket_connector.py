@@ -49,46 +49,57 @@ def echo_server(server):
     return echo_server
 
 
+@pytest.mark.network
 def test_socket_server_send(server: SocketServer, test_payload_big: dict, echo_client: TestEchoClient):
     send_test(server, CLIENT_NAME, test_payload_big)
 
 
+@pytest.mark.network
 def test_socket_server_send_split_long(server: SocketServer, test_payload_big: dict, echo_client: TestEchoClient):
     send_split_test(server, CLIENT_NAME, test_payload_big)
 
 
+@pytest.mark.network
 def test_socket_server_send_split_short(server: SocketServer, test_payload_small: dict, echo_client: TestEchoClient):
     send_split_test(server, CLIENT_NAME, test_payload_small)
 
 
+@pytest.mark.network
 def test_socket_server_send_broadcast(server: SocketServer, test_payload_small: dict, echo_client: TestEchoClient):
     broadcast_test(server, test_payload_small)
 
 
+@pytest.mark.network
 def test_socket_server_send_broadcast_single_resp(server: SocketServer, test_payload_small: dict, echo_client: TestEchoClient):
     broadcast_single_response_test(server, test_payload_small)
 
 
+@pytest.mark.network
 def test_socket_client_send(echo_server: TestEchoClient, test_payload_big: dict, client: SocketConnector):
     send_test(client, SERVER_NAME, test_payload_big)
 
 
+@pytest.mark.network
 def test_socket_client_send_split_long(echo_server: TestEchoClient, test_payload_big: dict, client: SocketConnector):
     send_split_test(client, SERVER_NAME, test_payload_big)
 
 
+@pytest.mark.network
 def test_socket_client_send_split_short(echo_server: TestEchoClient, test_payload_small: dict, client: SocketConnector):
     send_split_test(client, SERVER_NAME, test_payload_small)
 
 
+@pytest.mark.network
 def test_socket_client_send_broadcast(echo_server: TestEchoClient, test_payload_small: dict, client: SocketConnector):
     broadcast_test(client, test_payload_small)
 
 
+@pytest.mark.network
 def test_socket_client_send_broadcast_single_resp(echo_server: TestEchoClient, test_payload_small: dict, client: SocketConnector):
     broadcast_single_response_test(client, test_payload_small)
 
 
+# @pytest.mark.network
 # def test_server_client_count(server: SocketServer):
 #     assert server.get_client_count() == 0
 #     client1 = SocketClient(CLIENT_NAME,

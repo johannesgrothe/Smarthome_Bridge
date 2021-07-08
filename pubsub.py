@@ -28,5 +28,5 @@ class Publisher(metaclass=ABCMeta):
         for subscriber in self.__subscriber_clients:
             subscriber.receive(req)
 
-    def _get_client_number(self) -> int:
+    def get_client_number(self) -> int:
         return len(self.__subscriber_clients)

@@ -27,24 +27,29 @@ def server():
     server.__del__()
 
 
+@pytest.mark.network
 def test_serial_server_send(server: SerialServer, test_payload_small: dict):
     send_test(server, CLIENT_NAME, test_payload_small)
 
 
 # TODO: Check why large payloads fuck up
+# @pytest.mark.network
 # def test_serial_server_send_split_long(server: SerialServer, test_payload_big: dict):
 #     send_split_test(server, CLIENT_NAME, test_payload_big, part_max_len=50)
 
 
+@pytest.mark.network
 def test_serial_server_send_split_short(server: SerialServer, test_payload_small: dict):
     send_split_test(server, CLIENT_NAME, test_payload_small)
 
 
+@pytest.mark.network
 def test_serial_server_broadcast(server: SerialServer, test_payload_small):
     assert server.get_client_count() == 1
     broadcast_test(server, test_payload_small)
 
 
+@pytest.mark.network
 def test_serial_server_broadcast_max_responses(server: SerialServer, test_payload_small):
     assert server.get_client_count() == 1
     broadcast_single_response_test(server, test_payload_small)
