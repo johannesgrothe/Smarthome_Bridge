@@ -1,6 +1,11 @@
 import logging
 from threading import Thread
-from typing import Callable
+from typing import Callable, Optional
+
+
+class ThreadIdAlreadyInUseException(Exception):
+    def __init__(self, id):
+        super().__init__(f"Could not add thread: ID '{id}' is already in use")
 
 
 class ThreadController:
@@ -47,7 +52,6 @@ class ThreadManager:
     _logger: logging.Logger
 
     _threads: dict
-    _threads: list[ThreadController]
     _threads_running: bool
 
     def __init__(self):
@@ -68,10 +72,11 @@ class ThreadManager:
         for thread_id in self._threads:
             thread = self._threads[thread_id]
             if not thread.is_running():
-                # self._logger.info("Launching Thread")
                 thread.start()
 
     def add_thread(self, thread_id: str, thread_method: Callable) -> ThreadController:
+        if thread_id in self._threads:
+            raise ThreadIdAlreadyInUseException(thread_id)
         controller = ThreadController(thread_method, thread_id)
         self._threads[thread_id] = controller
         return controller
@@ -81,5 +86,11 @@ class ThreadManager:
             self._threads[thread_id].kill()
             del self._threads[thread_id]
 
-    def get_thread(self, thread_id: str) -> ThreadController:
-        return self._threads[thread_id]
+    def get_thread_count(self) -> int:
+        return len(self._threads.keys())
+
+    def get_thread(self, thread_id: str) -> Optional[ThreadController]:
+        try:
+            return self._threads[thread_id]
+        except KeyError:
+            return None

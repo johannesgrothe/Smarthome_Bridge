@@ -5,8 +5,8 @@ from loading_indicator import LoadingIndicator
 
 @pytest.fixture
 def indicator():
-    validator = LoadingIndicator()
-    yield validator
+    indicator = LoadingIndicator()
+    yield indicator
 
 
 def test_loading_indicator(indicator: LoadingIndicator):
