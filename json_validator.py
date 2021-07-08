@@ -43,4 +43,4 @@ class Validator:
         try:
             validate(target, _schema_data[schema_name])
         except KeyError:
-            raise SchemaDoesNotExistException
+            raise SchemaDoesNotExistException(f"Schema '{schema_name}' does not exist.")
