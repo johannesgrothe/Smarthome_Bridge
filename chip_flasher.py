@@ -1,12 +1,12 @@
-import datetime
 import os
 import re
 import argparse
 import subprocess
 import logging
 import repository_manager
-from datetime import datetime, timedelta
 from typing import Optional, Callable
+
+from repo_locker import RepoLocker, RepositoryAccessTimeout
 
 # Declare Type of callback function for hinting
 CallbackFunction = Optional[Callable[[str, int, str], None]]
@@ -15,7 +15,6 @@ PioCallbackFunction = Optional[Callable[[int, str], None]]
 repo_name = "Smarthome_ESP32"
 repo_url = "https://github.com/johannesgrothe/{}.git".format(repo_name)
 _repo_base_path = "temp"
-_repo_lockfile_path = "repo.lock"
 
 _general_exit_code = 0
 
@@ -46,11 +45,6 @@ _writing_fw_code = 13
 _ram_usage_code = 14
 
 
-class RepositoryAccessTimeout(Exception):
-    def __init__(self, timeout: int):
-        super().__init__(f"Repository could not be accessed: Timeout of {timeout} seconds has passed")
-
-
 class PioCompileException(Exception):
     def __init__(self):
         super().__init__(f"Failed to compile sourcecode.")
@@ -69,54 +63,6 @@ class PioUploadException(Exception):
 class UploadFailedException(Exception):
     def __init__(self):
         super().__init__(f"Failed to upload the software to the client")
-
-
-class RepoLocker:
-
-    _max_delay: Optional[int]
-    _has_repo_locked: bool
-
-    def __init__(self, max_delay: Optional[int] = None):
-        self._max_delay = max_delay
-        self._has_repo_locked = False
-
-    def __del__(self):
-        self._release_repository_lock()
-
-    def __enter__(self):
-        self.lock_repository()
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._release_repository_lock()
-
-    def has_lock(self):
-        return self._has_repo_locked
-
-    def _write_repository_lock(self):
-        if not self._has_repo_locked:
-            with open(os.path.join(_repo_base_path, _repo_lockfile_path), 'w') as f:
-                f.write('This is a lock file created by the chip flasher.\n'
-                        'If you have any problems with the chip flasher module, '
-                        'shut down all sunning instances and delete this file.')
-            self._has_repo_locked = True
-
-    def _release_repository_lock(self):
-        if self._has_repo_locked:
-            self._has_repo_locked = False
-            os.remove(os.path.join(_repo_base_path, _repo_lockfile_path))
-
-    def _wait_for_repository(self):
-        """Waits for the cloned repository to be available (not used by any other process)"""
-        start_time = datetime.now()
-        while os.path.isfile(os.path.join(_repo_base_path, _repo_lockfile_path)):
-            if self._max_delay is not None:
-                if start_time + timedelta(seconds=self._max_delay) < datetime.now():
-                    raise RepositoryAccessTimeout(self._max_delay)
-
-    def lock_repository(self):
-        self._wait_for_repository()
-        self._write_repository_lock()
 
 
 class PioUploader:
@@ -236,7 +182,7 @@ class ChipFlasher:
         self._locker = None
 
     def upload_software(self, branch: str, upload_port: Optional[str] = None, clone_new_repository: bool = False):
-        with RepoLocker(self._max_delay) as self._locker:
+        with RepoLocker(_repo_base_path, self._max_delay) as self._locker:
             repo_manager = repository_manager.RepositoryManager(_repo_base_path, repo_name, repo_url)
             try:
                 repo_manager.init_repository(force_reset=clone_new_repository)
