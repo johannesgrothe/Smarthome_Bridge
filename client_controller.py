@@ -1,16 +1,16 @@
 """Module to contain all sorts of client-write-functions to be shared between bridge and command line tool"""
 
-from jsonschema import validate, ValidationError
-import json
 import logging
-from network.request import Request, NoClientResponseException
+from network.request import NoClientResponseException
 from typing import Optional, Callable
 from network.network_connector import NetworkConnector
+from json_validator import Validator, ValidationError
 
 # Declare Type of callback function for hinting
 CallbackFunction = Optional[Callable[[str, int, str], None]]
 
 LOG_SENDER = "CONFIG_UPLOAD"
+CONFIG_SCHEMA_NAME = "client_config"
 
 _general_exit_code = 0
 
@@ -28,12 +28,13 @@ class ClientController:
     _client_name: str
     _sender_id: str
     _network: NetworkConnector
+    _validator: Validator
     _logger: logging.Logger
 
-    def __init__(self, client_name: str, sender: str, network_connector: NetworkConnector):
+    def __init__(self, client_name: str, network_connector: NetworkConnector):
         self._client_name = client_name
-        self._sender_id = sender
         self._network = network_connector
+        self._validator = Validator()
         self._logger = logging.getLogger("ClientController")
 
     def reset_config(self) -> bool:
@@ -41,13 +42,7 @@ class ClientController:
 
         payload = {}
 
-        out_request = Request(path="smarthome/config/reset",
-                              session_id=None,
-                              sender=self._sender_id,
-                              receiver=self._client_name,
-                              payload=payload)
-
-        result = self._network.send_request(out_request)
+        result = self._network.send_request("smarthome/config/reset", self._client_name, payload)
         if not result:
             raise NoClientResponseException
         else:
@@ -68,15 +63,10 @@ class ClientController:
     def write_config(self, config: dict, print_callback: CallbackFunction = None) -> bool:
 
         try:
-            with open("json_schemas/client_config.json") as schema_file:
-                schema = json.load(schema_file)
-                validate(config, schema)
-        except IOError:
-            self._logger.error("Config could not be written: Schema could not be loaded")
-            return False
+            self._validator.validate(config, CONFIG_SCHEMA_NAME)
         except ValidationError:
             self._logger.error("Config could not be written: Validation failed")
-            return False
+            raise ValidationError("Cannot validate json")
 
         payload_dict = {"config": config}
 

@@ -1,6 +1,4 @@
 import pytest
-import json
-import os
 from client_config_manager import *
 
 CONFIG_PATH = "configs"

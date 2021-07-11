@@ -8,8 +8,6 @@ import json
 import gadgetlib
 import logging
 import random
-import time
-from abc import ABCMeta, abstractmethod
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
 from tools import git_tools
@@ -19,18 +17,10 @@ from toolkits.direct_mqtt_connection_toolkit import DirectMqttConnectionToolkit
 from toolkits.direct_serial_connection_toolkit import DirectSerialConnectionToolkit
 from toolkits.toolkit_helpers import ask_for_continue, select_option
 from toolkits.toolkit_exceptions import ToolkitException
-from toolkits.toolkit_meta import TOOLKIT_NETWORK_NAME
 
-
-from network.network_connector import NetworkConnector, Request
-from network.request import NoClientResponseException
-from network.network_server import NetworkServer
-
-from loading_indicator import LoadingIndicator
 from chip_flasher import ChipFlasher
-from client_controller import ClientController
 from client_config_manager import ClientConfigManager
-from toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
+from toolkits.toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
 from bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
     SoftwareWritingFailedException, ConfigWritingFailedException
 
