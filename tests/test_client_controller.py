@@ -91,6 +91,16 @@ def test_client_controller_write_config(connector: MockNetworkConnector, manager
         connector.mock_ack(True)
         result = controller.write_config(working_config)
     except NoClientResponseException:
-        pass
+        assert False
     else:
         assert result is True
+
+    connector.reset()
+
+    try:
+        connector.mock_ack(False)
+        result = controller.write_config(working_config)
+    except NoClientResponseException:
+        assert False
+    else:
+        assert result is False

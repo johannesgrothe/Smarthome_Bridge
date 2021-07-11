@@ -40,9 +40,7 @@ class MockNetworkConnector(NetworkConnector):
                                   self._thread_request.get_receiver(),
                                   self._thread_request.get_sender(),
                                   {"ack": self._mock_ack})
-                print(f"\nresponding with '{self._mock_ack}'")
                 self.receive(out_req)
-                self._mock_ack = None
 
     def _start_response_thread(self, req: Request):
 
@@ -57,7 +55,11 @@ class MockNetworkConnector(NetworkConnector):
         self._start_response_thread(req)
 
     def mock_ack(self, ack: bool):
+        """Makes connector respond to every send request with the selected ack.
+        Pass 'None' or use the reset() function to stop replying with any ack at all"""
         self._mock_ack = ack
 
     def reset(self):
+        """Resets the mocking behaviour of this connector"""
+        self._mock_ack = None
         self._stop_response_thread()
