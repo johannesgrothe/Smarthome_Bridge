@@ -2,7 +2,7 @@ import pytest
 import time
 
 from network.serial_server import SerialServer
-from tests.connector_tests import send_test, send_split_test, broadcast_test,\
+from tests.network.connector_tests import send_test, send_split_test, broadcast_test,\
     broadcast_single_response_test,  test_payload_small, test_payload_big
 
 _blocked_clients = ["/dev/tty.SLAB_USBtoUART"]

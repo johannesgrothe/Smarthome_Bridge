@@ -37,20 +37,21 @@ def select_option(input_list: [str], category: Optional[str] = None, back_option
         print("    {}: {}".format(i, input_list[i]))
         max_i += 1
     if back_option:
-        print("    {}: {}".format(max_i + 1, back_option))
+        print("    {}: {}".format(max_i, back_option))
         max_i += 1
 
     selection = None
     while selection is None:
-        selection = input("Please select an option by entering its number:\n")
+        print("Please select an option by entering its number:\n")
+        selection = input()
         try:
             selection = int(selection)
         except (TypeError, ValueError):
             selection = None
 
-        if selection is None or selection < 0 or selection > max_i:
+        if selection is None or selection < 0 or selection >= max_i:
             print("Illegal input, try again.")
             selection = None
-    if selection == max_i:
+    if back_option and selection == (max_i-1):
         selection = -1
     return selection

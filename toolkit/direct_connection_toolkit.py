@@ -7,9 +7,9 @@ from loading_indicator import LoadingIndicator
 from network.network_connector import NetworkConnector
 from network.request import NoClientResponseException
 
-from toolkits.toolkit_helpers import select_option, ask_for_continue
-from toolkits.toolkit_meta import TOOLKIT_NETWORK_NAME
-from toolkits.toolkit_exceptions import ToolkitException
+from toolkit.cli_helpers import select_option, ask_for_continue
+from toolkit.toolkit_meta import TOOLKIT_NETWORK_NAME
+from toolkit.toolkit_exceptions import ToolkitException
 
 from abc import ABCMeta, abstractmethod
 from typing import Optional

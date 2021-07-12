@@ -1,4 +1,4 @@
-from toolkits.direct_connection_toolkit import DirectConnectionToolkit
+from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from network.mqtt_connector import MQTTConnector
 from typing import Optional
 

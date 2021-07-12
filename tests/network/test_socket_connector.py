@@ -3,7 +3,7 @@ import pytest
 from network.socket_server import SocketServer
 from network.socket_connector import SocketConnector
 from network.echo_client import TestEchoClient
-from tests.connector_tests import send_test, send_split_test, broadcast_test,\
+from tests.network.connector_tests import send_test, send_split_test, broadcast_test,\
     broadcast_single_response_test, test_payload_small, test_payload_big
 
 

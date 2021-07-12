@@ -1,5 +1,5 @@
-from toolkits.direct_connection_toolkit import DirectConnectionToolkit
-from toolkits.toolkit_meta import TOOLKIT_NETWORK_NAME
+from toolkit.direct_connection_toolkit import DirectConnectionToolkit
+from toolkit.toolkit_meta import TOOLKIT_NETWORK_NAME
 from network.serial_server import SerialServer
 from network.network_server import NetworkServer
 import time
