@@ -1,16 +1,12 @@
 import os
 import json
 import logging
-from jsonschema import validate, ValidationError
+from json_validator import Validator, ValidationError
 from typing import Optional
 
-_config_path = os.path.join("temp", "connection_configs.json")
-_validation_schema_path = os.path.join("json_schemas", "toolkit_config.json")
-
-
-class ValidationSchemaNotFoundException(Exception):
-    def __init__(self):
-        super().__init__(f"No schema for config validation found")
+CONFIG_PATH = os.path.join("temp", "connection_configs.json")
+VALIDATION_SCHEMA_NAME = "toolkit_config.json"
+VALIDATION_SCHEMA_PATH = os.path.join("json_schemas", VALIDATION_SCHEMA_NAME)
 
 
 class ConfigAlreadyExistsException(Exception):
@@ -26,24 +22,16 @@ class InvalidConfigException(Exception):
 class ToolkitSettingsManager:
     _logger: logging.Logger
     _configs: dict
-    _validation_schema: dict
+    _validator: Validator
 
     def __init__(self):
         self._logger = logging.getLogger("ToolkitSettingsManager")
-        self._load_validation_schema()
+        self._validator = Validator()
         self.load()
-
-    def _load_validation_schema(self):
-        try:
-            with open(_validation_schema_path, 'r') as file_h:
-                self._validation_schema = json.load(file_h)
-        except IOError:
-            self._logger.error("Validation scheme could not be loaded.")
-            raise ValidationSchemaNotFoundException
 
     @staticmethod
     def _generate_base_config() -> dict:
-        out_config = {"$schema": os.path.join("..", _validation_schema_path),
+        out_config = {"$schema": os.path.join("..", VALIDATION_SCHEMA_PATH),
                       "bridge": {},
                       "mqtt": {}}
         return out_config
@@ -52,14 +40,14 @@ class ToolkitSettingsManager:
         buf_config = self._generate_base_config()
         buf_config[config_type][config_id] = config
         try:
-            validate(buf_config, self._validation_schema)
+            self._validator.validate(buf_config, VALIDATION_SCHEMA_NAME)
         except ValidationError:
             return False
         return True
 
     def load(self):
         try:
-            with open(_config_path, 'r') as file_h:
+            with open(CONFIG_PATH, 'r') as file_h:
                 self._configs = json.load(file_h)
                 self._logger.info("Config successfully loaded.")
 
@@ -70,7 +58,7 @@ class ToolkitSettingsManager:
 
     def save(self):
         try:
-            with open(_config_path, 'w') as file_h:
+            with open(CONFIG_PATH, 'w') as file_h:
                 json.dump(self._configs, file_h)
                 self._logger.info("Saved config file to disk.")
         except IOError:
