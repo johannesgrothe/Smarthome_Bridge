@@ -8,19 +8,21 @@ import time
 import config_functions
 import threading
 from datetime import datetime
-from chip_flasher import get_serial_ports
 from bridge_threads import *
 from tools import system_tools, git_tools
 from jsonschema import validate, ValidationError
+import logging
 
 from homekit_connector import HomeConnectorType, HomeKitConnector
-from serial_connector import SerialConnector
+from network.serial_connector import SerialConnector
 from smarthomeclient import SmarthomeClient
 from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional
-from mqtt_connector import MQTTConnector
-from request import Request
-import client_control_methods
+from network.mqtt_connector import MQTTConnector
+from network.request import Request
+from pubsub import Subscriber
+import client_controller
+from network.socket_server import SocketServer
 
 
 def get_connected_chip_id(network: SerialConnector, sender: str) -> Optional[str]:
@@ -58,7 +60,7 @@ def fill_with_nones(check_dict: dict, key_list: [str]) -> dict:
     return buf_dict
 
 
-class MainBridge:
+class MainBridge(Subscriber):
     """Main Bridge for the Smarthome Environment"""
 
     # region ATTRIBUTES
@@ -99,10 +101,10 @@ class MainBridge:
     # API
     __api_port: int
     __api_thread: Thread
-    __ws_api_port: int
+    _socket_api_port: int
+    _socket_server: SocketServer
 
     __network_gadget: MQTTConnector
-    __mqtt_callback_thread: Thread
     __received_requests: int
 
     __streaming_message_queue: [str]
@@ -127,8 +129,9 @@ class MainBridge:
 
     # endregion
 
-    def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int,
-                 mqtt_username: Optional[str], mqtt_pw: Optional[str]):
+    def __init__(self, bridge_name: str, mqtt_ip: str, mqtt_port: int, mqtt_username: Optional[str],
+                 mqtt_pw: Optional[str]):
+        super().__init__()
         print("Setting up Bridge...")
 
         # Setting bridge name
@@ -171,7 +174,7 @@ class MainBridge:
 
         # API
         self.__api_port = 0
-        self.__ws_api_port = 0
+        self._socket_api_port = 0
 
         self.__clients = []
         self.__gadgets = []
@@ -185,9 +188,7 @@ class MainBridge:
                                               self.__mqtt_port,
                                               None,
                                               None)
-        self.__mqtt_callback_thread = BridgeMQTTThread(parent=self,
-                                                       connector=self.__network_gadget)
-        self.__mqtt_callback_thread.start()
+        self.__network_gadget.subscribe(self)
 
         self.__load_json_schemas()
 
@@ -253,8 +254,8 @@ class MainBridge:
             return False
         return True
 
-    def handle_request(self, req: Request):
-        """Receives a request from the watcher Thread and handles it"""
+    def receive(self, req: Request):
+        """Handles a received request"""
         self.__received_requests += 1
 
         if req.get_receiver() != "<bridge>":
@@ -336,7 +337,7 @@ class MainBridge:
 
                 for gadget in self.__gadgets:
                     if gadget.get_host_client() == req.get_sender():
-                        if gadget.get_name() not in updated_gadgets:
+                        if gadget.get_hostname() not in updated_gadgets:
                             self.delete_gadget(gadget)
                             deleted_gadgets += 1
 
@@ -438,9 +439,6 @@ class MainBridge:
             115200
         )
 
-        if not buf_serial_gadget.connected():
-            return False, f"Could not connect to '{serial_port}'"
-
         # Get client name
         client_name = get_connected_chip_id(buf_serial_gadget, self.get_bridge_name())
 
@@ -495,7 +493,7 @@ class MainBridge:
     @staticmethod
     def get_serial_ports() -> [str]:
         """Returns all serial ports existing on the host system"""
-        return get_serial_ports()
+        return ChipFlasher.get_serial_ports()
 
     # region BRIDGE DATA
 
@@ -552,7 +550,7 @@ class MainBridge:
         """
         with self.__lock:
             for client in self.__clients:
-                if client.get_name() == name:
+                if client.get_hostname() == name:
                     return client
         return None
 
@@ -635,9 +633,9 @@ class MainBridge:
     def restart_client(self, client: SmarthomeClient) -> bool:
         """Sends out a request to restart the client and"""
 
-        return client_control_methods.reboot_client(client.get_name(),
+        return client_controller.reboot_client(client.get_name(),
                                                     "<bridge>",
-                                                    self.__network_gadget)
+                                               self.__network_gadget)
 
     # endregion
 
@@ -648,7 +646,7 @@ class MainBridge:
         """Updates a single characteristic of the selected gadget"""
         with self.__lock:
             for buf_gadget in self.__gadgets:
-                if buf_gadget.get_name() == gadget_name:
+                if buf_gadget.get_hostname() == gadget_name:
                     return buf_gadget.update_characteristic(characteristic, value), buf_gadget
         return CharacteristicUpdateStatus.general_error, None
 
@@ -708,7 +706,7 @@ class MainBridge:
         """Returns the data for the selected gadget"""
         with self.__lock:
             for buf_gadget in self.__gadgets:
-                if buf_gadget.get_name() == gadget_name:
+                if buf_gadget.get_hostname() == gadget_name:
                     return buf_gadget
             return None
 
@@ -781,33 +779,28 @@ class MainBridge:
     def set_socket_api_port(self, port: int):
         """Sets the port for the REST API"""
         with self.__lock:
-            self.__ws_api_port = port
+            self._socket_api_port = port
 
     def get_socket_api_port(self):
         """returns the current API port of the bridge"""
         with self.__lock:
-            return self.__ws_api_port
+            return self._socket_api_port
 
     def run_socket_api(self):
         """Launches the REST API"""
         with self.__lock:
-            self.__api_thread = BridgeSocketAPIThread(parent=self)
-            self.__api_thread.start()
+            self._socket_server = SocketServer("<bridge>", self._socket_api_port)
 
     # endregion
 
-    def add_streaming_message_dict(self, message: dict):
-        with self.__lock:
-            self.__streaming_message_queue.append(json.dumps(message))
-
     def add_streaming_message(self, sender: str, status_code: str, message: str):
-        self.add_streaming_message_dict({"sender": sender, "status": status_code, "message": message})
-
-    def get_streaming_message(self) -> Optional[str]:
-        with self.__lock:
-            if self.__streaming_message_queue:
-                return self.__streaming_message_queue.pop(0)
-            return None
+        if self._socket_server:
+            out_req = Request(f"stream",
+                              None,
+                              sender,
+                              None,
+                              {"status": status_code, "message": message})
+            self._socket_server.send_request(out_req, timeout=0)
 
 
 if __name__ == '__main__':
@@ -822,6 +815,8 @@ if __name__ == '__main__':
     parser.add_argument('--api_port', help='Port for the REST-API', type=int)
     parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
     ARGS = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     print("Launching Bridge")
 

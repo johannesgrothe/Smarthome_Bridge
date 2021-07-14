@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": ["bridge", "mqtt"],
+  "properties": {
+    "bridge": {
+      "type": "object"
+    },
+    "mqtt": {
+      "type": "object",
+      "required": ["ip", "port", "username", "password"],
+      "properties": {
+        "ip": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "username": {
+          "type": ["string", "null"]
+        },
+        "password": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

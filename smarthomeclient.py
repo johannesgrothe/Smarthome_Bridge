@@ -1,36 +1,10 @@
 """Module for the SmarthomeClient Class"""
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
 
 # Maximum timeout in seconds before the client is considered inactive
-max_timeout = 17
-
-
-def filter_mapping(in_map: dict) -> (bool, dict):
-    """Filters a port mapping dict to not contain any non-int or negative keys and no double values.
-
-    Returns has_error, filtered_dict"""
-    port_list: [str] = []
-    out_ports: dict = {}
-    has_err: bool = False
-
-    for key in in_map:
-        try:
-            if int(key) > 0:
-                val = in_map[key]
-                if val in port_list:
-                    print("error double port usage")
-                    has_err = True
-                else:
-                    port_list.append(val)
-                    out_ports[key] = val
-            else:
-                print("Negative port number: '{}'".format(key))
-                has_err = True
-        except ValueError:
-            print("Illegal key: '{}'".format(key))
-            has_err = True
-    return has_err, out_ports
+DEFAULT_TIMEOUT = 17
 
 
 class SmarthomeClient:
@@ -66,12 +40,16 @@ class SmarthomeClient:
     # Boot mode of the client
     __boot_mode: int
 
-    def __init__(self, name: str, runtime_id: int):
+    __logger: logging.Logger
+
+    def __init__(self, name: str, runtime_id: int, connection_timeout: int = DEFAULT_TIMEOUT):
         self.__name = name
         self.__last_connected = datetime(1900, 1, 1)
         self.__created = datetime.now()
         self.__runtime_id = runtime_id
         self.__needs_update = True
+        self._timeout = connection_timeout
+        self._logger = logging.getLogger(self.__class__.__name__)
 
         self.__flash_time = None
         self.__software_commit = None
@@ -80,7 +58,27 @@ class SmarthomeClient:
         # Set boot mode to "Unknown_Mode"
         self.__boot_mode = 3
 
-        has_err, self.__port_mapping = filter_mapping({})
+        has_err, self.__port_mapping = self._filter_mapping({})
+
+    def _filter_mapping(self, in_map: dict) -> (bool, dict):
+        """Filters a port mapping dict to not contain any non-int or negative keys and no double values.
+
+        Returns has_error, filtered_dict"""
+        out_ports: dict = {}
+        has_err: bool = False
+
+        for key in in_map:
+            try:
+                if int(key) > 0:
+                    val = in_map[key]
+                    out_ports[key] = val
+                else:
+                    self._logger.error(f"Negative port number: '{key}'")
+                    has_err = True
+            except ValueError:
+                self._logger.error(f"Illegal key: '{key}'")
+                has_err = True
+        return has_err, out_ports
 
     def get_name(self):
         """Returns the name of the client"""
@@ -100,9 +98,9 @@ class SmarthomeClient:
 
     def is_active(self) -> bool:
         """Returns whether the client is still considered active"""
-        return self.__last_connected + timedelta(seconds=max_timeout) > datetime.now()
+        return self.__last_connected + timedelta(seconds=self._timeout) > datetime.now()
 
-    def update_runtime_id(self, runtime_id: bool):
+    def update_runtime_id(self, runtime_id: int):
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
         if self.__runtime_id != runtime_id:
             self.__runtime_id = runtime_id
@@ -116,14 +114,14 @@ class SmarthomeClient:
                     software_branch: Optional[str], port_mapping: dict, boot_mode: int):
         """Reports an successful update to the client"""
 
-        self.__flash_time = datetime.strptime(flash_date, "%Y-%m-%d %H:%M:%S")
+        self.__flash_time = flash_date
         self.__software_commit = software_commit
         self.__software_branch = software_branch
         self.__boot_mode = boot_mode
 
-        has_err, self.__port_mapping = filter_mapping(port_mapping)
+        has_err, self.__port_mapping = self._filter_mapping(port_mapping)
         if has_err:
-            print(f"WARNING: PROBLEM FOUND IN PORT MAPPING '{port_mapping}'")
+            self._logger.warning(f"Detected problem in port mapping: '{port_mapping}'")
 
         self.__needs_update = False
 
@@ -162,3 +160,6 @@ class SmarthomeClient:
     def get_boot_mode(self) -> int:
         """Returns the boot mode of the chip"""
         return self.__boot_mode
+
+    def set_timeout(self, seconds: int):
+        self._timeout = seconds
