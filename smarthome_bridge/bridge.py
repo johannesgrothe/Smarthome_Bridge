@@ -26,3 +26,9 @@ class Bridge:
 
     def get_name(self):
         return self._name
+
+    def get_network_manager(self):
+        return self._network_manager
+
+    def get_client_manager(self):
+        return self._client_manager
