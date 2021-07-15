@@ -1,7 +1,7 @@
 import pytest
 import time
 import datetime
-from smarthomeclient import SmarthomeClient
+from smarthome_bridge.smarthomeclient import SmarthomeClient
 
 
 CLIENT_NAME = "test_client"
