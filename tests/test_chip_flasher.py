@@ -1,3 +1,4 @@
+import pytest
 from chip_flasher import ChipFlasher, UploadFailedException
 
 _software_branch = "develop"
@@ -11,6 +12,7 @@ def flasher_test_callback(module: str, code: int, message: str):
     _message_received = True
 
 
+@pytest.mark.github_skip
 def test_chip_flasher():
     flasher = ChipFlasher(flasher_test_callback, 5)
     assert flasher.get_serial_ports() is not None

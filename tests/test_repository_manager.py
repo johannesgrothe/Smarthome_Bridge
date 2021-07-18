@@ -32,6 +32,7 @@ def manager_broken():
     yield manager
 
 
+@pytest.mark.github_skip
 def test_repository_manager(manager: RepositoryManager):
     logging.basicConfig(level="INFO")
     try:

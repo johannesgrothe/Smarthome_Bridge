@@ -12,10 +12,7 @@ TEST_OPTION_LIST = ["null", "ainz", "zwei"]
 
 @pytest.fixture()
 def buf_file():
-    with open(TEST_FILE_PATH, 'w') as f:
-        f.write('file for unit test')
-    yield TEST_FILE_NAME
-    os.remove(TEST_FILE_PATH)
+    yield "tests/toolkit/test_cli_helpers.py"
 
 
 def test_ask_for_continue(monkeypatch):
@@ -30,9 +27,9 @@ def test_ask_for_continue(monkeypatch):
 
 
 def test_enter_file_path(buf_file: str, monkeypatch):
-    monkeypatch.setattr('builtins.input', lambda: TEST_FILE_PATH)
+    monkeypatch.setattr('builtins.input', lambda: buf_file)
     result = enter_file_path()
-    assert result is TEST_FILE_PATH
+    assert result is buf_file
 
     monkeypatch.setattr('builtins.input', lambda: TEST_WRONG_PATH)
     result = enter_file_path()
