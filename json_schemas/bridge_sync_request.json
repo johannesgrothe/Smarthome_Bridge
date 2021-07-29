@@ -5,7 +5,10 @@
     "runtime_id",
     "gadgets",
     "port_mapping",
-    "boot_mode"
+    "boot_mode",
+    "sw_uploaded",
+    "sw_commit",
+    "sw_branch"
   ],
   "properties": {
     "runtime_id": {
@@ -25,13 +28,13 @@
       "type": "integer"
     },
     "sw_uploaded": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "sw_commit": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "sw_branch": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "gadgets": {
       "type": "array",

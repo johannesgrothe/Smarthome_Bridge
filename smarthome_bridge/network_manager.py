@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from network.network_connector import NetworkConnector
 from network.request import Request
 from pubsub import Publisher, Subscriber
@@ -35,3 +36,18 @@ class NetworkManager(Publisher, Subscriber):
 
     def _forward_req(self, req: Request):
         self._publish(req)
+
+    @staticmethod
+    def _remove_doubles(xs: list) -> list:
+        return list(dict.fromkeys(xs))
+
+    def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
+        responses = []
+        for network in self._connectors:
+            res = network.send_request(path, receiver, payload, timeout)
+            if res:
+                responses.append(res)
+        responses = self._remove_doubles(responses)
+        if len(responses) == 1:
+            return responses[0]
+        return None

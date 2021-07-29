@@ -22,9 +22,6 @@ class SmarthomeClient:
     # A unique runtime id provided by the chip. Has to change on every reboot of the client
     __runtime_id: int
 
-    # Flag to determine whether the client needs an update
-    __needs_update: bool
-
     # Date the chip was flashed (if available)
     __flash_time: Optional[datetime]
 
@@ -47,7 +44,6 @@ class SmarthomeClient:
         self.__last_connected = datetime(1900, 1, 1)
         self.__created = datetime.now()
         self.__runtime_id = runtime_id
-        self.__needs_update = True
         self._timeout = connection_timeout
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -92,6 +88,9 @@ class SmarthomeClient:
         """Returns when the client was last active in seconds since the epoch"""
         return self.__last_connected
 
+    def get_runtime_id(self) -> int:
+        return self.__runtime_id
+
     def trigger_activity(self):
         """Reports any activity of the client"""
         self.__last_connected = datetime.now()
@@ -102,13 +101,7 @@ class SmarthomeClient:
 
     def update_runtime_id(self, runtime_id: int):
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
-        if self.__runtime_id != runtime_id:
-            self.__runtime_id = runtime_id
-            self.__needs_update = True
-
-    def needs_update(self) -> bool:
-        """Returns whether the client needs an update from its hardware representation"""
-        return self.__needs_update
+        self.__runtime_id = runtime_id
 
     def update_data(self, flash_date: Optional[datetime], software_commit: Optional[str],
                     software_branch: Optional[str], port_mapping: dict, boot_mode: int):
@@ -122,8 +115,6 @@ class SmarthomeClient:
         has_err, self.__port_mapping = self._filter_mapping(port_mapping)
         if has_err:
             self._logger.warning(f"Detected problem in port mapping: '{port_mapping}'")
-
-        self.__needs_update = False
 
     def serialized(self) -> dict:
         """Returns a serialized version of the client"""
