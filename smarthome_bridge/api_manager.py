@@ -5,7 +5,7 @@ from network.request import Request
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
 
-from smarthome_bridge.client_manager import ClientManager
+from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError, ClientAlreadyExistsError
 from smarthome_bridge.network_manager import NetworkManager
 
 from smarthome_bridge.smarthomeclient import SmarthomeClient
@@ -56,13 +56,9 @@ class ApiManager(Subscriber):
         rt_id = req.get_payload()["runtime_id"]
         if client:
             if client.get_runtime_id() != rt_id:
-                client.update_runtime_id(rt_id)
                 self._network.send_request(PATH_SYNC, req.get_sender(), {}, 0)
-        else:
-            client = SmarthomeClient(req.get_sender(), rt_id)
-            self._network.send_request(PATH_SYNC, req.get_sender(), {}, 0)
-
-        client.trigger_activity()
+            else:
+                client.trigger_activity()
 
     def _handle_sync(self, req: Request):
         try:
@@ -70,7 +66,12 @@ class ApiManager(Subscriber):
         except ValidationError:
             self._logger.error(f"Request validation error at '{PATH_SYNC}'")
 
-        client = self._clients.get_client(req.get_sender())
-        rt_id = req.get_payload()["runtime_id"]
-        if client and client.get_runtime_id() == rt_id:
-            client.update_data()
+        try:
+            self._clients.remove_client(req.get_sender())
+        except ClientDoesntExistsError:
+            pass
+
+        runtime_id = req.get_payload()["runtime_id"]
+
+        new_client = SmarthomeClient(req.get_sender(),
+                                     runtime_id)

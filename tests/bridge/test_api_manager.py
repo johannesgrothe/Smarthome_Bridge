@@ -2,6 +2,7 @@ import pytest
 
 from smarthome_bridge.api_manager import ApiManager
 from smarthome_bridge.client_manager import ClientManager
+from smarthome_bridge.network_manager import NetworkManager
 
 
 @pytest.fixture()
@@ -12,8 +13,15 @@ def clients():
 
 
 @pytest.fixture()
-def api(clients: ClientManager):
-    api = ApiManager(clients)
+def network_manager():
+    manager = NetworkManager()
+    yield manager
+    manager.__del__()
+
+
+@pytest.fixture()
+def api(clients: ClientManager, network_manager):
+    api = ApiManager(clients, network_manager)
     yield api
     api.__del__()
 

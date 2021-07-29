@@ -39,7 +39,9 @@ class SmarthomeClient:
 
     __logger: logging.Logger
 
-    def __init__(self, name: str, runtime_id: int, connection_timeout: int = DEFAULT_TIMEOUT):
+    def __init__(self, name: str, runtime_id: int, flash_date: Optional[datetime],
+                 software_commit: Optional[str], software_branch: Optional[str],
+                 port_mapping: dict, boot_mode: int, connection_timeout: int = DEFAULT_TIMEOUT):
         self.__name = name
         self.__last_connected = datetime(1900, 1, 1)
         self.__created = datetime.now()
@@ -47,14 +49,16 @@ class SmarthomeClient:
         self._timeout = connection_timeout
         self._logger = logging.getLogger(self.__class__.__name__)
 
-        self.__flash_time = None
-        self.__software_commit = None
-        self.__software_branch = None
+        self.__flash_time = flash_date
+        self.__software_commit = software_commit
+        self.__software_branch = software_branch
 
         # Set boot mode to "Unknown_Mode"
-        self.__boot_mode = 3
+        self.__boot_mode = boot_mode
 
-        has_err, self.__port_mapping = self._filter_mapping({})
+        has_err, self.__port_mapping = self._filter_mapping(port_mapping)
+        if has_err:
+            self._logger.warning(f"Detected problem in port mapping: '{port_mapping}'")
 
     def _filter_mapping(self, in_map: dict) -> (bool, dict):
         """Filters a port mapping dict to not contain any non-int or negative keys and no double values.
@@ -91,6 +95,15 @@ class SmarthomeClient:
     def get_runtime_id(self) -> int:
         return self.__runtime_id
 
+    def get_flash_date(self) -> datetime:
+        return self.__flash_time
+
+    def get_software_commit(self) -> str:
+        return self.__software_commit
+
+    def get_software_branch(self) -> str:
+        return self.__software_branch
+
     def trigger_activity(self):
         """Reports any activity of the client"""
         self.__last_connected = datetime.now()
@@ -102,19 +115,6 @@ class SmarthomeClient:
     def update_runtime_id(self, runtime_id: int):
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
         self.__runtime_id = runtime_id
-
-    def update_data(self, flash_date: Optional[datetime], software_commit: Optional[str],
-                    software_branch: Optional[str], port_mapping: dict, boot_mode: int):
-        """Reports an successful update to the client"""
-
-        self.__flash_time = flash_date
-        self.__software_commit = software_commit
-        self.__software_branch = software_branch
-        self.__boot_mode = boot_mode
-
-        has_err, self.__port_mapping = self._filter_mapping(port_mapping)
-        if has_err:
-            self._logger.warning(f"Detected problem in port mapping: '{port_mapping}'")
 
     def serialized(self) -> dict:
         """Returns a serialized version of the client"""
