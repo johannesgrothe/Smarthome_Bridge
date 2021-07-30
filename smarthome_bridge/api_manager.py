@@ -72,6 +72,23 @@ class ApiManager(Subscriber):
             pass
 
         runtime_id = req.get_payload()["runtime_id"]
+        port_mapping = req.get_payload()["port_mapping"]
+        boot_mode = req.get_payload()["boot_mode"]
+        sw_uploaded = req.get_payload()["sw_uploaded"]
+        sw_commit = req.get_payload()["sw_commit"]
+        sw_branch = req.get_payload()["sw_branch"]
 
-        new_client = SmarthomeClient(req.get_sender(),
-                                     runtime_id)
+        new_client = SmarthomeClient(name=req.get_sender(),
+                                     boot_mode=boot_mode,
+                                     runtime_id=runtime_id,
+                                     flash_date=sw_uploaded,
+                                     software_commit=sw_commit,
+                                     software_branch=sw_branch,
+                                     port_mapping=port_mapping)
+
+        gadgets = req.get_payload()["gadgets"]
+
+        for gadget in gadgets:
+            pass
+
+        self._clients.add_client(new_client)

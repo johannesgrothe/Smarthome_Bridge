@@ -1,5 +1,6 @@
 import logging
 from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.characteristic import Characteristic
 
 
 class Serializer:
@@ -31,3 +32,11 @@ class Serializer:
                 "sw_version": client.get_software_commit(),
                 "sw_branch": client.get_software_branch(),
                 "port_mapping": client.get_port_mapping()}
+
+    def serialize_characteristic(self, characteristic: Characteristic) -> dict:
+        self._logger.debug(f"Serializing characteristic '{int(characteristic.get_type())}'")
+        return {"type": int(characteristic.get_type()),
+                "min": characteristic.get_min(),
+                "max": characteristic.get_max(),
+                "step": characteristic.get_step(),
+                "value": characteristic.get_val()}

@@ -16,7 +16,7 @@ import logging
 from homekit_connector import HomeConnectorType, HomeKitConnector
 from network.serial_connector import SerialConnector
 from bridge.smarthomeclient import SmarthomeClient
-from gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
+from smarthome_bridge.gadget import Gadget, GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus, Characteristic
 from typing import Optional
 from network.mqtt_connector import MQTTConnector
 from network.request import Request

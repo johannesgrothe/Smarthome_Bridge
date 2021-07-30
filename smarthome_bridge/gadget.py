@@ -1,46 +1,8 @@
 """Module to contain the gadget class"""
 from typing import Optional
+
+from smarthome_bridge.characteristic import Characteristic
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
-
-
-class Characteristic:
-    __type: CharacteristicIdentifier
-    __min: int
-    __max: int
-    __step: int
-    __val: int
-
-    def __init__(self, c_type: CharacteristicIdentifier, min_val: int, max_val: int,
-                 step: int, value: Optional[int] = None):
-        self.__min = min_val
-        self.__max = max_val
-        self.__step = step
-        self.__type = c_type
-        if value is not None:
-            self.__val = value
-        else:
-            self.__val = 0
-
-    def set_val(self, value: int) -> CharacteristicUpdateStatus:
-        if value > self.__max or value < self.__min:
-            return CharacteristicUpdateStatus.update_failed
-        if self.__val == value:
-            return CharacteristicUpdateStatus.no_update_needed
-        self.__val = value
-        return CharacteristicUpdateStatus.update_successful
-
-    def get_val(self) -> int:
-        return self.__val
-
-    def get_type(self) -> CharacteristicIdentifier:
-        return self.__type
-
-    def get_options(self) -> (int, int, int):
-        return self.__min, self.__max, self.__step
-
-    def serialized(self) -> dict:
-        return {"type": int(self.__type), "min": self.__min, "max": self.__max, "step": self.__step,
-                "value": self.__val}
 
 
 class Gadget:

@@ -4,7 +4,7 @@ import time
 import paho.mqtt.client as mqtt
 from typing import Optional
 from gadgetlib import GadgetIdentifier
-from gadget import Characteristic, Gadget, CharacteristicIdentifier
+from smarthome_bridge.gadget import Gadget, CharacteristicIdentifier
 from queue import Queue
 from threading import Thread, Lock
 
