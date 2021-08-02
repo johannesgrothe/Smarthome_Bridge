@@ -1,6 +1,7 @@
 import logging
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 from smarthome_bridge.characteristic import Characteristic
+from smarthome_bridge.gadgets.gadget import Gadget
 
 
 class Serializer:
@@ -38,5 +39,16 @@ class Serializer:
         return {"type": int(characteristic.get_type()),
                 "min": characteristic.get_min(),
                 "max": characteristic.get_max(),
-                "step": characteristic.get_step(),
-                "value": characteristic.get_val()}
+                "step": characteristic.get_steps(),
+                "step_value": characteristic.get_step_value(),
+                "true_value": characteristic.get_true_value(),
+                "percentage_value": characteristic.get_percentage_value()}
+
+    def serialize_gadget(self, gadget: Gadget) -> dict:
+        buf_json = {"type": int(gadget.get_type()),
+                    "name": gadget.get_name(),
+                    "characteristics": []}
+        for characteristic_type in gadget.get_characteristic_types():
+            characteristic = gadget.get_characteristic(characteristic_type)
+            buf_json["characteristics"].append(self.serialize_characteristic(characteristic))
+        return buf_json
