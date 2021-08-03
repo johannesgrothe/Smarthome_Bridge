@@ -9,6 +9,8 @@ from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsErr
 from smarthome_bridge.network_manager import NetworkManager
 
 from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
 
 
 PATH_HEARTBEAT = "smarthome/heartbeat"
@@ -71,6 +73,10 @@ class ApiManager(Subscriber):
         except ClientDoesntExistsError:
             pass
 
+        client_id = req.get_sender()
+
+        self._logger.info(f"Syncing client {client_id}")
+
         runtime_id = req.get_payload()["runtime_id"]
         port_mapping = req.get_payload()["port_mapping"]
         boot_mode = req.get_payload()["boot_mode"]
@@ -78,7 +84,7 @@ class ApiManager(Subscriber):
         sw_commit = req.get_payload()["sw_commit"]
         sw_branch = req.get_payload()["sw_branch"]
 
-        new_client = SmarthomeClient(name=req.get_sender(),
+        new_client = SmarthomeClient(name=client_id,
                                      boot_mode=boot_mode,
                                      runtime_id=runtime_id,
                                      flash_date=sw_uploaded,
@@ -88,7 +94,17 @@ class ApiManager(Subscriber):
 
         gadgets = req.get_payload()["gadgets"]
 
+        factory = GadgetFactory()
         for gadget in gadgets:
-            pass
+            try:
+                gadget_type = GadgetIdentifier(gadget["type"])
+            except ValueError:
+                self._logger.error(f"Could not create Gadget from type index '{gadget['type']}'")
+                continue
+            buf_gadget = factory.create_gadget(gadget_type,
+                                               gadget["name"],
+                                               client_id,
+                                               runtime_id,
+                                               gadget["characteristics"])
 
         self._clients.add_client(new_client)

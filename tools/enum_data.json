@@ -3,7 +3,7 @@
     "gadget_identifier": {
       "description": "A number identifier for every gadget type",
       "elements": [
-        "err_type",
+        "any_gadget",
         "lamp_neopixel_basic",
         "lamp_basic",
         "fan_westinghouse_ir",

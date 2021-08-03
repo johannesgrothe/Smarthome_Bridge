@@ -1,5 +1,7 @@
 """Module to contain the gadget class"""
 from typing import Optional
+import logging
+from abc import ABCMeta, abstractmethod
 
 from smarthome_bridge.characteristic import Characteristic
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
@@ -15,30 +17,54 @@ class CharacteristicNotPresentError(Exception):
         super().__init__(f"Characteristic {c_type} is does not exist in this gadget")
 
 
-class Gadget:
+class Gadget(object, metaclass=ABCMeta):
     _characteristics: [Characteristic]
     _name: str
     _type: GadgetIdentifier
     _host_client: str
-    _host_client_runtime_id: int  # TODO: rauskanten
+    _logger: logging.Logger
 
     def __init__(self,
                  name: str,
                  g_type: GadgetIdentifier,
                  host_client: str,
-                 host_client_runtime_id: int,
                  characteristics: list[Characteristic]):
         self._name = name
         self._type = g_type
         self._host_client = host_client
-        self._host_client_runtime_id = host_client_runtime_id
         self._characteristics = characteristics
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def __del__(self):
         pass
         # while self._characteristics:
         #     characteristic = self._characteristics.pop()
         #     characteristic.__del__()
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, self.__class__):
+            return self.get_name() == other.get_name() and\
+                   self.get_type() == other.get_type() and\
+                   self.get_host_client() == other.get_host_client() and\
+                   self._characteristics_are_equal(other)
+        return NotImplemented
+
+    def _characteristics_are_equal(self, other) -> bool:
+        """
+        Compares the characteristics of this gadget with the characteristics of another one
+
+        :param other: Gadget to compare characteristics with
+        :return: Whether the characteristics are equal
+        """
+        if not len(self.get_characteristic_types()) == len(other.get_characteristic_types()):
+            return False
+        for c_type in self.get_characteristic_types():
+            if self.get_characteristic(c_type) is None or other.get_characteristic(c_type) is None:
+                return False
+            if not self.get_characteristic(c_type) == other.get_characteristic(c_type):
+                return False
+        return True
 
     def get_characteristic(self, c_type: CharacteristicIdentifier) -> Optional[Characteristic]:
         """
@@ -51,18 +77,6 @@ class Gadget:
             if characteristic.get_type() == c_type:
                 return characteristic
         return None
-
-    def add_characteristic(self, characteristic: Characteristic):
-        """
-        Add a characteristic to a gadget
-
-        :param characteristic: The characteristic to add
-        :return: None
-        :raises CharacteristicAlreadyPresentError: If characteristic to add already exists in this gadget
-        """
-        if characteristic.get_type() in [x.get_type() for x in self._characteristics]:
-            raise CharacteristicAlreadyPresentError(characteristic.get_type())
-        self._characteristics.append(characteristic)
 
     def update_characteristic(self, c_type: CharacteristicIdentifier, step_value: int) -> bool:
         """

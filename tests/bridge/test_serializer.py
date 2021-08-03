@@ -7,6 +7,8 @@ from smarthome_bridge.smarthomeclient import SmarthomeClient
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 
+from test_helpers.gadget_fixtures import *
+
 # TODO: Test serialized elements with json schemas
 
 C_NAME = "test_client"
@@ -16,16 +18,6 @@ C_BRANCH = None
 C_COMMIT = None
 C_PORT_MAPPING = {}
 C_BOOT_MODE = 1
-
-CHA_TYPE = CharacteristicIdentifier.fanSpeed
-CHA_MIN = 0
-CHA_MAX = 100
-CHA_STEPS = 4
-
-G_NAME = "test_gadget"
-G_TYPE = GadgetIdentifier.fan_westinghouse_ir
-G_HOST_CLIENT = C_NAME
-G_HOST_CLIENT_RUNTIME_ID = C_RUNTIME_ID
 
 
 @pytest.fixture()
@@ -47,27 +39,6 @@ def test_client():
     # client.__del__()
 
 
-@pytest.fixture()
-def test_characteristic():
-    characteristic = Characteristic(c_type=CHA_TYPE,
-                                    min_val=CHA_MIN,
-                                    max_val=CHA_MAX,
-                                    steps=CHA_STEPS)
-    yield characteristic
-    # characteristic.__del__()
-
-
-@pytest.fixture()
-def test_gadget(test_characteristic):
-    gadget = Gadget(name=G_NAME,
-                    g_type=G_TYPE,
-                    host_client=G_HOST_CLIENT,
-                    host_client_runtime_id=G_HOST_CLIENT_RUNTIME_ID,
-                    characteristics=[test_characteristic])
-    yield gadget
-    gadget.__del__()
-
-
 @pytest.mark.bridge
 def test_serializer_client(serializer: Serializer, test_client: SmarthomeClient):
     serialized_data = serializer.serialize_client(test_client)
@@ -75,12 +46,12 @@ def test_serializer_client(serializer: Serializer, test_client: SmarthomeClient)
 
 
 @pytest.mark.bridge
-def test_serializer_characteristic(serializer: Serializer, test_characteristic: Characteristic):
-    serialized_data = serializer.serialize_characteristic(test_characteristic)
+def test_serializer_characteristic(serializer: Serializer, f_characteristic_fan_speed: Characteristic):
+    serialized_data = serializer.serialize_characteristic(f_characteristic_fan_speed)
     assert serialized_data != {}
 
 
 @pytest.mark.bridge
-def test_serializer_gadget(serializer: Serializer, test_gadget: Gadget):
-    serialized_data = serializer.serialize_gadget(test_gadget)
+def test_serializer_gadget(serializer: Serializer, f_any_gadget: Gadget):
+    serialized_data = serializer.serialize_gadget(f_any_gadget)
     assert serialized_data != {}

@@ -39,7 +39,7 @@ def test_smarthome_client_getters(client: SmarthomeClient):
     assert client.get_sw_commit() == CLIENT_SW_COMMIT
     assert client.get_sw_flash_time() == CLIENT_FLASH_DATE
     assert client.get_port_mapping() == CLIENT_PORT_MAPPING
-    assert client.serialized()
+    assert client.get_runtime_id() == RUNTIME_ID
 
 
 @pytest.mark.bridge
@@ -52,5 +52,6 @@ def test_smarthome_client_last_connected(client: SmarthomeClient):
     assert client.is_active() is True
     time.sleep(0.2)
     assert client.is_active() is False
-
+    client.update_runtime_id(RUNTIME_ID+1)
+    assert client.get_runtime_id() != RUNTIME_ID
     assert first_trigger.replace(microsecond=0) == client.get_last_connected().replace(microsecond=0)

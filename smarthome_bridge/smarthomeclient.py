@@ -116,22 +116,6 @@ class SmarthomeClient:
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
         self.__runtime_id = runtime_id
 
-    def serialized(self) -> dict:
-        """Returns a serialized version of the client"""
-        out_date = None
-        if self.__flash_time is not None:
-            out_date = self.__flash_time.strftime("%Y-%m-%d %H:%M:%S")
-
-        return {"name": self.__name,
-                "created": self.__created.strftime("%Y-%m-%d %H:%M:%S"),
-                "last_connected": self.__last_connected.strftime("%Y-%m-%d %H:%M:%S"),
-                "is_active": self.is_active(),
-                "boot_mode": self.__boot_mode,
-                "sw_uploaded": out_date,
-                "sw_version": self.__software_commit,
-                "sw_branch": self.__software_branch,
-                "port_mapping": self.__port_mapping}
-
     def get_port_mapping(self) -> dict:
         """Returns the port mapping of the client"""
         return self.__port_mapping

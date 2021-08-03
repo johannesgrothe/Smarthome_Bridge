@@ -7,7 +7,7 @@ import enum
 
 class GadgetIdentifier(enum.IntEnum):
     """A number identifier for every gadget type"""
-    err_type = 0
+    any_gadget = 0
     lamp_neopixel_basic = 1
     lamp_basic = 2
     fan_westinghouse_ir = 3
@@ -21,7 +21,7 @@ class GadgetIdentifier(enum.IntEnum):
 def gadget_identifier_to_str(in_ident: GadgetIdentifier) -> str:
     """Translates a enum identifier to a string identifier"""
     switcher = {
-        GadgetIdentifier.err_type: "err_type",
+        GadgetIdentifier.any_gadget: "any_gadget",
         GadgetIdentifier.lamp_neopixel_basic: "lamp_neopixel_basic",
         GadgetIdentifier.lamp_basic: "lamp_basic",
         GadgetIdentifier.fan_westinghouse_ir: "fan_westinghouse_ir",
@@ -31,13 +31,13 @@ def gadget_identifier_to_str(in_ident: GadgetIdentifier) -> str:
         GadgetIdentifier.sensor_motion_hr501: "sensor_motion_hr501",
         GadgetIdentifier.sensor_temperature_dht: "sensor_temperature_dht"
     }
-    return switcher.get(in_ident, "err_type")
+    return switcher.get(in_ident, "any_gadget")
 
 
 def str_to_gadget_identifier(in_ident: str) -> GadgetIdentifier:
     """Translates a string identifier to a enum identifier"""
     switcher = {
-        "err_type": GadgetIdentifier.err_type,
+        "any_gadget": GadgetIdentifier.any_gadget,
         "lamp_neopixel_basic": GadgetIdentifier.lamp_neopixel_basic,
         "lamp_basic": GadgetIdentifier.lamp_basic,
         "fan_westinghouse_ir": GadgetIdentifier.fan_westinghouse_ir,
@@ -47,7 +47,7 @@ def str_to_gadget_identifier(in_ident: str) -> GadgetIdentifier:
         "sensor_motion_hr501": GadgetIdentifier.sensor_motion_hr501,
         "sensor_temperature_dht": GadgetIdentifier.sensor_temperature_dht
     }
-    return switcher.get(in_ident, GadgetIdentifier.err_type)
+    return switcher.get(in_ident, GadgetIdentifier.any_gadget)
 
 # endregion
 

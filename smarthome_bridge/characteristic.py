@@ -13,7 +13,7 @@ class CharacteristicInitError(Exception):
         super().__init__(message)
 
 
-class Characteristic:
+class Characteristic(object):
     _type: CharacteristicIdentifier
     _min: int
     _max: int
@@ -44,6 +44,21 @@ class Characteristic:
             self._val = value
         else:
             self._val = self._min
+
+    def __eq__(self, other):
+        """
+        Compares another characteristic with this one.
+        Does not take into consideration the value of the characteristic.
+
+        :param other: Other object to compare with this one
+        :return: Whether the two characteristic is equal with this one
+        """
+        if isinstance(other, self.__class__):
+            return self.get_type() == other.get_type() and \
+                   self.get_min() == other.get_min() and \
+                   self.get_max() == other.get_max() and \
+                   self.get_steps() == other.get_steps()
+        return NotImplemented
 
     def set_step_value(self, value: int) -> bool:
         """
