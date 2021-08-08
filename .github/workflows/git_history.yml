@@ -1,0 +1,24 @@
+name: GitHistoryCheck
+
+on: [pull_request]
+
+jobs:
+
+  tests:
+  
+    name: Check Semi-linear History
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Git Fetch
+      run: git fetch origin
+
+    - name: Test Print
+      run: git branch -a
+      
+    - name: Check History
+      run: git merge-base --is-ancestor origin/master HEAD
