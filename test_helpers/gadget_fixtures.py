@@ -27,7 +27,6 @@ ANY_HOST = "test_host"
 @pytest.fixture()
 def f_any_gadget(f_characteristic_fan_speed):
     gadget = AnyGadget(name=ANY_NAME,
-                       g_type=ANY_TYPE,
                        host_client=ANY_HOST,
                        characteristics=[f_characteristic_fan_speed])
     yield gadget

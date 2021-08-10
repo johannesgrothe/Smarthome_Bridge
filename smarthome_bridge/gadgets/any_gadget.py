@@ -6,10 +6,9 @@ class AnyGadget(Gadget):
 
     def __init__(self,
                  name: str,
-                 g_type: GadgetIdentifier,
                  host_client: str,
                  characteristics: list[Characteristic]):
         super().__init__(name,
-                         g_type,
+                         GadgetIdentifier.any_gadget,
                          host_client,
                          characteristics)

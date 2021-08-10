@@ -1,5 +1,5 @@
 """Module to contain the gadget class"""
-from typing import Optional
+from typing import Optional, Callable
 import logging
 from abc import ABCMeta, abstractmethod
 
@@ -44,11 +44,26 @@ class Gadget(object, metaclass=ABCMeta):
     def __eq__(self, other):
         """Overrides the default implementation"""
         if isinstance(other, self.__class__):
-            return self.get_name() == other.get_name() and\
-                   self.get_type() == other.get_type() and\
-                   self.get_host_client() == other.get_host_client() and\
-                   self._characteristics_are_equal(other)
+            return self.equals(other)
         return NotImplemented
+
+    def equals(self, other, ignore: list[Callable] = []) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
+        if self.get_name not in ignore:
+            if self.get_name() != other.get_name():
+                return False
+
+        if self.get_type not in ignore:
+            if self.get_type() != other.get_type():
+                return False
+
+        if self.get_host_client not in ignore:
+            if self.get_host_client() != other.get_host_client():
+                return False
+
+        return self._characteristics_are_equal(other)
 
     def _characteristics_are_equal(self, other) -> bool:
         """

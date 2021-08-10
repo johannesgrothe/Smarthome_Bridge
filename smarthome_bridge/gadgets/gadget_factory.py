@@ -25,4 +25,4 @@ class GadgetFactory:
             pass
         else:
             self._logger.info("No valid GadgetIdentifier found, Creating 'AnyGadget'")
-            return AnyGadget(name, gadget_type, host_client, characteristics)
+            return AnyGadget(name, host_client, characteristics)

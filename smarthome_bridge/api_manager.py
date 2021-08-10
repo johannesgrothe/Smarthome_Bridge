@@ -5,27 +5,32 @@ from network.request import Request
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
 
+from logging_interface import LoggingInterface
 from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError, ClientAlreadyExistsError
 from smarthome_bridge.network_manager import NetworkManager
 
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
+from smarthome_bridge.gadget_manager import GadgetManager
 
 
 PATH_HEARTBEAT = "smarthome/heartbeat"
 PATH_SYNC = "smarthome/sync"
 
 
-class ApiManager(Subscriber):
+class ApiManager(Subscriber, LoggingInterface):
 
     _logger: logging.Logger
     _validator: Validator
     _clients: ClientManager
+    _gadgets: GadgetManager
     _network: NetworkManager
 
-    def __init__(self, clients: ClientManager, network: NetworkManager):
+    def __init__(self, clients: ClientManager, gadgets: GadgetManager, network: NetworkManager):
+        super().__init__()
         self._clients = clients
+        self._gadgets = gadgets
         self._network = network
         self._network.subscribe(self)
         self._validator = Validator()
@@ -104,7 +109,8 @@ class ApiManager(Subscriber):
             buf_gadget = factory.create_gadget(gadget_type,
                                                gadget["name"],
                                                client_id,
-                                               runtime_id,
                                                gadget["characteristics"])
+
+            self._gadgets.add_gadget(buf_gadget)
 
         self._clients.add_client(new_client)
