@@ -1,5 +1,7 @@
 import json
 import threading
+import random
+from queue import Queue
 import paho.mqtt.client as mqtt
 from typing import Optional
 from datetime import timedelta, datetime
@@ -10,6 +12,11 @@ from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher,
 from network.mqtt_credentials_container import MqttCredentialsContainer
 
 
+# https://www.npmjs.com/package/homebridge-mqtt
+# https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/ServiceDefinitions.ts
+# https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/CharacteristicDefinitions.ts
+
+
 class HomeBridgeRequest:
     topic: str
     message: dict
@@ -17,6 +24,19 @@ class HomeBridgeRequest:
     def __init__(self, topic: str, message: dict):
         self.topic = topic
         self.message = message
+        if "request_id" not in self.message:
+            self.message["request_id"] = 0
+
+    def set_request_id(self, req_id: int):
+        self.message["request_id"] = req_id
+
+    def get_request_id(self) -> int:
+        return self.message["request_id"]
+
+    def get_ack(self) -> Optional[bool]:
+        if "ack" not in self.message:
+            return None
+        return self.message["ack"]
 
 
 class MqttConnectionError(Exception):
@@ -27,6 +47,11 @@ class MqttConnectionError(Exception):
 class NoResponseError(Exception):
     def __init__(self, req: HomeBridgeRequest):
         super().__init__(f"Received no response to '{req.topic}': {req.message}")
+
+
+class NoAckError(Exception):
+    def __init__(self, req: HomeBridgeRequest):
+        super().__init__(f"Received a response with no 'ack' flag from '{req.topic}': {req.message}")
 
 
 class AckFalseError(Exception):
@@ -41,7 +66,8 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
     _mqtt_client = mqtt.Client
     _mqtt_credentials: MqttCredentialsContainer
 
-    _last_received_ack: Optional[bool]
+    _received_responses: Queue
+
 
     def __init__(self, update_connector: GadgetUpdateConnector, network_name: str,
                  mqtt_credentials: MqttCredentialsContainer):
@@ -62,7 +88,8 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         self._mqtt_client.loop_start()
         self._mqtt_client.on_message = self._gen_message_handler()
         self._mqtt_client.subscribe("homebridge/#")
-        self._last_received_ack = None
+
+        self._received_responses: Queue
 
     def update_gadget(self, gadget: Gadget):
         pass
@@ -92,7 +119,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
             self._handle_request(buf_req)
         return on_message
 
-    def _send_request(self, req: HomeBridgeRequest, wait_for_response: Optional[int] = None):
+    def _send_request(self, req: HomeBridgeRequest, wait_for_response: Optional[int] = None) -> HomeBridgeRequest:
         """
         Sends a homebridge request and waits for an answer if wanted
 
@@ -103,16 +130,30 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         :raises NoResponseError: If wait_for_response != None and no response was received
         """
         with self._send_lock:
+            req_id: random.randint(0, 10000)
+            if wait_for_response is not None:
+                req.set_request_id(req_id)
             self._mqtt_client.publish(req.topic, json.dumps(req.message))
             if wait_for_response is not None:
                 start_time = datetime.now()
-                self._last_received_ack = None
+                self._received_responses = Queue()
                 while start_time + timedelta(seconds=wait_for_response) > datetime.now():
-                    if self._last_received_ack is not None:
-                        if self._last_received_ack is True:
-                            return
-                        raise AckFalseError(req)
+                    if not self._received_responses.empty():
+                        res: HomeBridgeRequest = self._received_responses.get()
+                        if res.get_request_id() == req_id:
+                            return res
                 raise NoResponseError(req)
+
+    def _load_gadget_data(self) -> list[Gadget]:
+        sync_req = HomeBridgeRequest("homebridge/to/get", {"name": "*"})
+        try:
+            gadget_data = self._send_request(sync_req)
+        except NoResponseError:
+            self._logger.error("Cannot sync gadget data with homebridge")
+
+    def _decode_gadget_from_json(self, name: str, data: dict):
+
+
 
     def _register_gadget(self, gadget: Gadget):
         """Registers a gadget on the homebridge remote"""
@@ -165,9 +206,8 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
 
     def _handle_request(self, req: HomeBridgeRequest):
         # Just store request in the response queue for waiting processes to access
-        if req.topic == "homebridge/from/response" and "ack" in req.message:
-            if "ack" in req.message:
-                self._logger.debug(f"Received ack: {req.message['ack']}")
+        if req.topic == "homebridge/from/response":
+            self._received_responses.put(req)
             return
 
         # Check handle characteristic updates
