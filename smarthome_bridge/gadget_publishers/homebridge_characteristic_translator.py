@@ -21,7 +21,7 @@ class HomebridgeCharacteristicTranslator:
         """
         switcher = {
             1: "On",
-            2: "rotationSpeed",
+            2: "RotationSpeed",
             3: "Brightness",
             4: "Hue",
             5: "Saturation"
@@ -42,7 +42,7 @@ class HomebridgeCharacteristicTranslator:
         """
         switcher = {
             "On": CharacteristicIdentifier(1),
-            "rotationSpeed": CharacteristicIdentifier(2),
+            "RotationSpeed": CharacteristicIdentifier(2),
             "Brightness": CharacteristicIdentifier(3),
             "Hue": CharacteristicIdentifier(4),
             "Saturation": CharacteristicIdentifier(5)

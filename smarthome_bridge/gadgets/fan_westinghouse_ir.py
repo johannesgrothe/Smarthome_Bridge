@@ -5,8 +5,9 @@ class FanWestinghouseIR(Fan):
     def __init__(self,
                  name: str,
                  host_client: str,
-                 characteristics: list[Characteristic]):
+                 status: Characteristic,
+                 fan_speed: Characteristic):
         super().__init__(name,
                          GadgetIdentifier.fan_westinghouse_ir,
                          host_client,
-                         characteristics)
+                         [status, fan_speed])

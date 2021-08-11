@@ -2,6 +2,7 @@ from logging_interface import LoggingInterface
 
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier, Characteristic, CharacteristicIdentifier
 from smarthome_bridge.gadgets.fan import Fan
+from smarthome_bridge.gadgets.lamp import Lamp
 from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator
 
 # https://www.npmjs.com/package/homebridge-mqtt
@@ -33,6 +34,9 @@ class HomebridgeEncoder(LoggingInterface):
     def encode_gadget(self, gadget: Gadget) -> dict:
         if issubclass(gadget.__class__, Fan):
             return self._encode_fan(gadget)
+        elif issubclass(gadget.__class__, Lamp):
+            return self._encode_lamp(gadget)
+        raise GadgetEncodeError(gadget)
 
     @staticmethod
     def _get_base_info(gadget: Gadget) -> dict:
@@ -45,7 +49,18 @@ class HomebridgeEncoder(LoggingInterface):
         out_dict = self._get_base_info(gadget)
         out_dict["service"] = "Fan"
 
-        for characteristic_type in [CharacteristicIdentifier.status, Cha]:
+        for characteristic_type in [CharacteristicIdentifier.status, CharacteristicIdentifier.fanSpeed]:
+            hb_name = HomebridgeCharacteristicTranslator.type_to_string(characteristic_type)
+            out_dict[hb_name] = self._encode_characteristic(gadget, characteristic_type)
+        return out_dict
+
+    def _encode_lamp(self, gadget: Gadget) -> dict:
+        out_dict = self._get_base_info(gadget)
+        out_dict["service"] = "Lightbulb"
+
+        for characteristic_type in [CharacteristicIdentifier.status,
+                                    CharacteristicIdentifier.brightness,
+                                    CharacteristicIdentifier.hue]:
             hb_name = HomebridgeCharacteristicTranslator.type_to_string(characteristic_type)
             out_dict[hb_name] = self._encode_characteristic(gadget, characteristic_type)
         return out_dict
@@ -53,6 +68,8 @@ class HomebridgeEncoder(LoggingInterface):
     @staticmethod
     def _encode_characteristic(gadget: Gadget, characteristic_type: CharacteristicIdentifier) -> dict:
         gadget_characteristic = gadget.get_characteristic(characteristic_type)
+        value_range = gadget_characteristic.get_max() - gadget_characteristic.get_min()
+        min_step = value_range // gadget_characteristic.get_steps()
         return {"minValue": gadget_characteristic.get_min(),
                 "maxValue": gadget_characteristic.get_max(),
-                "minStep": gadget_characteristic.get_steps()}
+                "minStep": min_step}

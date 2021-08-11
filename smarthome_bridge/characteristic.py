@@ -21,7 +21,7 @@ class Characteristic(object):
     _val: int
 
     def __init__(self, c_type: CharacteristicIdentifier, min_val: int, max_val: int,
-                 steps: int, value: Optional[int] = None):
+                 steps: Optional[int] = None, value: Optional[int] = None):
         """
         :param c_type: Type of the Characteristic
         :param min_val: Minimum true value the characteristic can have (at step value 0)
@@ -34,12 +34,17 @@ class Characteristic(object):
         """
         if min_val >= max_val:
             raise CharacteristicInitError("'min_val' must be bigger than 'max_val'")
-        if steps <= 0:
+        if steps is not None and steps <= 0:
             raise CharacteristicInitError("'steps' must be bigger than 0")
         self._min = min_val
         self._max = max_val
-        self._steps = steps
         self._type = c_type
+
+        if steps is not None:
+            self._steps = steps
+        else:
+            self._steps = self._max - self._min
+
         if value is not None:
             self._val = value
         else:
