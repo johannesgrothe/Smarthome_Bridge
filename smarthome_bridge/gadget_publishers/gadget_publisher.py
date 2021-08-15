@@ -6,6 +6,21 @@ from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier, Characteri
 from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
 
 
+class CharacteristicUpdateError(Exception):
+    def __init__(self, gadget_name: str, characteristic: CharacteristicIdentifier):
+        super().__init__(f"Failed to update characteristic '{characteristic}' on '{gadget_name}'")
+
+
+class GadgetDeletionError(Exception):
+    def __init__(self, gadget_name: str):
+        super().__init__(f"Failed to delete gadget '{gadget_name}'")
+
+
+class GadgetCreationError(Exception):
+    def __init__(self, gadget_name: str):
+        super().__init__(f"Failed create gadget '{gadget_name}' on external source")
+
+
 class GadgetPublisher(LoggingInterface):
 
     _gadgets: list[Gadget]
@@ -17,7 +32,7 @@ class GadgetPublisher(LoggingInterface):
         self._update_connector = update_connector
 
     @abstractmethod
-    def handle_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier) -> bool:
+    def handle_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
         """
         Updates a characteristic on a gadget.
         The gadget is passed to allow to check if anything has changed in the basic gadget structure.
@@ -25,6 +40,18 @@ class GadgetPublisher(LoggingInterface):
         :param gadget: The gadget the changes are made on
         :param characteristic: The characteristic that has changed
         :return: None
+        :raises CharacteristicUpdateError: If any error occurred during updating
+        """
+        pass
+
+    @abstractmethod
+    def create_gadget(self, gadget: Gadget):
+        """
+        Creates/Saves a new gadget
+
+        :param gadget: Gadget to create
+        :return: None
+        :raises GadgetCreationError: If any error occurs during gadget creation
         """
         pass
 
@@ -35,6 +62,7 @@ class GadgetPublisher(LoggingInterface):
 
         :param gadget_name: Name of the gadget to remove
         :return: None
+        :raises GadgetDeletionError: If any error occurred during deleting
         """
         pass
 

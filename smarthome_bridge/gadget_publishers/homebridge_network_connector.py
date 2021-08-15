@@ -9,6 +9,8 @@ from typing import Optional, Callable
 from logging_interface import LoggingInterface
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from smarthome_bridge.gadget_publishers.homebridge_request import HomeBridgeRequest
+from smarthome_bridge.gadgets.gadget import Gadget
+from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder
 
 
 class MqttConnectionError(Exception):
@@ -69,6 +71,10 @@ class HomebridgeNetworkConnector(LoggingInterface):
         self._mqtt_client.on_message = self._gen_message_handler()
         self._mqtt_client.subscribe("homebridge/#")
 
+    def __del__(self):
+        self._mqtt_client.disconnect()
+        self._mqtt_client.__del__()
+
     def _gen_message_handler(self):
         """
         Generates a response method to attach to the mqtt-connector as 'on_message' callback
@@ -120,7 +126,7 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :raises NoResponseError: If wait_for_response != None and no response was received
         """
         with self._send_lock:
-            req_id: random.randint(0, 10000)
+            req_id = random.randint(0, 10000)
             if wait_for_response is not None:
                 req.set_request_id(req_id)
             self._mqtt_client.publish(topic=req.topic, payload=json.dumps(req.message))
@@ -144,6 +150,18 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :return: None
         """
         self._characteristic_update_callback = callback
+
+    def add_gadget(self, gadget: Gadget) -> bool:
+        buf_payload = HomebridgeEncoder().encode_gadget(gadget)
+        buf_req = HomeBridgeRequest("homebridge/to/add", buf_payload)
+        try:
+            response = self._send_request(buf_req, self._response_timeout)
+            if response.get_ack() is True:
+                return True
+            return False
+        except NoResponseError as err:
+            self._logger.error(err.args[0])
+            return False
 
     def remove_gadget(self, gadget_name: str) -> bool:
         """

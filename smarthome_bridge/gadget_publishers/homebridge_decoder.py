@@ -1,6 +1,6 @@
 from logging_interface import LoggingInterface
-from smarthome_bridge.gadgets.gadget import Gadget
 from smarthome_bridge.characteristic import Characteristic
+from smarthome_bridge.gadgets.any_gadget import AnyGadget
 from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator,\
     CharacteristicParsingError
 
@@ -10,12 +10,13 @@ class HomebridgeDecoder(LoggingInterface):
     def __init__(self):
         super().__init__()
 
-    def decode_characteristics(self, json: dict) -> list[Characteristic]:
+    def decode_characteristics(self, gadget_name: str, json: dict) -> AnyGadget:
         """
         Parses the json from homebridge-mqtt into a list of characteristic objects
 
+        :param gadget_name: Name of the gadget to create
         :param json: The json to parse
-        :return: The list of characteristics parsed
+        :return: A generic gadget with the passed name and parsed characteristics
         """
         parsed_json = self._parse_gadget_json(json)
         gadget_characteristics = []
@@ -32,8 +33,11 @@ class HomebridgeDecoder(LoggingInterface):
                 gadget_characteristics.append(characteristic)
             except CharacteristicParsingError as err:
                 self._logger.error(err.args[0])
-        gadget_characteristics.sort()
-        return gadget_characteristics
+
+        out_gadget = AnyGadget(gadget_name,
+                               "<unknown>",
+                               gadget_characteristics)
+        return out_gadget
 
     @staticmethod
     def _parse_gadget_json(data: dict) -> dict:

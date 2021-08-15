@@ -33,6 +33,7 @@ class Gadget(object, metaclass=ABCMeta):
         self._type = g_type
         self._host_client = host_client
         self._characteristics = characteristics
+        self._characteristics.sort()
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __del__(self):
@@ -63,23 +64,7 @@ class Gadget(object, metaclass=ABCMeta):
             if self.get_host_client() != other.get_host_client():
                 return False
 
-        return self._characteristics_are_equal(other)
-
-    def _characteristics_are_equal(self, other) -> bool:
-        """
-        Compares the characteristics of this gadget with the characteristics of another one
-
-        :param other: Gadget to compare characteristics with
-        :return: Whether the characteristics are equal
-        """
-        if not len(self.get_characteristic_types()) == len(other.get_characteristic_types()):
-            return False
-        for c_type in self.get_characteristic_types():
-            if self.get_characteristic(c_type) is None or other.get_characteristic(c_type) is None:
-                return False
-            if not self.get_characteristic(c_type) == other.get_characteristic(c_type):
-                return False
-        return True
+        return self.get_characteristics() == other.get_characteristics()
 
     def get_characteristic(self, c_type: CharacteristicIdentifier) -> Optional[Characteristic]:
         """
@@ -92,6 +77,14 @@ class Gadget(object, metaclass=ABCMeta):
             if characteristic.get_type() == c_type:
                 return characteristic
         return None
+
+    def get_characteristics(self) -> list[Characteristic]:
+        """
+        Returns the gadgets characteristics
+
+        :return: The gadgets characteristics
+        """
+        return self._characteristics
 
     def update_characteristic(self, c_type: CharacteristicIdentifier, step_value: int) -> bool:
         """
