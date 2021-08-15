@@ -51,10 +51,15 @@ class HomebridgeDecoder(LoggingInterface):
         for service in data["characteristics"]:
             for characteristic in data["characteristics"][service]:
                 characteristic_data[characteristic] = {}
-                value = int(data["characteristics"][service][characteristic])
+                try:
+                    value = int(data["characteristics"][service][characteristic])
+                except ValueError:
+                    value = None
                 characteristic_data[characteristic]["value"] = value
         for service in data["properties"]:
             for characteristic in data["properties"][service]:
                 for key in ["minValue", "maxValue", "minStep"]:
                     characteristic_data[characteristic][key] = data["properties"][service][characteristic][key]
+                if characteristic_data[characteristic]["value"] is None:
+                    characteristic_data[characteristic]["value"] = characteristic_data[characteristic]["minValue"]
         return characteristic_data

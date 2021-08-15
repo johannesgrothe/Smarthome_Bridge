@@ -197,7 +197,7 @@ class HomebridgeNetworkConnector(LoggingInterface):
             self._logger.error(err.args[0])
             return None
 
-    def update_characteristic(self, gadget_name: str, characteristic: str, value: int) -> bool:
+    def update_characteristic(self, gadget_name: str, characteristic: str, value: int):
         """
         Updates a characteristic of the selected gadget on the external data source
 
@@ -211,11 +211,4 @@ class HomebridgeNetworkConnector(LoggingInterface):
                        "characteristic": characteristic,
                        "value": value}
         buf_req = HomeBridgeRequest("homebridge/to/set", buf_payload)
-        try:
-            response = self._send_request(buf_req, self._response_timeout)
-            if response.get_ack() is True:
-                return True
-            return False
-        except NoResponseError as err:
-            self._logger.error(err.args[0])
-            return False
+        self._send_request(buf_req, None)

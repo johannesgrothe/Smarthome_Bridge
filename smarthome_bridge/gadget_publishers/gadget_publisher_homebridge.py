@@ -35,6 +35,8 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         adding_successful = self._network_connector.add_gadget(gadget)
         if not adding_successful:
             raise GadgetCreationError(gadget.get_name())
+        for characteristic in gadget.get_characteristics():
+            self._update_characteristic(gadget, characteristic.get_type())
 
     def _parse_characteristic_update(self, gadget_name: str, characteristic_name: str, value: int):
         characteristic = HomebridgeCharacteristicTranslator.str_to_type(characteristic_name)
@@ -43,6 +45,13 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
     @staticmethod
     def _gadget_needs_update(local_gadget: Gadget, fetched_gadget: Gadget):
         return local_gadget.get_characteristics() == fetched_gadget.get_characteristics()
+
+    def _update_characteristic(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
+        characteristic_value = gadget.get_characteristic(characteristic).get_true_value()
+        characteristic_str = HomebridgeCharacteristicTranslator.type_to_string(characteristic)
+        self._network_connector.update_characteristic(gadget.get_name(),
+                                                      characteristic_str,
+                                                      characteristic_value)
 
     def handle_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
         fetched_gadget_data = self._network_connector.get_gadget_info(gadget.get_name())
@@ -74,10 +83,4 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                         raise CharacteristicUpdateError(gadget.get_name(), characteristic)
 
                 else:
-                    characteristic_value = gadget.get_characteristic(characteristic).get_true_value()
-                    characteristic_str = HomebridgeCharacteristicTranslator.type_to_string(characteristic)
-                    update_successful = self._network_connector.update_characteristic(gadget.get_name(),
-                                                                                      characteristic_str,
-                                                                                      characteristic_value)
-                    if not update_successful:
-                        raise CharacteristicUpdateError(gadget.get_name(), characteristic)
+                    self._update_characteristic(gadget, characteristic)
