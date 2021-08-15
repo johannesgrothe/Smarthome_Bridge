@@ -32,14 +32,14 @@ ANY_NAME = "test_any_gadget"
 FAN_NAME = "test_fan"
 FAN_SPEED_MIN = 0
 FAN_SPEED_MAX = 100
-FAN_SPEED_STEPS = 4
+FAN_SPEED_STEPS = 3
 
 FAN_RESULT = {
     "name": FAN_NAME,
     "service_name": FAN_NAME,
     "service": "Fan",
     "On": {"minValue": L_CHARACTERISTIC_MIN, "maxValue": L_STATUS_MAX, "minStep": 1},
-    "RotationSpeed": {"minValue": FAN_SPEED_MIN, "maxValue": FAN_SPEED_MAX, "minStep": 25}
+    "RotationSpeed": {"minValue": FAN_SPEED_MIN, "maxValue": FAN_SPEED_MAX, "minStep": 33}
 }
 
 
@@ -108,5 +108,5 @@ def test_homebridge_decoder_lamp(encoder: HomebridgeEncoder, lamp: LampNeopixelB
 
 
 @pytest.mark.bridge
-def test_homebridge_decoder_fan(encoder: HomebridgeEncoder, fan: LampNeopixelBasic):
+def test_homebridge_decoder_fan(encoder: HomebridgeEncoder, fan: FanWestinghouseIR):
     assert encoder.encode_gadget(fan) == FAN_RESULT

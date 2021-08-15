@@ -17,7 +17,7 @@ class GadgetPublisher(LoggingInterface):
         self._update_connector = update_connector
 
     @abstractmethod
-    def handle_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
+    def handle_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier) -> bool:
         """
         Updates a characteristic on a gadget.
         The gadget is passed to allow to check if anything has changed in the basic gadget structure.
@@ -29,7 +29,7 @@ class GadgetPublisher(LoggingInterface):
         pass
 
     @abstractmethod
-    def remove_gadget(self, gadget_name: str):
+    def remove_gadget(self, gadget_name: str) -> bool:
         """
         Removes a gadget from the publishing interface
 
@@ -38,7 +38,7 @@ class GadgetPublisher(LoggingInterface):
         """
         pass
 
-    def _publish_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
+    def _publish_characteristic_update(self, gadget_name: str, characteristic: CharacteristicIdentifier, value: int):
         """
         Updates the parent object with new information
 
@@ -47,4 +47,4 @@ class GadgetPublisher(LoggingInterface):
         :return: None
         """
         self._logger.info(f"Publishing change at {characteristic} on {gadget.get_name()}")
-        self._update_connector.forward_characteristic_update(gadget, characteristic)
+        self._update_connector.forward_characteristic_update(gadget_name, characteristic, value)
