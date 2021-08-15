@@ -32,6 +32,7 @@ class HomebridgeDecoder(LoggingInterface):
                 gadget_characteristics.append(characteristic)
             except CharacteristicParsingError as err:
                 self._logger.error(err.args[0])
+        gadget_characteristics.sort()
         return gadget_characteristics
 
     @staticmethod
@@ -43,11 +44,13 @@ class HomebridgeDecoder(LoggingInterface):
         :return: the parsed json
         """
         characteristic_data = {}
-        for service in data["services"]:
-            for characteristic in data["services"][service]:
-                characteristic_data[characteristic]["value"] = int(data["services"][service][characteristic])
-        for service in data["services"]:
-            for characteristic in data["services"][service]:
+        for service in data["characteristics"]:
+            for characteristic in data["characteristics"][service]:
+                characteristic_data[characteristic] = {}
+                value = int(data["characteristics"][service][characteristic])
+                characteristic_data[characteristic]["value"] = value
+        for service in data["properties"]:
+            for characteristic in data["properties"][service]:
                 for key in ["minValue", "maxValue", "minStep"]:
-                    characteristic_data[characteristic][key] = data["services"][service][characteristic][key]
+                    characteristic_data[characteristic][key] = data["properties"][service][characteristic][key]
         return characteristic_data

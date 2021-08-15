@@ -65,6 +65,9 @@ class Characteristic(object):
                    self.get_steps() == other.get_steps()
         return NotImplemented
 
+    def __lt__(self, other) -> bool:
+        return self.get_type() < other.get_type()
+
     def set_step_value(self, value: int) -> bool:
         """
         Sets the step value of a characteristic. Has to be between level 0 and {steps}
