@@ -5,9 +5,13 @@ from typing import Optional
 
 from smarthome_bridge.bridge import Bridge
 
+from network.mqtt_credentials_container import MqttCredentialsContainer
 from network.mqtt_connector import MQTTConnector
 from network.socket_server import SocketServer
 from network.serial_server import SerialServer
+
+from smarthome_bridge.gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
+from smarthome_bridge.gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBridge
 
 
 def get_sender() -> str:
@@ -43,7 +47,10 @@ def main():
     bridge = Bridge(bridge_name)
 
     # MQTT
+    mqtt_credentials = None
     if args.mqtt_ip and args.mqtt_port:
+        mqtt_credentials = MqttCredentialsContainer(args.mqtt_ip, args.mqtt_port, args.mqtt_user, args.mqtt_pw)
+        # TODO use container in MQTTConnector
         mqtt = MQTTConnector(bridge_name, args.mqtt_ip, args.mqtt_port, args.mqtt_user, args.mqtt_pw)
         bridge.get_network_manager().add_connector(mqtt)
 
@@ -67,6 +74,13 @@ def main():
     if args.dummy_data:
         pass
         # bridge.add_dummy_data()
+
+    # HOMEBRIDGE GADGET PUBLISHER
+    if mqtt_credentials:
+        hb_network = HomebridgeNetworkConnector(bridge_name, mqtt_credentials, 3)
+        hb_publisher = GadgetPublisherHomeBridge(hb_network)
+
+    bridge.get_gadget_manager().add_gadget_publisher()
 
     while True:
         pass

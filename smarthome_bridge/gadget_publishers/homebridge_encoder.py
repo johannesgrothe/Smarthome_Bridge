@@ -32,6 +32,13 @@ class HomebridgeEncoder(LoggingInterface):
         super().__init__()
 
     def encode_gadget(self, gadget: Gadget) -> dict:
+        """
+        Encodes a gadget for an 'add'-request to homebridge
+
+        :param gadget: The gadget to generate the json for
+        :return: Json-representation of the gadget
+        :raises GadgetEncodeError: If gadget could not be encoded
+        """
         if issubclass(gadget.__class__, Fan):
             return self._encode_fan(gadget)
         elif issubclass(gadget.__class__, Lamp):

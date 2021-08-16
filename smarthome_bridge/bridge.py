@@ -3,6 +3,7 @@ import logging
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.client_manager import ClientManager
 from smarthome_bridge.api_manager import ApiManager
+from smarthome_bridge.gadget_manager import GadgetManager
 
 
 class Bridge:
@@ -11,6 +12,7 @@ class Bridge:
 
     _network_manager: NetworkManager
     _client_manager: ClientManager
+    _gadget_manager: GadgetManager
     _api: ApiManager
 
     def __init__(self, name: str):
@@ -19,6 +21,7 @@ class Bridge:
         self._logger.info("Starting bridge")
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
+        self._gadget_manager = GadgetManager([])
         self._api = ApiManager(self._client_manager, self._network_manager)
 
     def __del__(self):
@@ -32,3 +35,6 @@ class Bridge:
 
     def get_client_manager(self):
         return self._client_manager
+
+    def get_gadget_manager(self):
+        return self._gadget_manager

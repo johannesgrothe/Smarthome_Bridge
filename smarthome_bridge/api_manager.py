@@ -21,7 +21,6 @@ PATH_SYNC = "smarthome/sync"
 
 class ApiManager(Subscriber, LoggingInterface):
 
-    _logger: logging.Logger
     _validator: Validator
     _clients: ClientManager
     _gadgets: GadgetManager
@@ -45,7 +44,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._logger.info(f"Received Request at {req.get_path()}")
         switcher = {
             PATH_HEARTBEAT: self._handle_heartbeat,
-            PATH_SYNC: self._handle_sync
+            PATH_SYNC: self._handle_client_sync
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -67,7 +66,7 @@ class ApiManager(Subscriber, LoggingInterface):
             else:
                 client.trigger_activity()
 
-    def _handle_sync(self, req: Request):
+    def _handle_client_sync(self, req: Request):
         try:
             self._validator.validate(req.get_payload(), "bridge_sync_request")
         except ValidationError:
@@ -111,6 +110,9 @@ class ApiManager(Subscriber, LoggingInterface):
                                                client_id,
                                                gadget["characteristics"])
 
-            self._gadgets.add_gadget(buf_gadget)
+            self._gadgets.sync_gadget(buf_gadget)
 
         self._clients.add_client(new_client)
+
+    def _handle_gadget_sync(self, req: Request):
+        pass

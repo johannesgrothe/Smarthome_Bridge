@@ -10,7 +10,7 @@ from logging_interface import LoggingInterface
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from smarthome_bridge.gadget_publishers.homebridge_request import HomeBridgeRequest
 from smarthome_bridge.gadgets.gadget import Gadget
-from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder
+from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
 
 
 class MqttConnectionError(Exception):
@@ -152,7 +152,11 @@ class HomebridgeNetworkConnector(LoggingInterface):
         self._characteristic_update_callback = callback
 
     def add_gadget(self, gadget: Gadget) -> bool:
-        buf_payload = HomebridgeEncoder().encode_gadget(gadget)
+        try:
+            buf_payload = HomebridgeEncoder().encode_gadget(gadget)
+        except GadgetEncodeError as err:
+            self._logger.error(err.args[0])
+            return False
         buf_req = HomeBridgeRequest("homebridge/to/add", buf_payload)
         try:
             response = self._send_request(buf_req, self._response_timeout)

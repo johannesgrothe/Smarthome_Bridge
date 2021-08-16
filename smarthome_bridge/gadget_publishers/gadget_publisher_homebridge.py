@@ -1,5 +1,3 @@
-from typing import Optional
-
 from gadgetlib import CharacteristicIdentifier
 from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
     CharacteristicUpdateError, GadgetCreationError
@@ -21,10 +19,14 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
 
     _network_connector: HomebridgeNetworkConnector
 
-    def __init__(self, update_connector: GadgetUpdateConnector, network_connector: HomebridgeNetworkConnector):
-        super().__init__(update_connector)
+    def __init__(self, network_connector: HomebridgeNetworkConnector):
+        super().__init__()
         self._network_connector = network_connector
         self._network_connector.attach_characteristic_update_callback(self._parse_characteristic_update)
+
+    def __del__(self):
+        super().__del__()
+        self._network_connector.__del__()
 
     def remove_gadget(self, gadget_name: str):
         deletion_successful = self._network_connector.remove_gadget(gadget_name)
@@ -53,24 +55,27 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                                                       characteristic_str,
                                                       characteristic_value)
 
-    def handle_characteristic_update(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
+    def handle_update(self, gadget: Gadget):
         fetched_gadget_data = self._network_connector.get_gadget_info(gadget.get_name())
         if fetched_gadget_data is None:
+            # Gadget with given name does not exist on the remote system, needs to be newly created
             try:
                 self.create_gadget(gadget)
             except GadgetCreationError as err:
                 self._logger.error(err.args[0])
-                raise CharacteristicUpdateError(gadget.get_name(), characteristic)
+                raise CharacteristicUpdateError(gadget.get_name())
         else:
             fetched_gadget = HomebridgeDecoder().decode_characteristics(gadget.get_name(), fetched_gadget_data)
-            if fetched_gadget_data is None:
+            if fetched_gadget is None:
+                # No gadget could be constructed out of the received data, will be recreated
                 try:
                     self.create_gadget(gadget)
                 except GadgetCreationError as err:
                     self._logger.error(err.args[0])
-                    raise CharacteristicUpdateError(gadget.get_name(), characteristic)
+                    raise CharacteristicUpdateError(gadget.get_name())
             else:
                 if self._gadget_needs_update(gadget, fetched_gadget):
+                    # Gadget needs to be recreated due to characteristic boundaries changes
                     try:
                         self.remove_gadget(gadget.get_name())
                     except GadgetDeletionError as err:
@@ -80,7 +85,11 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                         self.create_gadget(gadget)
                     except GadgetCreationError as err:
                         self._logger.error(err.args[0])
-                        raise CharacteristicUpdateError(gadget.get_name(), characteristic)
+                        raise CharacteristicUpdateError(gadget.get_name())
 
                 else:
-                    self._update_characteristic(gadget, characteristic)
+                    # Gadget does not need to be re-created, only updated
+                    for characteristic in gadget.get_characteristics():
+                        fetched_characteristic = fetched_gadget.get_characteristic(characteristic.get_type())
+                        if fetched_characteristic != characteristic:
+                            self._update_characteristic(gadget, characteristic.get_type())
