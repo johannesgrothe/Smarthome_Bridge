@@ -73,7 +73,8 @@ class HomebridgeNetworkConnector(LoggingInterface):
         except OSError:
             raise MqttConnectionError(self._mqtt_credentials.ip, self._mqtt_credentials.port)
         self._mqtt_client.on_message = self._gen_message_handler()
-        self._mqtt_client.subscribe("homebridge/from/#")
+        self._mqtt_client.subscribe("homebridge/from/response")
+        self._mqtt_client.subscribe("homebridge/from/set")
         self._mqtt_client.loop_start()
 
         self._thread_manager = ThreadManager()
@@ -141,7 +142,6 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :raises NoResponseError: If wait_for_response != None and no response was received
         """
         with self._send_lock:
-            self._logger.info("LOCKED")
             req_id = random.randint(0, 10000)
             if wait_for_response is not None:
                 req.set_request_id(req_id)
@@ -156,9 +156,7 @@ class HomebridgeNetworkConnector(LoggingInterface):
                     if not self._received_responses.empty():
                         res: HomeBridgeRequest = self._received_responses.get()
                         if res.get_request_id() == req_id:
-                            self._logger.info("UNLOCKED")
                             return res
-                self._logger.info("UNLOCKED")
                 raise NoResponseError(req)
 
     def attach_characteristic_update_callback(self, callback: CharacteristicUpdateCallback):

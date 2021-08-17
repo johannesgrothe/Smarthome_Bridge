@@ -68,6 +68,10 @@ class Characteristic(object):
     def __lt__(self, other) -> bool:
         return self.get_type() < other.get_type()
 
+    def __str__(self):
+        return f"[type: {self.get_type()}, range: ({self.get_min()} - {self.get_max()}), " \
+               f"steps: {self.get_steps()}, value: {self.get_true_value()}]"
+
     def set_step_value(self, value: int) -> bool:
         """
         Sets the step value of a characteristic. Has to be between level 0 and {steps}

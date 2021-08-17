@@ -70,16 +70,29 @@ def main():
         serial = SerialServer(bridge_name, args.serial_baudrate)
         bridge.get_network_manager().add_connector(serial)
 
-    # Insert dummy data if wanted
-    if args.dummy_data:
-        pass
-        # bridge.add_dummy_data()
-
     # HOMEBRIDGE GADGET PUBLISHER
     if mqtt_credentials:
         hb_network = HomebridgeNetworkConnector(bridge_name, mqtt_credentials, 3)
         hb_publisher = GadgetPublisherHomeBridge(hb_network)
         bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
+
+    # Insert dummy data if wanted
+    if args.dummy_data:
+
+        from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
+        from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
+
+        gadget = FanWestinghouseIR("dummy_fan",
+                                   "bridge",
+                                   Characteristic(CharacteristicIdentifier.status,
+                                                  0,
+                                                  1,
+                                                  1),
+                                   Characteristic(CharacteristicIdentifier.fanSpeed,
+                                                  0,
+                                                  100,
+                                                  4))
+        bridge.get_gadget_manager().receive_update(gadget)
 
     while True:
         pass

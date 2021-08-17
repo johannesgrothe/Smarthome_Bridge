@@ -38,6 +38,7 @@ def mqtt_credentials():
                                     None,
                                     None)
 
+
 @pytest.fixture()
 def homebridge_network(mqtt_credentials: MqttCredentialsContainer):
     network_connector = HomebridgeNetworkConnector(HOMEBRIDGE_NETWORK_NAME,

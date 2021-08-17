@@ -32,11 +32,13 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         self._network_connector.__del__()
 
     def remove_gadget(self, gadget_name: str):
+        self._logger.info(f"Removing gadget '{gadget_name}' from external source")
         deletion_successful = self._network_connector.remove_gadget(gadget_name)
         if not deletion_successful:
             raise GadgetDeletionError(gadget_name)
 
     def create_gadget(self, gadget: Gadget):
+        self._logger.info(f"Creating gadget '{gadget.get_name()}' from external source")
         adding_successful = self._network_connector.add_gadget(gadget)
         if not adding_successful:
             raise GadgetCreationError(gadget.get_name())
@@ -57,7 +59,15 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
 
     @staticmethod
     def _gadget_needs_update(local_gadget: Gadget, fetched_gadget: Gadget):
-        return local_gadget.get_characteristics() == fetched_gadget.get_characteristics()
+        """
+        Checks if the gadget on the remote storage needs an update by comparing the gadgets characteristics boundaries
+
+        :param local_gadget: The local gadget (master)
+        :param fetched_gadget: The fetched gadget to compare it with
+        :return: Whether the fetched gadget needs to be updated
+        """
+        needs_update = local_gadget.get_characteristics() != fetched_gadget.get_characteristics()
+        return needs_update
 
     def _fetch_gadget_data(self, gadget_name: str) -> Optional[Gadget]:
         """

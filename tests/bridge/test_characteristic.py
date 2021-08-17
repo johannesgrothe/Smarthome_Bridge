@@ -68,6 +68,30 @@ def test_characteristic_constructor():
 
 
 @pytest.mark.bridge
+def test_characteristic_equal():
+    c1 = Characteristic(C_TYPE,
+                        C_MIN,
+                        C_MAX,
+                        C_STEPS,
+                        C_MIN)
+    c2 = Characteristic(C_TYPE,
+                        C_MIN,
+                        C_MAX,
+                        C_STEPS,
+                        C_MAX)
+    c3 = Characteristic(CharacteristicIdentifier.status,
+                        C_MIN,
+                        C_MAX,
+                        C_STEPS)
+
+    assert c1 == c1
+    assert c1 == c2
+    assert c1 != c3
+
+    assert [c1, c2] == [c2, c1]
+
+
+@pytest.mark.bridge
 def test_characteristic_init_values(characteristic: Characteristic):
     assert characteristic.get_type() == C_TYPE
     assert characteristic.get_min() == C_MIN
