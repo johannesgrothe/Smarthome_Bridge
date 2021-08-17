@@ -21,8 +21,8 @@ class Bridge:
         self._logger.info("Starting bridge")
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
-        self._gadget_manager = GadgetManager([])
-        self._api = ApiManager(self._client_manager, self._network_manager)
+        self._gadget_manager = GadgetManager()
+        self._api = ApiManager(self._client_manager, self._gadget_manager, self._network_manager)
 
     def __del__(self):
         self._logger.info("Shutting down bridge")

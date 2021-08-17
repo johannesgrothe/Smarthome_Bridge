@@ -7,6 +7,7 @@ from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
 
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import CharacteristicIdentifier
+from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 
 
 class GadgetDoesntExistError(Exception):
@@ -14,17 +15,15 @@ class GadgetDoesntExistError(Exception):
         super().__init__(f"Gadget '{gadget_name}' does not exist")
 
 
-class GadgetManager(LoggingInterface):
+class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscriber):
 
     _gadgets: list[Gadget]
     _gadget_publishers: list[GadgetPublisher]
-    _update_connector: GadgetUpdateConnector
 
     def __init__(self):
         super().__init__()
         self._gadgets = []
         self._gadget_publishers = []
-        self._update_connector = GadgetUpdateConnector(self._handle_characteristic_update)
 
     def __del__(self):
         while self._gadgets:
@@ -40,20 +39,14 @@ class GadgetManager(LoggingInterface):
                 return found_gadget
         return None
 
-    def _handle_characteristic_update(self, gadget_name: str, characteristic: CharacteristicIdentifier, value: int):
-        pass
-
-    def _update_gadget_on_publishers(self, gadget: Gadget):
-        """
-        Updates the gadget on all publishers
-
-        :param gadget: The gadget with its new status to be processed by the publishers
-        :return: None
-        """
-        self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'"
-                          f"with {len(self._gadget_publishers)} publishers")
-        for publisher in self._gadget_publishers:
-            publisher.handle_update(gadget)
+    def receive_update(self, gadget: Gadget):
+        found_gadget = self._get_gadget_by_name(gadget.get_name())
+        if found_gadget is None:
+            self._logger.info(f"Adding gadget '{gadget.get_name()}'")
+            self._gadgets.append(gadget)
+        else:
+            self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'")
+        self._publish_update(gadget)
 
     def _remove_gadget_from_publishers(self, gadget: Gadget):
         """
@@ -66,16 +59,14 @@ class GadgetManager(LoggingInterface):
         for publisher in self._gadget_publishers:
             publisher.remove_gadget(gadget.get_name())
 
-    def sync_gadget(self, gadget: Gadget):
-        found_gadget = self._get_gadget_by_name(gadget.get_name())
-        if found_gadget is None:
-            self._logger.info(f"Adding gadget '{gadget.get_name()}'")
-            self._gadgets.append(gadget)
-        else:
-            self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'")
-        self._update_gadget_on_publishers(gadget)
-
     def remove_gadget(self, gadget_name: str):
+        """
+        Removes a gadget from the manager and all its gadget publishers
+
+        :param gadget_name: Name of the gadget to remove
+        :return: None
+        :raises GadgetDoesntExistError: If no gadget with the given name exists
+        """
         delete_gadget = self._get_gadget_by_name(gadget_name)
         if not delete_gadget:
             raise GadgetDoesntExistError(gadget_name)
@@ -83,8 +74,15 @@ class GadgetManager(LoggingInterface):
         self._remove_gadget_from_publishers(delete_gadget)
 
     def add_gadget_publisher(self, publisher: GadgetPublisher):
+        """
+        Adds a gadget publisher to the manager
+
+        :param publisher: The publisher to add
+        :return: None
+        """
         self._logger.info(f"Adding gadget publisher '{publisher.__class__.__name__}'")
+        self.subscribe(publisher)
+        publisher.subscribe(self)
         self._gadget_publishers.append(publisher)
-        publisher.set_update_connector(self._update_connector)
         for gadget in self._gadgets:
-            publisher.handle_update(gadget)
+            publisher.receive_update(gadget)

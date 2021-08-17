@@ -38,12 +38,6 @@ def mqtt_credentials():
                                     None,
                                     None)
 
-
-@pytest.fixture()
-def update_connector():
-    return GadgetUpdateConnector(None)
-
-
 @pytest.fixture()
 def homebridge_network(mqtt_credentials: MqttCredentialsContainer):
     network_connector = HomebridgeNetworkConnector(HOMEBRIDGE_NETWORK_NAME,
@@ -54,9 +48,8 @@ def homebridge_network(mqtt_credentials: MqttCredentialsContainer):
 
 
 @pytest.fixture()
-def publisher_network(homebridge_network: HomebridgeNetworkConnector,
-                      update_connector: GadgetUpdateConnector, gadget: FanWestinghouseIR):
-    connector = GadgetPublisherHomeBridge(update_connector, homebridge_network)
+def publisher_network(homebridge_network: HomebridgeNetworkConnector, gadget: FanWestinghouseIR):
+    connector = GadgetPublisherHomeBridge(homebridge_network)
 
     try:
         connector.remove_gadget(gadget.get_name())
@@ -87,11 +80,11 @@ def test_gadget_publisher_homebridge_network(publisher_network: GadgetPublisherH
     fan_speed = gadget.get_characteristic(CharacteristicIdentifier.fanSpeed)
     fan_speed.set_step_value(2)
 
-    publisher_network.handle_update(gadget)
+    publisher_network.receive_update(gadget)
 
     fan_speed.set_step_value(3)
 
-    publisher_network.handle_update(gadget)
+    publisher_network.receive_update(gadget)
 
     publisher_network.remove_gadget(gadget.get_name())
 

@@ -13,13 +13,14 @@ from smarthome_bridge.smarthomeclient import SmarthomeClient
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
 from smarthome_bridge.gadget_manager import GadgetManager
+from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 
 
 PATH_HEARTBEAT = "smarthome/heartbeat"
 PATH_SYNC = "smarthome/sync"
 
 
-class ApiManager(Subscriber, LoggingInterface):
+class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     _validator: Validator
     _clients: ClientManager
@@ -37,8 +38,15 @@ class ApiManager(Subscriber, LoggingInterface):
     def __del__(self):
         pass
 
+    def receive_update(self, gadget: Gadget):
+        self._logger.info(f"Forwarding update for {gadget.get_name()}")
+        self._handle_gadget_update(gadget)
+
     def receive(self, req: Request):
         self._handle_request(req)
+
+    def _handle_gadget_update(self, gadget: Gadget):
+        pass
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")

@@ -79,8 +79,7 @@ def main():
     if mqtt_credentials:
         hb_network = HomebridgeNetworkConnector(bridge_name, mqtt_credentials, 3)
         hb_publisher = GadgetPublisherHomeBridge(hb_network)
-
-    bridge.get_gadget_manager().add_gadget_publisher()
+        bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
 
     while True:
         pass
