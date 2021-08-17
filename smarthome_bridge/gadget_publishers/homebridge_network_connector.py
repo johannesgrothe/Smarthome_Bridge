@@ -11,6 +11,7 @@ from network.mqtt_credentials_container import MqttCredentialsContainer
 from smarthome_bridge.gadget_publishers.homebridge_request import HomeBridgeRequest
 from smarthome_bridge.gadgets.gadget import Gadget
 from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
+from thread_manager import ThreadManager
 
 
 class MqttConnectionError(Exception):
@@ -44,7 +45,10 @@ class HomebridgeNetworkConnector(LoggingInterface):
     _mqtt_credentials: MqttCredentialsContainer
 
     _received_responses: Queue
+    _received_messages: Queue
     _response_timeout: Optional[int]
+
+    _thread_manager: ThreadManager
 
     _characteristic_update_callback: Optional[CharacteristicUpdateCallback]
 
@@ -56,7 +60,8 @@ class HomebridgeNetworkConnector(LoggingInterface):
         self._network_name = network_name
         self._mqtt_credentials = mqtt_credentials
         self._characteristic_update_callback = None
-        self._received_responses: Queue
+        self._received_responses = Queue()
+        self._received_messages = Queue()
 
         self._mqtt_client = mqtt.Client(self._network_name + "_HomeBridge")
         self._logger.info("Connecting to homebridge mqtt broker")
@@ -67,11 +72,16 @@ class HomebridgeNetworkConnector(LoggingInterface):
             self._mqtt_client.connect(self._mqtt_credentials.ip, self._mqtt_credentials.port, 15)
         except OSError:
             raise MqttConnectionError(self._mqtt_credentials.ip, self._mqtt_credentials.port)
-        self._mqtt_client.loop_start()
         self._mqtt_client.on_message = self._gen_message_handler()
-        self._mqtt_client.subscribe("homebridge/#")
+        self._mqtt_client.subscribe("homebridge/from/#")
+        self._mqtt_client.loop_start()
+
+        self._thread_manager = ThreadManager()
+        self._thread_manager.add_thread("received_request_handler", self._request_handler_thread)
+        self._thread_manager.start_threads()
 
     def __del__(self):
+        self._thread_manager.__del__()
         self._mqtt_client.disconnect()
         self._mqtt_client.__del__()
 
@@ -82,6 +92,7 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :return: The function handler
         """
         def on_message(client, userdata, message):
+            self._logger.info(f"Received message at {message.topic}")
             topic = message.topic
             json_str = message.payload.decode("utf-8")
 
@@ -92,8 +103,16 @@ class HomebridgeNetworkConnector(LoggingInterface):
                 return
 
             buf_req = HomeBridgeRequest(topic, body)
-            self._handle_request(buf_req)
+            if buf_req.topic == "homebridge/from/response":
+                self._received_responses.put(buf_req)
+            else:
+                self._received_messages.put(buf_req)
         return on_message
+
+    def _request_handler_thread(self):
+        if not self._received_messages.empty():
+            req = self._received_messages.get()
+            self._handle_request(req)
 
     def _handle_request(self, req: HomeBridgeRequest):
         """
@@ -102,11 +121,6 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :param req: Request to handle
         :return: None
         """
-        # Just store request in the response queue for waiting processes to access
-        if req.topic == "homebridge/from/response":
-            self._received_responses.put(req)
-            return
-
         # Check handle characteristic updates
         if req.topic == "homebridge/from/set":
             # TODO: validate with json schema
@@ -115,7 +129,8 @@ class HomebridgeNetworkConnector(LoggingInterface):
                                                      req.message["characteristic"],
                                                      req.message["value"])
 
-    def _send_request(self, req: HomeBridgeRequest, wait_for_response: Optional[int] = None) -> Optional[HomeBridgeRequest]:
+    def _send_request(self, req: HomeBridgeRequest, wait_for_response: Optional[int] = None) ->\
+            Optional[HomeBridgeRequest]:
         """
         Sends a homebridge request and waits for an answer if wanted
 
@@ -126,20 +141,24 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :raises NoResponseError: If wait_for_response != None and no response was received
         """
         with self._send_lock:
+            self._logger.info("LOCKED")
             req_id = random.randint(0, 10000)
             if wait_for_response is not None:
                 req.set_request_id(req_id)
-            self._mqtt_client.publish(topic=req.topic, payload=json.dumps(req.message))
+                self._received_responses = Queue()
+            info = self._mqtt_client.publish(topic=req.topic, payload=json.dumps(req.message))
+            info.wait_for_publish()
             if wait_for_response is None:
                 return None
             else:
                 start_time = datetime.now()
-                self._received_responses = Queue()
                 while start_time + timedelta(seconds=wait_for_response) > datetime.now():
                     if not self._received_responses.empty():
                         res: HomeBridgeRequest = self._received_responses.get()
                         if res.get_request_id() == req_id:
+                            self._logger.info("UNLOCKED")
                             return res
+                self._logger.info("UNLOCKED")
                 raise NoResponseError(req)
 
     def attach_characteristic_update_callback(self, callback: CharacteristicUpdateCallback):

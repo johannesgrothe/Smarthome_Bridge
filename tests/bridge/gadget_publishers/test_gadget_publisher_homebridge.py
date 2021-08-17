@@ -3,7 +3,7 @@ import pytest
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from smarthome_bridge.gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from smarthome_bridge.gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBridge,\
-    GadgetCreationError, GadgetDeletionError, CharacteristicUpdateError
+    GadgetCreationError, GadgetDeletionError, GadgetUpdateError
 from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
 from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier

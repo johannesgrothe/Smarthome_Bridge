@@ -7,14 +7,14 @@ from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 
 
-class CharacteristicUpdateError(Exception):
+class GadgetUpdateError(Exception):
     def __init__(self, gadget_name: str):
-        super().__init__(f"Failed to update characteristic '{characteristic}' on '{gadget_name}'")
+        super().__init__(f"Failed to update gadget '{gadget_name}' on external source")
 
 
 class GadgetDeletionError(Exception):
     def __init__(self, gadget_name: str):
-        super().__init__(f"Failed to delete gadget '{gadget_name}'")
+        super().__init__(f"Failed to delete gadget '{gadget_name}' on external source")
 
 
 class GadgetCreationError(Exception):

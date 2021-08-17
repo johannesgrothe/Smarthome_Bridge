@@ -2,7 +2,7 @@ from typing import Optional
 
 from gadgetlib import CharacteristicIdentifier
 from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
-    CharacteristicUpdateError, GadgetCreationError
+    GadgetUpdateError, GadgetCreationError
 from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator, \
@@ -44,6 +44,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
             self._update_characteristic(gadget, characteristic.get_type())
 
     def _parse_characteristic_update(self, gadget_name: str, characteristic_name: str, value: int):
+        self._logger.info(f"Received update for '{gadget_name}' on '{characteristic_name}': {value}")
         try:
             characteristic = HomebridgeCharacteristicTranslator.str_to_type(characteristic_name)
         except CharacteristicParsingError as err:
@@ -87,7 +88,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                 self.create_gadget(gadget)
             except GadgetCreationError as err:
                 self._logger.error(err.args[0])
-                raise CharacteristicUpdateError(gadget.get_name())
+                raise GadgetUpdateError(gadget.get_name())
         else:
             if self._gadget_needs_update(gadget, fetched_gadget):
                 # Gadget needs to be recreated due to characteristic boundaries changes
@@ -100,7 +101,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                     self.create_gadget(gadget)
                 except GadgetCreationError as err:
                     self._logger.error(err.args[0])
-                    raise CharacteristicUpdateError(gadget.get_name())
+                    raise GadgetUpdateError(gadget.get_name())
 
             else:
                 # Gadget does not need to be re-created, only updated
