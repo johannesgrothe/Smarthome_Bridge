@@ -20,9 +20,9 @@ class GadgetFactory:
                       host_client: str,
                       characteristics: list[Characteristic]) -> Gadget:
         if gadget_type == GadgetIdentifier.fan_westinghouse_ir:
-            pass
+            raise NotImplementedError()
         elif gadget_type == GadgetIdentifier.lamp_basic:
-            pass
+            raise NotImplementedError()
         else:
             self._logger.info("No valid GadgetIdentifier found, Creating 'AnyGadget'")
             return AnyGadget(name, host_client, characteristics)

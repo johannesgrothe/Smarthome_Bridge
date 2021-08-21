@@ -41,10 +41,14 @@ class NetworkManager(Publisher, Subscriber):
     def _remove_doubles(xs: list) -> list:
         return list(dict.fromkeys(xs))
 
-    def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
+    def send_request(self, path: str, receiver: Optional[str], payload: dict, timeout: int = 6) -> Optional[Request]:
+        self._logger.info(f"Sending Request at '{path}'")
         responses = []
         for network in self._connectors:
-            res = network.send_request(path, receiver, payload, timeout)
+            if receiver is None:
+                res = network.send_broadcast(path, payload, timeout)
+            else:
+                res = network.send_request(path, receiver, payload, timeout)
             if res:
                 responses.append(res)
         responses = self._remove_doubles(responses)

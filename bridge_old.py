@@ -275,7 +275,7 @@ class MainBridge(Subscriber):
 
         # Check if the request was sent by any known client and report activity
         if req.get_path() == "smarthome/sync":
-            if self.__verify_payload('bridge_sync_request.json', req.get_payload()):
+            if self.__verify_payload('api_client_sync_request.json', req.get_payload()):
 
                 local_client = self.__get_or_create_client_from_request(req)
 

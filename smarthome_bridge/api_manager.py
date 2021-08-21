@@ -16,9 +16,12 @@ from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
 from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 
+from smarthome_bridge.api_encoder import ApiEncoder
 
-PATH_HEARTBEAT = "smarthome/heartbeat"
-PATH_SYNC = "smarthome/sync"
+
+PATH_HEARTBEAT = "heartbeat"
+PATH_SYNC_CLIENT = "sync/client"
+PATH_SYNC_GADGET = "sync/gadget"
 
 
 class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpdatePublisher):
@@ -54,14 +57,18 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
         self._handle_request(req)
 
     def _handle_gadget_update(self, gadget: Gadget):
-        # self._network.send_request("smarthome/")
-        pass
+        gadget_data = ApiEncoder().encode_gadget(gadget)
+        self._network.send_request(PATH_SYNC_GADGET,
+                                   None,
+                                   {"gadget": gadget_data},
+                                   0)
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
         switcher = {
             PATH_HEARTBEAT: self._handle_heartbeat,
-            PATH_SYNC: self._handle_client_sync
+            PATH_SYNC_CLIENT: self._handle_client_sync,
+            PATH_SYNC_GADGET: self._handle_gadget_sync
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -79,15 +86,21 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
         rt_id = req.get_payload()["runtime_id"]
         if client:
             if client.get_runtime_id() != rt_id:
-                self._network.send_request(PATH_SYNC, req.get_sender(), {}, 0)
+                self._network.send_request(PATH_SYNC_CLIENT, req.get_sender(), {}, 0)
             else:
                 client.trigger_activity()
 
     def _handle_client_sync(self, req: Request):
+        """
+        Handles a client update request from any foreign source
+
+        :param req: Request containing the client update request
+        :return: None
+        """
         try:
-            self._validator.validate(req.get_payload(), "bridge_sync_request")
+            self._validator.validate(req.get_payload(), "api_client_sync_request")
         except ValidationError:
-            self._logger.error(f"Request validation error at '{PATH_SYNC}'")
+            self._logger.error(f"Request validation error at '{PATH_SYNC_CLIENT}'")
 
         try:
             self._clients.remove_client(req.get_sender())
@@ -115,26 +128,47 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
 
         gadgets = req.get_payload()["gadgets"]
 
-        factory = GadgetFactory()
         for gadget in gadgets:
-            try:
-                gadget_type = GadgetIdentifier(gadget["type"])
-            except ValueError:
-                self._logger.error(f"Could not create Gadget from type index '{gadget['type']}'")
-                continue
-            buf_gadget = factory.create_gadget(gadget_type,
-                                               gadget["name"],
-                                               client_id,
-                                               gadget["characteristics"])
-
-            self._update_gadget(buf_gadget)
+            self._update_gadget(client_id, gadget)
 
         self._clients.add_client(new_client)
 
     def _handle_gadget_sync(self, req: Request):
-        pass
-        # self._update_gadget(req.get_connection_type(), buf_gadget)
+        """
+        Handles a gadget update request from any foreign source
 
-    def _update_gadget(self, gadget: Gadget):
+        :param req: Request containing the gadget update request
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_gadget_sync_request")
+        except ValidationError:
+            self._logger.error(f"Request validation error at '{PATH_SYNC_GADGET}'")
+        client_id = req.get_sender()
+
+        self._logger.info(f"Syncing gadget from {client_id}")
+        gadget_data = req.get_payload()["gadget"]
+        self._update_gadget(client_id, gadget_data)
+
+    def _update_gadget(self, client_id: str, gadget_data: dict):
+        """
+        Takes the data from any sync request, creates a gadget out of it and gives it to the
+        gadget manager for evaluation
+
+        :param client_id: ID of the sending client
+        :param gadget_data: JSON-data describing the gadget
+        :return: None
+        """
+        try:
+            gadget_type = GadgetIdentifier(gadget_data["type"])
+        except ValueError:
+            self._logger.error(f"Could not create Gadget from type index '{gadget_data['type']}'")
+            return
+        factory = GadgetFactory()
+        buf_gadget = factory.create_gadget(gadget_type,
+                                           gadget_data["name"],
+                                           client_id,
+                                           gadget_data["characteristics"])
+
         with self._gadget_sync_lock:
-            self._gadgets.receive_update(gadget)
+            self._gadgets.receive_update(buf_gadget)
