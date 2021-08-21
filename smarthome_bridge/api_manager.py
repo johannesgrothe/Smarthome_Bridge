@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, Callable
+import threading
 
 from network.request import Request
 from pubsub import Subscriber
@@ -27,6 +28,9 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
     _gadgets: GadgetManager
     _network: NetworkManager
 
+    _gadget_sync_lock: threading.Lock
+    _gadget_sync_connection: Optional[str]
+
     def __init__(self, clients: ClientManager, gadgets: GadgetManager, network: NetworkManager):
         super().__init__()
         self._clients = clients
@@ -34,6 +38,10 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
         self._network = network
         self._network.subscribe(self)
         self._validator = Validator()
+        self._gadget_sync_lock = threading.Lock()
+        self._gadget_sync_connection = None
+
+        self._gadgets.subscribe(self)
 
     def __del__(self):
         pass
@@ -46,6 +54,7 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
         self._handle_request(req)
 
     def _handle_gadget_update(self, gadget: Gadget):
+        # self._network.send_request("smarthome/")
         pass
 
     def _handle_request(self, req: Request):
@@ -118,9 +127,14 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
                                                client_id,
                                                gadget["characteristics"])
 
-            self._gadgets.sync_gadget(buf_gadget)
+            self._update_gadget(buf_gadget)
 
         self._clients.add_client(new_client)
 
     def _handle_gadget_sync(self, req: Request):
         pass
+        # self._update_gadget(req.get_connection_type(), buf_gadget)
+
+    def _update_gadget(self, gadget: Gadget):
+        with self._gadget_sync_lock:
+            self._gadgets.receive_update(gadget)

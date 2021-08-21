@@ -68,17 +68,32 @@ def test_characteristic_constructor():
 
 
 @pytest.mark.bridge
+def test_characteristic_illegal_init():
+    with pytest.raises(CharacteristicInitError):
+        Characteristic(C_TYPE,
+                       C_MIN,
+                       C_MAX,
+                       -1)
+    with pytest.raises(CharacteristicInitError):
+        Characteristic(C_TYPE,
+                       C_MIN,
+                       C_MAX,
+                       C_STEPS,
+                       C_STEPS + 1)
+
+
+@pytest.mark.bridge
 def test_characteristic_equal():
     c1 = Characteristic(C_TYPE,
                         C_MIN,
                         C_MAX,
                         C_STEPS,
-                        C_MIN)
+                        0)
     c2 = Characteristic(C_TYPE,
                         C_MIN,
                         C_MAX,
                         C_STEPS,
-                        C_MAX)
+                        C_STEPS)
     c3 = Characteristic(CharacteristicIdentifier.status,
                         C_MIN,
                         C_MAX,

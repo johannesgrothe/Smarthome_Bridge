@@ -3,12 +3,10 @@ from typing import Optional
 from gadgetlib import CharacteristicIdentifier
 from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
     GadgetUpdateError, GadgetCreationError
-from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from smarthome_bridge.gadgets.gadget import Gadget
+from smarthome_bridge.gadgets.any_gadget import AnyGadget
 from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator, \
     CharacteristicParsingError
-from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder
-from network.mqtt_credentials_container import MqttCredentialsContainer
 from smarthome_bridge.gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from smarthome_bridge.gadget_publishers.homebridge_decoder import HomebridgeDecoder
 
@@ -78,9 +76,9 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         """
         fetched_gadget_data = self._network_connector.get_gadget_info(gadget_name)
         if fetched_gadget_data is not None:
-            fetched_gadget = HomebridgeDecoder().decode_characteristics(gadget_name, fetched_gadget_data)
-            if fetched_gadget is not None:
-                return fetched_gadget
+            fetched_characteristics = HomebridgeDecoder().decode_characteristics(fetched_gadget_data)
+            fetched_gadget = AnyGadget(gadget_name, "any", fetched_characteristics)
+            return fetched_gadget
         return None
 
     def _update_characteristic(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
@@ -91,6 +89,8 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                                                       characteristic_value)
 
     def receive_update(self, gadget: Gadget):
+        if self._last_published_gadget is not None and self._last_published_gadget == gadget.get_name():
+            return
         fetched_gadget = self._fetch_gadget_data(gadget.get_name())
         if fetched_gadget is None:
             # Gadget with given name does not exist on the remote system, or is broken somehow
@@ -117,5 +117,5 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                 # Gadget does not need to be re-created, only updated
                 for characteristic in gadget.get_characteristics():
                     fetched_characteristic = fetched_gadget.get_characteristic(characteristic.get_type())
-                    if fetched_characteristic != characteristic:
+                    if fetched_characteristic.get_true_value() != characteristic.get_true_value():
                         self._update_characteristic(gadget, characteristic.get_type())

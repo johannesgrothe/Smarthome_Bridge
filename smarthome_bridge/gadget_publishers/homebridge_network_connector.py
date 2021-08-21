@@ -93,7 +93,7 @@ class HomebridgeNetworkConnector(LoggingInterface):
         :return: The function handler
         """
         def on_message(client, userdata, message):
-            self._logger.info(f"Received message at {message.topic}")
+            self._logger.debug(f"Received message at '{message.topic}'")
             topic = message.topic
             json_str = message.payload.decode("utf-8")
 

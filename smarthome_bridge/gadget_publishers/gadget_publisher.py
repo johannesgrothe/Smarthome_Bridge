@@ -1,9 +1,9 @@
 from logging_interface import LoggingInterface
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Optional
+from typing import Optional
+import threading
 
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier, Characteristic, CharacteristicIdentifier
-from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
+from smarthome_bridge.gadgets.gadget import Gadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 
 
@@ -24,8 +24,13 @@ class GadgetCreationError(Exception):
 
 class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscriber, metaclass=ABCMeta):
 
+    __publish_lock: threading.Lock
+    _last_published_gadget: Optional[str]
+
     def __init__(self):
         super().__init__()
+        self.__publish_lock = threading.Lock()
+        self._last_published_gadget = None
 
     def __del__(self):
         self._logger.info(f"Deleting {self.__class__.__name__}")
@@ -63,3 +68,9 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
         :raises GadgetDeletionError: If any error occurred during deleting
         """
         pass
+
+    def _publish_update(self, gadget: Gadget):
+        with self.__publish_lock:
+            self._last_published_gadget = gadget.get_name()
+            super()._publish_update(gadget)
+            self._last_published_gadget = None

@@ -36,6 +36,7 @@ class Characteristic(object):
             raise CharacteristicInitError("'min_val' must be bigger than 'max_val'")
         if steps is not None and steps <= 0:
             raise CharacteristicInitError("'steps' must be bigger than 0")
+
         self._min = min_val
         self._max = max_val
         self._type = c_type
@@ -44,6 +45,9 @@ class Characteristic(object):
             self._steps = steps
         else:
             self._steps = self._max - self._min
+
+        if value is not None and value not in range(self._steps + 1):
+            raise CharacteristicInitError(f"'value' must either be None or between 0 and {self._steps}")
 
         if value is not None:
             self._val = value
