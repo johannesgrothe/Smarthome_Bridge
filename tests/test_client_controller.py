@@ -4,6 +4,7 @@ from client_controller import ClientController, NoClientResponseException
 from test_helpers.mock_network_connector import MockNetworkConnector
 from client_config_manager import ClientConfigManager
 from json_validator import ValidationError
+from smarthome_bridge.network_manager import NetworkManager
 
 TEST_SENDER_NAME = "pytest_sender"
 TEST_CLIENT_NAME = "pytest_client"
@@ -11,11 +12,19 @@ BROKEN_CONFIG = {"status": "broken af"}
 WORKING_CONFIG_NAME = "Example"
 
 
-@pytest.fixture
+@pytest.fixture()
 def connector():
     connector = MockNetworkConnector(TEST_SENDER_NAME)
     yield connector
     connector.__del__()
+
+
+@pytest.fixture
+def network(connector):
+    manager = NetworkManager()
+    manager.add_connector(connector)
+    yield manager
+    manager.__del__()
 
 
 @pytest.fixture
@@ -24,8 +33,9 @@ def manager():
     yield manager
 
 
-def test_client_controller_reboot(connector: MockNetworkConnector, manager: ClientConfigManager):
-    controller = ClientController(TEST_CLIENT_NAME, connector)
+def test_client_controller_reboot(network: NetworkManager, manager: ClientConfigManager,
+                                  connector: MockNetworkConnector):
+    controller = ClientController(TEST_CLIENT_NAME, network)
     try:
         controller.reboot_client()
     except NoClientResponseException:
@@ -44,14 +54,10 @@ def test_client_controller_reboot(connector: MockNetworkConnector, manager: Clie
         assert result is True
 
 
-def test_client_controller_reset_config(connector: MockNetworkConnector, manager: ClientConfigManager):
-    controller = ClientController(TEST_CLIENT_NAME, connector)
-    try:
+def test_client_controller_reset_config(network: NetworkManager, connector: MockNetworkConnector, manager: ClientConfigManager):
+    controller = ClientController(TEST_CLIENT_NAME, network)
+    with pytest.raises(NoClientResponseException):
         controller.reset_config()
-    except NoClientResponseException:
-        pass
-    else:
-        assert False
 
     connector.reset()
 
@@ -64,26 +70,18 @@ def test_client_controller_reset_config(connector: MockNetworkConnector, manager
         assert result is True
 
 
-def test_client_controller_write_config(connector: MockNetworkConnector, manager: ClientConfigManager):
-    controller = ClientController(TEST_CLIENT_NAME, connector)
+def test_client_controller_write_config(network: NetworkManager, connector: MockNetworkConnector, manager: ClientConfigManager):
+    controller = ClientController(TEST_CLIENT_NAME, network)
     working_config = manager.get_config(WORKING_CONFIG_NAME)
     assert working_config is not None
 
-    try:
+    with pytest.raises(ValidationError):
         controller.write_config(BROKEN_CONFIG)
-    except ValidationError:
-        pass
-    else:
-        assert False
 
     connector.reset()
 
-    try:
+    with pytest.raises(NoClientResponseException):
         controller.write_config(working_config)
-    except NoClientResponseException:
-        pass
-    else:
-        assert False
 
     connector.reset()
 

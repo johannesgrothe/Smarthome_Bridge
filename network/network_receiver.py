@@ -20,7 +20,6 @@ class NetworkReceiver(Subscriber):
         pass
 
     def receive(self, req: Request):
-        print("received")
         self._request_queue.put(req)
 
     def start_listening_for_responses(self):

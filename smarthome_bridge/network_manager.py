@@ -1,4 +1,7 @@
 import logging
+import json
+from time import sleep
+
 from typing import Optional
 from network.network_connector import NetworkConnector
 from network.request import Request
@@ -29,6 +32,11 @@ class NetworkManager(Publisher, Subscriber):
         self._hostname = None
 
     def __del__(self):
+        """
+        Deletes the manager and all attached network connectors
+
+        :return: None
+        """
         while self._connectors:
             client = self._connectors.pop()
             client.__del__()
@@ -79,6 +87,17 @@ class NetworkManager(Publisher, Subscriber):
                           payload)
         return out_req
 
+    def _send_request_obj(self, req: Request, timeout: int, max_responses: int):
+        req_receiver = NetworkReceiver()
+        req_receiver.start_listening_for_responses()
+
+        for connector in self._connectors:
+            connector.subscribe(req_receiver)
+            connector.send_request(req)
+
+        responses = req_receiver.wait_for_responses(req, timeout, max_responses)
+        return responses
+
     def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
         """
         Sends a request and waits for a response by default.
@@ -96,16 +115,7 @@ class NetworkManager(Publisher, Subscriber):
             self._logger.error(err.args[0])
             return None
 
-        req_receiver = NetworkReceiver()
-        req_receiver.start_listening_for_responses()
-
-        for connector in self._connectors:
-            connector.subscribe(req_receiver)
-            connector.send_request(req)
-
-        responses = req_receiver.wait_for_responses(req, timeout)
-        if not responses:
-            return None
+        responses = self._send_request_obj(req, timeout, 1)
         return responses[0]
 
     def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
@@ -116,59 +126,51 @@ class NetworkManager(Publisher, Subscriber):
             self._logger.error(err.args[0])
             return []
 
-        req_receiver = NetworkReceiver()
-        req_receiver.start_listening_for_responses()
-
-        for connector in self._connectors:
-            connector.subscribe(req_receiver)
-            connector.send_request(req)
-
-        responses = req_receiver.wait_for_responses(req, timeout, max_responses)
+        responses = self._send_request_obj(req, timeout, max_responses)
         return responses
 
-    # def _send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
-    #                        timeout: int = 6) -> Optional[Request]:
-    #     req = Request(path, None, self._hostname, receiver, payload)
-    #     session_id = req.get_session_id()
-    #     path = req.get_path()
-    #     sender = req.get_sender()
-    #     receiver = req.get_receiver()
-    #
-    #     payload_str = json.dumps(req.get_payload())
-    #
-    #     # Make string ready to be contained in json itself
-    #     payload_str = payload_str.replace('"', "$*$")
-    #
-    #     payload_len = len(payload_str)
-    #     parts = []
-    #     start = 0
-    #     package_index = 0
-    #
-    #     while start < payload_len:
-    #         end = start + part_max_size
-    #         payload_part = payload_str[start:(end if end < payload_len else payload_len)]
-    #         parts.append(payload_part)
-    #         start = end
-    #
-    #     last_index = len(parts)
-    #
-    #     for payload_part in parts:
-    #
-    #         out_dict = {"package_index": package_index, "split_payload": payload_part}
-    #         if package_index == 0:
-    #             out_dict["last_index"] = last_index
-    #
-    #         out_req = Request(path,
-    #                           session_id,
-    #                           sender,
-    #                           receiver,
-    #                           out_dict)
-    #         if package_index == last_index - 1:
-    #             res = self.__send_request_obj(out_req, timeout)
-    #
-    #             return res
-    #         else:
-    #             self.__send_request_obj(out_req, 0)
-    #         package_index += 1
-    #         sleep(0.1)
-    #     return None
+    def send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
+                           timeout: int = 6) -> Optional[Request]:
+        req = Request(path, None, self._hostname, receiver, payload)
+        session_id = req.get_session_id()
+        path = req.get_path()
+        sender = req.get_sender()
+        receiver = req.get_receiver()
+
+        payload_str = json.dumps(req.get_payload())
+
+        # Make string ready to be contained in json itself
+        payload_str = payload_str.replace('"', "$*$")
+
+        payload_len = len(payload_str)
+        parts = []
+        start = 0
+        package_index = 0
+
+        while start < payload_len:
+            end = start + part_max_size
+            payload_part = payload_str[start:(end if end < payload_len else payload_len)]
+            parts.append(payload_part)
+            start = end
+
+        last_index = len(parts)
+
+        for payload_part in parts:
+
+            out_dict = {"package_index": package_index, "split_payload": payload_part}
+            if package_index == 0:
+                out_dict["last_index"] = last_index
+
+            out_req = Request(path,
+                              session_id,
+                              sender,
+                              receiver,
+                              out_dict)
+            if package_index == last_index - 1:
+                responses = self._send_request_obj(out_req, timeout, 1)
+                return responses[0]
+            else:
+                self._send_request_obj(out_req, 0, 0)
+            package_index += 1
+            sleep(0.1)
+        return None
