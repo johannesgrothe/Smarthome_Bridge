@@ -74,13 +74,13 @@ def test_mqtt_connector_send(manager: NetworkManager, test_payload_big, echo_cli
 # @pytest.mark.network
 # def test_mqtt_connector_send_split_short(sender: MQTTConnector, test_payload_small, echo_client):
 #     send_split_test(sender, TEST_ECHO_CLIENT_NAME, test_payload_small)
-#
-#
-# @pytest.mark.network
-# def test_mqtt_connector_broadcast(sender: MQTTConnector, test_payload_big, echo_client):
-#     broadcast_test(sender, test_payload_big)
-#
-#
-# @pytest.mark.network
-# def test_mqtt_connector_broadcast_max_responses(sender: MQTTConnector, test_payload_big, echo_client):
-#     broadcast_single_response_test(sender, test_payload_big)
+
+
+@pytest.mark.network
+def test_mqtt_connector_broadcast(manager: NetworkManager, test_payload_big, echo_client):
+    broadcast_test(manager, test_payload_big)
+
+
+@pytest.mark.network
+def test_mqtt_connector_broadcast_max_responses(manager: NetworkManager, test_payload_big, echo_client):
+    broadcast_single_response_test(manager, test_payload_big)

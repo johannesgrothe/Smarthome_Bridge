@@ -108,14 +108,24 @@ class NetworkManager(Publisher, Subscriber):
             return None
         return responses[0]
 
-    # def _send_broadcast(self, path: str, payload: dict, timeout: int = 5,
-    #                    max_responses: Optional[int] = None) -> list[Request]:
-    #     req = Request(path, None, self._hostname, None, payload)
-    #     self._send_data(req)
-    #     req_receiver = NetworkReceiver(self)
-    #     responses = req_receiver.wait_for_responses(req, timeout, max_responses)
-    #     return responses
-    #
+    def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
+                       max_responses: Optional[int] = None) -> list[Request]:
+        try:
+            req = self._create_request(path, None, payload)
+        except NoConnectorsException as err:
+            self._logger.error(err.args[0])
+            return []
+
+        req_receiver = NetworkReceiver()
+        req_receiver.start_listening_for_responses()
+
+        for connector in self._connectors:
+            connector.subscribe(req_receiver)
+            connector.send_request(req)
+
+        responses = req_receiver.wait_for_responses(req, timeout, max_responses)
+        return responses
+
     # def _send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
     #                        timeout: int = 6) -> Optional[Request]:
     #     req = Request(path, None, self._hostname, receiver, payload)
@@ -162,34 +172,3 @@ class NetworkManager(Publisher, Subscriber):
     #         package_index += 1
     #         sleep(0.1)
     #     return None
-
-    # def send_request(self, path: str, receiver: Optional[str], payload: dict, timeout: int = 6,
-    #                  split: Optional[int] = None) -> Optional[Request]:
-    #     if not self._connectors:
-    #         self._logger.error("Cannot send request without anny connector")
-    #         return None
-    #     self._logger.info(f"Sending Request at '{path}'")
-    #     out_req = Request(path,
-    #                       None,
-    #                       self._hostname,
-    #                       receiver,
-    #                       payload)
-    #     if out_req.get_receiver() is None:
-    #         max_responses = 50
-    #     else:
-    #         max_responses = 1
-    #
-
-        #
-        # responses = []
-        # for network in self._connectors:
-        #     if receiver is None:
-        #         res = network.send_broadcast(path, payload, timeout)
-        #     else:
-        #         res = network.send_request(path, receiver, payload, timeout)
-        #     if res:
-        #         responses.append(res)
-        # responses = self._remove_doubles(responses)
-        # if len(responses) == 1:
-        #     return responses[0]
-        # return None

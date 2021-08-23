@@ -40,13 +40,11 @@ class NetworkReceiver(Subscriber):
         timeout_time = datetime.now() + timedelta(seconds=timeout)
 
         while timeout and datetime.now() < timeout_time:
+            if max_resp_count and len(responses) >= max_resp_count:  # return responses if enough are collected
+                return responses
             if not self._request_queue.empty():
                 res: Request = self._request_queue.get()
                 if res.get_session_id() == out_req.get_session_id() and out_req.get_sender() != res.get_sender():
-
                     responses.append(res)
-
-                    if max_resp_count and len(responses) >= max_resp_count:
-                        return responses
 
         return responses

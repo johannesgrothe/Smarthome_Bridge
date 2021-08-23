@@ -49,14 +49,14 @@ def send_split_test(connector: NetworkConnector, receiver_name: str, payload: di
     return
 
 
-def broadcast_test(connector: NetworkConnector, payload: dict):
+def broadcast_test(connector: NetworkManager, payload: dict):
     responses = connector.send_broadcast(TEST_PATH, payload)
     assert len(responses) >= 1
     assert responses[0].get_payload() == payload
     return
 
 
-def broadcast_single_response_test(connector: NetworkConnector, payload: dict):
+def broadcast_single_response_test(connector: NetworkManager, payload: dict):
     responses = connector.send_broadcast(TEST_PATH, payload, max_responses=1)
     assert len(responses) == 1
     assert responses[0].get_payload() == payload
