@@ -50,8 +50,7 @@ def main():
     mqtt_credentials = None
     if args.mqtt_ip and args.mqtt_port:
         mqtt_credentials = MqttCredentialsContainer(args.mqtt_ip, args.mqtt_port, args.mqtt_user, args.mqtt_pw)
-        # TODO use container in MQTTConnector
-        mqtt = MQTTConnector(bridge_name, args.mqtt_ip, args.mqtt_port, args.mqtt_user, args.mqtt_pw)
+        mqtt = MQTTConnector(bridge_name, mqtt_credentials, "smarthome")
         bridge.get_network_manager().add_connector(mqtt)
 
     # REST
@@ -62,13 +61,15 @@ def main():
 
     # SOCKET
     if args.socket_port:
-        socket_connector = SocketServer(bridge_name, args.socket_port)
-        bridge.get_network_manager().add_connector(socket_connector)
+        pass
+        # socket_connector = SocketServer(bridge_name, args.socket_port)
+        # bridge.get_network_manager().add_connector(socket_connector)
 
     # SERIAL
     if args.serial_baudrate:
-        serial = SerialServer(bridge_name, args.serial_baudrate)
-        bridge.get_network_manager().add_connector(serial)
+        pass
+        # serial = SerialServer(bridge_name, args.serial_baudrate)
+        # bridge.get_network_manager().add_connector(serial)
 
     # HOMEBRIDGE GADGET PUBLISHER
     if mqtt_credentials:

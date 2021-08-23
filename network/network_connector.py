@@ -28,20 +28,12 @@ class NetworkConnector(Publisher, Subscriber, LoggingInterface):
         self._validator.validate(data, REQ_VALIDATION_SCHEME_NAME)
 
     @abstractmethod
-    def _send_data(self, req: Request):
+    def _send_data(self, req: Request) -> None:
         pass
 
-    def send_request(self, req: Request, timeout: int = 6) -> Optional[Request]:
+    def send_request(self, req: Request):
         self._logger.debug(f"Sending Request to '{req.get_path()}'")
         self._send_data(req)
-        if timeout > 0:
-            self._logger.debug(f"Waiting for Response ({timeout})...")
-            req_receiver = NetworkReceiver(self)
-            responses = req_receiver.wait_for_responses(req, timeout)
-            if not responses:
-                return None
-            return responses[0]
-        return None
 
     def receive(self, req: Request):
         self._publish(req)

@@ -11,17 +11,16 @@ class NetworkReceiver(Subscriber):
     _request_queue: Queue
     _keep_queue: bool
 
-    def __init__(self, network: Publisher):
+    def __init__(self):
         super().__init__()
         self._request_queue = Queue()
         self._keep_queue = False
-        self._network = network
-        self._network.subscribe(self)
 
     def __del__(self):
         pass
 
     def receive(self, req: Request):
+        print("received")
         self._request_queue.put(req)
 
     def start_listening_for_responses(self):
@@ -30,7 +29,7 @@ class NetworkReceiver(Subscriber):
         self._request_queue = Queue()
         self._keep_queue = True
 
-    def wait_for_responses(self, out_req: Request, timeout: int = 300,
+    def wait_for_responses(self, out_req: Request, timeout: int = 5,
                            max_resp_count: Optional[int] = 1) -> list[Request]:
         if not self._keep_queue:
             self._request_queue = Queue()

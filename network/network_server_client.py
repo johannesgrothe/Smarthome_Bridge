@@ -64,8 +64,9 @@ class NetworkServerClient(Publisher):
             in_req = self.__in_queue.get()
             req = self.__split_handler.handle(in_req)
             if req:
-                req.set_callback_method(self._respond_to)
-                self._forward_request(req)
+                if req.get_sender() != self._host_name:
+                    req.set_callback_method(self._respond_to)
+                    self._forward_request(req)
 
     def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
         if path:
@@ -84,7 +85,7 @@ class NetworkServerClient(Publisher):
         self._send(out_req)
 
     def _forward_request(self, req: Request):
-        self._logger.info(f"Received Request at '{req.get_path()}': {req.get_payload()}")
+        self._logger.info(f"Received Request by '{req.get_sender()}' at '{req.get_path()}': {req.get_payload()}")
         self._publish(req)
 
     def send_request(self, req: Request):

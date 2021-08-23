@@ -5,6 +5,7 @@ from network.mqtt_credentials_container import MqttCredentialsContainer
 from network.echo_client import TestEchoClient
 from tests.network.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test,\
     test_payload_small, test_payload_big
+from smarthome_bridge.network_manager import NetworkManager
 
 # Data for the MQTT Broker
 BROKER_IP = "192.168.178.111"
@@ -52,9 +53,17 @@ def sender(mqtt_credentials):
     sender.__del__()
 
 
+@pytest.fixture
+def manager(sender):
+    manager = NetworkManager()
+    manager.add_connector(sender)
+    yield manager
+    manager.__del__()
+
+
 @pytest.mark.network
-def test_mqtt_connector_send(sender: MQTTConnector, test_payload_big, echo_client):
-    send_test(sender, echo_client, test_payload_big)
+def test_mqtt_connector_send(manager: NetworkManager, test_payload_big, echo_client):
+    send_test(manager, echo_client, test_payload_big)
 
 
 # @pytest.mark.network

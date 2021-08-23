@@ -20,5 +20,5 @@ class NetworkClient(NetworkConnector):
     def receive(self, req: Request):
         self._publish(req)
 
-    def _send_data(self, req: Request):
+    def _send_data(self, req: Request) -> None:
         self._client.send_request(req)

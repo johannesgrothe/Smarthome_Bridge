@@ -2,6 +2,7 @@ import pytest
 from network.network_connector import NetworkConnector
 from network.request import Request
 from network.echo_client import TestEchoClient
+from smarthome_bridge.network_manager import NetworkManager
 
 TEST_PATH = "test"
 TEST_SENDER = "unittest"
@@ -33,14 +34,9 @@ def test_payload_small() -> dict:
     return {"lorem": LOREM_IPSUM_SHORT}
 
 
-def send_test(connector: NetworkConnector, echo_client: TestEchoClient, payload: dict):
-    req = Request(TEST_PATH,
-                  None,
-                  connector.get_hostname(),
-                  echo_client.get_hostname(),
-                  payload)
+def send_test(connector: NetworkManager, echo_client: TestEchoClient, payload: dict):
 
-    response = connector.send_request(req)
+    response = connector.send_request(TEST_PATH, echo_client.get_hostname(), payload)
     assert response is not None
     assert response.get_payload() == payload
     return
