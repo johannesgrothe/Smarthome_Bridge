@@ -116,6 +116,8 @@ class NetworkManager(Publisher, Subscriber):
             return None
 
         responses = self._send_request_obj(req, timeout, 1)
+        if not responses:
+            return None
         return responses[0]
 
     def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
@@ -168,6 +170,8 @@ class NetworkManager(Publisher, Subscriber):
                               out_dict)
             if package_index == last_index - 1:
                 responses = self._send_request_obj(out_req, timeout, 1)
+                if not responses:
+                    return None
                 return responses[0]
             else:
                 self._send_request_obj(out_req, 0, 0)
