@@ -67,15 +67,17 @@ class ApiDecoder(LoggingInterface):
             min_val = characteristic_data["min"]
             max_val = characteristic_data["max"]
             steps = characteristic_data["steps"]
-            value = characteristic_data["value"]
+            value = characteristic_data["val"]
             return Characteristic(identifier,
                                   min_val,
                                   max_val,
                                   steps,
                                   value)
-        except (KeyError, ValueError) as err:
-            self._logger.error(err.args[0])
-            raise CharacteristicDecodeError
+        except KeyError:
+            self._logger.error("Missing key in data for characteristic")
+        except ValueError:
+            self._logger.error(f"Cannot create CharacteristicIdentifier out of '{characteristic_data['type']}'")
+        raise CharacteristicDecodeError
 
     def decode_client(self, client_data: dict, client_name: str) -> SmarthomeClient:
         """

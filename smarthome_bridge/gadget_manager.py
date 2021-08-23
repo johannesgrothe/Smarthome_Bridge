@@ -9,7 +9,7 @@ from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.gadgets.any_gadget import AnyGadget
 from smarthome_bridge.characteristic import CharacteristicIdentifier
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
-from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
+from smarthome_bridge.gadgets.gadget_factory import GadgetFactory, GadgetCreationError
 
 
 class GadgetDoesntExistError(Exception):
@@ -71,12 +71,21 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
                 self._logger.info(f"Adding gadget '{gadget.get_name()}'")
                 self._gadgets.append(gadget)
                 self._publish_update(gadget)
+            else:
+                self._logger.error(f"Received sync data for unknown gadget '{gadget.get_name()}'")
         else:
             if self._gadgets_are_identical(gadget, found_gadget):
                 return
             self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'")
             self._gadgets.remove(found_gadget)
-            merged_gadget = self._merge_gadgets(found_gadget, gadget)
+            try:
+                merged_gadget = self._merge_gadgets(found_gadget, gadget)
+            except GadgetCreationError as err:
+                self._logger.error(err.args[0])
+                return
+            except NotImplementedError:
+                self._logger.error(f"Merging gadgets of the type '{gadget.__class__.__name__}' is not implemented")
+                return
             self._gadgets.append(merged_gadget)
             self._publish_update(merged_gadget)
 
