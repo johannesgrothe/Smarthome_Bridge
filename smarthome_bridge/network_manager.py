@@ -49,6 +49,7 @@ class NetworkManager(Publisher, Subscriber):
                 if self._hostname != connector.get_hostname():
                     raise InconsistentHostnameException(self._hostname, connector.get_hostname())
             self._connectors.append(connector)
+            connector.subscribe(self)
 
     def remove_connector(self, connector: NetworkConnector):
         if connector in self._connectors:
@@ -58,9 +59,7 @@ class NetworkManager(Publisher, Subscriber):
         return len(self._connectors)
 
     def receive(self, req: Request):
-        self._forward_req(req)
-
-    def _forward_req(self, req: Request):
+        self._logger.info(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}'")
         self._publish(req)
 
     @staticmethod

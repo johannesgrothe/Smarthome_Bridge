@@ -1,4 +1,3 @@
-import logging
 from typing import Optional, Callable
 import threading
 
@@ -17,6 +16,7 @@ from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 
 from smarthome_bridge.api_encoder import ApiEncoder
+from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 
 
 PATH_HEARTBEAT = "heartbeat"
@@ -58,10 +58,9 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
 
     def _handle_gadget_update(self, gadget: Gadget):
         gadget_data = ApiEncoder().encode_gadget(gadget)
-        self._network.send_request(PATH_SYNC_GADGET,
-                                   None,
-                                   {"gadget": gadget_data},
-                                   0)
+        self._network.send_broadcast(PATH_SYNC_GADGET,
+                                     {"gadget": gadget_data},
+                                     0)
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
@@ -111,24 +110,17 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
 
         self._logger.info(f"Syncing client {client_id}")
 
-        runtime_id = req.get_payload()["runtime_id"]
-        port_mapping = req.get_payload()["port_mapping"]
-        boot_mode = req.get_payload()["boot_mode"]
-        sw_uploaded = req.get_payload()["sw_uploaded"]
-        sw_commit = req.get_payload()["sw_commit"]
-        sw_branch = req.get_payload()["sw_branch"]
+        decoder = ApiDecoder()
 
-        new_client = SmarthomeClient(name=client_id,
-                                     boot_mode=boot_mode,
-                                     runtime_id=runtime_id,
-                                     flash_date=sw_uploaded,
-                                     software_commit=sw_commit,
-                                     software_branch=sw_branch,
-                                     port_mapping=port_mapping)
+        try:
+            new_client = decoder.decode_client(req.get_payload(), req.get_sender())
+        except ClientDecodeError as err:
+            self._logger.error(err.args[0])
+            return
 
-        gadgets = req.get_payload()["gadgets"]
+        gadget_data = req.get_payload()["gadgets"]
 
-        for gadget in gadgets:
+        for gadget in gadget_data:
             self._update_gadget(client_id, gadget)
 
         self._clients.add_client(new_client)
@@ -144,9 +136,10 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
             self._validator.validate(req.get_payload(), "api_gadget_sync_request")
         except ValidationError:
             self._logger.error(f"Request validation error at '{PATH_SYNC_GADGET}'")
+            return
         client_id = req.get_sender()
 
-        self._logger.info(f"Syncing gadget from {client_id}")
+        self._logger.info(f"Syncing gadget from '{client_id}'")
         gadget_data = req.get_payload()["gadget"]
         self._update_gadget(client_id, gadget_data)
 
@@ -159,16 +152,14 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
         :param gadget_data: JSON-data describing the gadget
         :return: None
         """
-        try:
-            gadget_type = GadgetIdentifier(gadget_data["type"])
-        except ValueError:
-            self._logger.error(f"Could not create Gadget from type index '{gadget_data['type']}'")
-            return
-        factory = GadgetFactory()
-        buf_gadget = factory.create_gadget(gadget_type,
-                                           gadget_data["name"],
-                                           client_id,
-                                           gadget_data["characteristics"])
 
-        with self._gadget_sync_lock:
-            self._gadgets.receive_update(buf_gadget)
+        decoder = ApiDecoder()
+
+        try:
+            buf_gadget = decoder.decode_gadget(gadget_data, client_id)
+            with self._gadget_sync_lock:
+                self._gadgets.receive_update(buf_gadget)
+
+        except GadgetDecodeError as err:
+            self._logger.error(err.args[0])
+            return

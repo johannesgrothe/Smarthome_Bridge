@@ -6,8 +6,10 @@ from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher
 from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
 
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from smarthome_bridge.gadgets.any_gadget import AnyGadget
 from smarthome_bridge.characteristic import CharacteristicIdentifier
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
+from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
 
 
 class GadgetDoesntExistError(Exception):
@@ -53,18 +55,30 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
 
         return first.get_name() == second.get_name()
 
+    @staticmethod
+    def _merge_gadgets(old_gadget: Gadget, new_gadget: Gadget) -> Gadget:
+        factory = GadgetFactory()
+        merged_gadget = factory.create_gadget(old_gadget.get_type(),
+                                              old_gadget.get_name(),
+                                              old_gadget.get_host_client(),
+                                              new_gadget.get_characteristics())
+        return merged_gadget
+
     def receive_update(self, gadget: Gadget):
         found_gadget = self._get_gadget_by_name(gadget.get_name())
         if found_gadget is None:
-            self._logger.info(f"Adding gadget '{gadget.get_name()}'")
-            self._gadgets.append(gadget)
+            if not isinstance(gadget, AnyGadget):
+                self._logger.info(f"Adding gadget '{gadget.get_name()}'")
+                self._gadgets.append(gadget)
+                self._publish_update(gadget)
         else:
             if self._gadgets_are_identical(gadget, found_gadget):
                 return
             self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'")
             self._gadgets.remove(found_gadget)
-            self._gadgets.append(gadget)
-        self._publish_update(gadget)
+            merged_gadget = self._merge_gadgets(found_gadget, gadget)
+            self._gadgets.append(merged_gadget)
+            self._publish_update(merged_gadget)
 
     def _remove_gadget_from_publishers(self, gadget: Gadget):
         """

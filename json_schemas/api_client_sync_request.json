@@ -61,7 +61,7 @@
                 "type",
                 "min",
                 "max",
-                "step",
+                "steps",
                 "val"
               ],
               "properties": {

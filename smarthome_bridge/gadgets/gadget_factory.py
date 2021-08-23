@@ -1,18 +1,13 @@
-import logging
-
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
-
 from smarthome_bridge.gadgets.any_gadget import AnyGadget
+from logging_interface import LoggingInterface
 
 
-class GadgetFactory:
-
-    _logger: logging.Logger
+class GadgetFactory(LoggingInterface):
 
     def __init__(self):
         super().__init__()
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def create_gadget(self,
                       gadget_type: GadgetIdentifier,
