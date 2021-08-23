@@ -1,17 +1,16 @@
 from network.network_connector import NetworkConnector
 from pubsub import Subscriber
 from network.request import Request
-import logging
+from logging_interface import LoggingInterface
 
 
-class TestEchoClient(Subscriber):
+class TestEchoClient(Subscriber, LoggingInterface):
 
     _network: NetworkConnector
-    _logger: logging.Logger
 
     def __init__(self, network: NetworkConnector):
+        super().__init__()
         self._network = network
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._network.subscribe(self)
 
     def receive(self, req: Request):
@@ -24,5 +23,5 @@ class TestEchoClient(Subscriber):
 
         req.respond(req.get_payload())
 
-    def get_name(self):
+    def get_hostname(self):
         return self._network.get_hostname()

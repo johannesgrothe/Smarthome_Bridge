@@ -39,13 +39,31 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
                 return found_gadget
         return None
 
+    @staticmethod
+    def _gadgets_are_identical(first: Gadget, second: Gadget) -> bool:
+        if first.__class__ != second.__class__:
+            return False
+        for characteristic in first.get_characteristic_types():
+            first_c = first.get_characteristic(characteristic)
+            second_c = second.get_characteristic(characteristic)
+            if first_c != second_c:
+                return False
+            if first_c.get_step_value() != second_c.get_step_value():
+                return False
+
+        return first.get_name() == second.get_name()
+
     def receive_update(self, gadget: Gadget):
         found_gadget = self._get_gadget_by_name(gadget.get_name())
         if found_gadget is None:
             self._logger.info(f"Adding gadget '{gadget.get_name()}'")
             self._gadgets.append(gadget)
         else:
+            if self._gadgets_are_identical(gadget, found_gadget):
+                return
             self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'")
+            self._gadgets.remove(found_gadget)
+            self._gadgets.append(gadget)
         self._publish_update(gadget)
 
     def _remove_gadget_from_publishers(self, gadget: Gadget):

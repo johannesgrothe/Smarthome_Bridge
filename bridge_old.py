@@ -285,7 +285,7 @@ class MainBridge(Subscriber):
                     print("Gadget config in sync response was no list")
                     return
 
-                print("Received sync data from '{}'".format(local_client.get_name()))
+                print("Received sync data from '{}'".format(local_client.get_hostname()))
 
                 updated_gadgets: [str] = []
 
@@ -582,7 +582,7 @@ class MainBridge(Subscriber):
 
         :param client: Client to report the activity of
         """
-        print("Triggering Activity on Client: '{}'".format(client.get_name()))
+        print("Triggering Activity on Client: '{}'".format(client.get_hostname()))
         client.trigger_activity()
 
     def __get_or_create_client(self, name: str, runtime_id: int) -> Optional[SmarthomeClient]:
@@ -626,14 +626,14 @@ class MainBridge(Subscriber):
         out_req = Request("smarthome/sync",
                           gen_req_id(),
                           "<bridge>",
-                          client.get_name(),
+                          client.get_hostname(),
                           {"server_time": int(time.time() / 1000)})
         self.__network_gadget.send_request(out_req, timeout=0)
 
     def restart_client(self, client: SmarthomeClient) -> bool:
         """Sends out a request to restart the client and"""
 
-        return client_controller.reboot_client(client.get_name(),
+        return client_controller.reboot_client(client.get_hostname(),
                                                     "<bridge>",
                                                self.__network_gadget)
 

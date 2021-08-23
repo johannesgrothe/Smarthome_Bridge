@@ -1,4 +1,5 @@
 import time
+import threading
 from abc import ABC
 
 from network.network_server_client import NetworkServerClient
@@ -6,11 +7,16 @@ from thread_manager import ThreadManager
 
 from pubsub import Subscriber
 
-from network.network_connector import NetworkConnector, Request
-import threading
+from network.request import Request
+from network.network_server_client import NetworkServerClient, ClientDisconnectedError
+from logging_interface import LoggingInterface
+from json_validator import Validator, ValidationError
 
 
-class NetworkServer(NetworkConnector, Subscriber, ABC):
+class NetworkServer(LoggingInterface, Subscriber, ABC):
+
+    _validator: Validator
+    _hostname: str
     _clients: [NetworkServerClient]
     _thread_manager: ThreadManager
     __client_list_lock: threading.Lock
@@ -25,7 +31,6 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
 
     def __del__(self):
         self._logger.info(f"Stopping {self.__class__.__name__}")
-        super().__del__()
         self._thread_manager.__del__()
         while self._clients:
             client = self._clients[0]
@@ -62,7 +67,7 @@ class NetworkServer(NetworkConnector, Subscriber, ABC):
             for client in self._clients:
                 try:  # TODO: Remove if possible
                     client.send_request(req)
-                except ClientDisconnectedException:
+                except ClientDisconnectedError:
                     self._logger.info(f"Connection to '{client.get_address()}' was lost")
                     # Save clients index for removal
                     remove_clients.append(client.get_address())

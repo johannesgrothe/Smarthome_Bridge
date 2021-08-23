@@ -10,6 +10,11 @@ from pubsub import Publisher
 from thread_manager import ThreadManager
 
 
+class ClientDisconnectedError(Exception):
+    def __init__(self, client_address: str):
+        super().__init__(f"Lost connection to '{client_address}'")
+
+
 class NetworkServerClient(Publisher):
     _host_name: str
     _address: str

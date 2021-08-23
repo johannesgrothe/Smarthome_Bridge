@@ -4,14 +4,13 @@ from network.network_server import NetworkServerClient
 from network.network_connector import NetworkConnector
 
 
-class NetworkClient(NetworkConnector, Subscriber):
+class NetworkClient(NetworkConnector):
 
     _client: NetworkServerClient
     _address: str
 
     def __init__(self, hostname: str, client: NetworkServerClient):
         super().__init__(hostname)
-        self._hostname = hostname
         self._client = client
         self._client.subscribe(self)
 
