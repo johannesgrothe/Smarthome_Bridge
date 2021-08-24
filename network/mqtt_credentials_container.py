@@ -13,8 +13,14 @@ class MqttCredentialsContainer:
     username: Optional[str]
     password: Optional[str]
 
-    def __init__(self, ip: str, port: int, username: Optional[str], password: Optional[str]):
-        if not isinstance(ip, str) or len(ip.split(".")) != 4:
+    def __init__(self, ip: str, port: int, username: Optional[str] = None, password: Optional[str] = None):
+        try:
+            if not isinstance(ip, str):
+                raise ValueError()
+            ip_list = [int(x) for x in ip.split(".") if 0 <= int(x) <= 0xFF]
+            if len(ip_list) != 4:
+                raise ValueError()
+        except ValueError:
             raise MqttCredentialsError(f"Illegal ip for MQTT credentials: '{ip}'")
         if not isinstance(port, int) or port < 0:
             raise MqttCredentialsError(f"Illegal port for MQTT credentials: '{port}'")
