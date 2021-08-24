@@ -7,12 +7,6 @@ from tests.network.connector_tests import send_test, send_split_test, broadcast_
     test_payload_small, test_payload_big
 from smarthome_bridge.network_manager import NetworkManager
 
-# Data for the MQTT Broker
-BROKER_IP = "192.168.178.111"
-BROKER_PORT = 1883
-BROKER_USER = None
-BROKER_PW = None
-
 TEST_ECHO_CLIENT_NAME = "pytest_echo_client"
 TEST_SENDER_NAME = "pytest_sender"
 
@@ -26,18 +20,9 @@ def dummy_fixture_usage():
 
 
 @pytest.fixture
-def mqtt_credentials():
-    credentials = MqttCredentialsContainer(BROKER_IP,
-                                           BROKER_PORT,
-                                           BROKER_USER,
-                                           BROKER_PW)
-    return credentials
-
-
-@pytest.fixture
-def echo_client(mqtt_credentials):
+def echo_client(f_mqtt_credentials):
     sender = MQTTConnector(TEST_ECHO_CLIENT_NAME,
-                           mqtt_credentials,
+                           f_mqtt_credentials,
                            TEST_CHANNEL)
     echo = TestEchoClient(sender)
     yield echo
@@ -45,9 +30,9 @@ def echo_client(mqtt_credentials):
 
 
 @pytest.fixture
-def sender(mqtt_credentials):
+def sender(f_mqtt_credentials):
     sender = MQTTConnector(TEST_SENDER_NAME,
-                           mqtt_credentials,
+                           f_mqtt_credentials,
                            TEST_CHANNEL)
     yield sender
     sender.__del__()

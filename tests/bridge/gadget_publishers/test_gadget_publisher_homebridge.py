@@ -11,7 +11,6 @@ from smarthome_bridge.gadgets.gadget import Gadget
 
 
 HOMEBRIDGE_NETWORK_NAME = "test_network"
-
 GADGET_NAME = "unittest_gadget"
 
 
@@ -32,17 +31,9 @@ def gadget():
 
 
 @pytest.fixture()
-def mqtt_credentials():
-    return MqttCredentialsContainer("192.168.178.111",
-                                    1883,
-                                    None,
-                                    None)
-
-
-@pytest.fixture()
-def homebridge_network(mqtt_credentials: MqttCredentialsContainer):
+def homebridge_network(f_mqtt_credentials: MqttCredentialsContainer):
     network_connector = HomebridgeNetworkConnector(HOMEBRIDGE_NETWORK_NAME,
-                                                   mqtt_credentials,
+                                                   f_mqtt_credentials,
                                                    1)
     yield network_connector
     network_connector.__del__()

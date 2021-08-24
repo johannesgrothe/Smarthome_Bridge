@@ -1,6 +1,11 @@
 from typing import Optional
 
 
+class MqttCredentialsError(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
 class MqttCredentialsContainer:
 
     ip: str
@@ -9,6 +14,10 @@ class MqttCredentialsContainer:
     password: Optional[str]
 
     def __init__(self, ip: str, port: int, username: Optional[str], password: Optional[str]):
+        if not isinstance(ip, str) or len(ip.split(".")) != 4:
+            raise MqttCredentialsError(f"Illegal ip for MQTT credentials: '{ip}'")
+        if not isinstance(port, int) or port < 0:
+            raise MqttCredentialsError(f"Illegal port for MQTT credentials: '{port}'")
         self.ip = ip
         self.port = port
         self.username = username

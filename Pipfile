@@ -13,6 +13,7 @@ jsonschema = {version="*"}
 pytest = {version="*"}
 coverage = {version="*"}
 pytest-cov = {version="*"}
+pytest-envfiles = {version="*"}
 
 [dev-packages]
 
