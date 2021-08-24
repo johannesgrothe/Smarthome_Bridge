@@ -3,7 +3,7 @@ from logging_interface import LoggingInterface
 from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
-from smarthomeclient import SmarthomeClient
+from smarthome_bridge.smarthomeclient import SmarthomeClient
 
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
