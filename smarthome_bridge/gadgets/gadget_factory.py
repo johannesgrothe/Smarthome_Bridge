@@ -2,7 +2,9 @@ from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from logging_interface import LoggingInterface
 
+from smarthome_bridge.gadgets.any_gadget import AnyGadget
 from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
+from smarthome_bridge.gadgets.lamp_neopixel_basic import LampNeopixelBasic
 
 
 class CharacteristicNotFoundError(Exception):
@@ -35,6 +37,14 @@ class GadgetFactory(LoggingInterface):
                 return characteristic
         raise CharacteristicNotFoundError(ident)
 
+    @staticmethod
+    def create_any_gadget(name: str,
+                          host_client: str,
+                          characteristics: list[Characteristic]) -> AnyGadget:
+        return AnyGadget(name,
+                         host_client,
+                         characteristics)
+
     def create_gadget(self,
                       gadget_type: GadgetIdentifier,
                       name: str,
@@ -42,8 +52,8 @@ class GadgetFactory(LoggingInterface):
                       characteristics: list[Characteristic]) -> Gadget:
         if gadget_type == GadgetIdentifier.fan_westinghouse_ir:
             return self._create_fan_westinghouse_ir(name, host_client, characteristics)
-        # elif gadget_type == GadgetIdentifier.lamp_basic:
-        #     raise NotImplementedError()
+        elif gadget_type == GadgetIdentifier.lamp_neopixel_basic:
+            return self._create_lamp_neopixel_basic(name, host_client, characteristics)
         else:
             raise NotImplementedError()
 
@@ -62,3 +72,21 @@ class GadgetFactory(LoggingInterface):
         except CharacteristicNotFoundError as err:
             self._logger.error(err.args[0])
             raise GadgetCreationError(name, GadgetIdentifier.fan_westinghouse_ir)
+
+    def _create_lamp_neopixel_basic(self,
+                                    name: str,
+                                    host_client: str,
+                                    characteristics: list[Characteristic]) -> LampNeopixelBasic:
+        try:
+            status = self._get_characteristic_from_list(CharacteristicIdentifier.status, characteristics)
+            brightness = self._get_characteristic_from_list(CharacteristicIdentifier.brightness, characteristics)
+            hue = self._get_characteristic_from_list(CharacteristicIdentifier.hue, characteristics)
+            lamp = LampNeopixelBasic(name,
+                                     host_client,
+                                     status,
+                                     brightness,
+                                     hue)
+            return lamp
+        except CharacteristicNotFoundError as err:
+            self._logger.error(err.args[0])
+            raise GadgetCreationError(name, GadgetIdentifier.lamp_neopixel_basic)

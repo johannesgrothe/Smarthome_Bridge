@@ -3,10 +3,6 @@ import random
 
 from smarthome_bridge.gadget_manager import GadgetManager
 
-from test_helpers.gadget_fixtures import f_any_gadget, ANY_NAME, ANY_TYPE, ANY_HOST
-
-from test_helpers.gadget_fixtures import *
-
 
 @pytest.fixture()
 def gadget_manager():

@@ -42,4 +42,3 @@ temp
 /logs/
 /tests_manual/
 /test_reports/
-.coverage*

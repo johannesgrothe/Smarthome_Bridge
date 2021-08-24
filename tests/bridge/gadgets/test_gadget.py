@@ -1,12 +1,23 @@
 import pytest
 
-from smarthome_bridge.gadgets.gadget import Gadget
-from test_helpers.gadget_fixtures import *
+from smarthome_bridge.gadgets.any_gadget import AnyGadget
+from smarthome_bridge.gadgets.gadget import GadgetIdentifier
+from smarthome_bridge.characteristic import CharacteristicIdentifier
+
+
+NAME = "unittest"
+HOST = "unittest_host"
 
 
 @pytest.mark.bridge
-def test_gadget_getters(f_any_gadget: Gadget):
-    assert f_any_gadget.get_name() == ANY_NAME
-    assert f_any_gadget.get_type() == ANY_TYPE
-    assert f_any_gadget.get_host_client() == ANY_HOST
-    assert len(f_any_gadget.get_characteristic_types()) == 1
+def test_gadget_getters(f_characteristic_status):
+    gadget = AnyGadget(NAME,
+                       HOST,
+                       [f_characteristic_status])
+    assert gadget.get_name() == NAME
+    assert gadget.get_type() == GadgetIdentifier.any_gadget
+    assert gadget.get_host_client() == HOST
+    assert len(gadget.get_characteristic_types()) == 1
+    assert gadget.get_characteristics() == [f_characteristic_status]
+    assert gadget.get_characteristic(CharacteristicIdentifier.status) == f_characteristic_status
+    assert gadget.get_characteristic(CharacteristicIdentifier.fanSpeed) is None
