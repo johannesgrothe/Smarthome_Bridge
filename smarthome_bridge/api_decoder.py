@@ -67,7 +67,7 @@ class ApiDecoder(LoggingInterface):
             min_val = characteristic_data["min"]
             max_val = characteristic_data["max"]
             steps = characteristic_data["steps"]
-            value = characteristic_data["val"]
+            value = characteristic_data["step_value"]
             return Characteristic(identifier,
                                   min_val,
                                   max_val,
@@ -112,4 +112,4 @@ class ApiDecoder(LoggingInterface):
             return out_client
         except KeyError as err:
             self._logger.error(err.args[0])
-            raise ClientDecodeError
+            raise ClientDecodeError()

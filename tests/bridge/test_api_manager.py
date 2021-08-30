@@ -28,8 +28,8 @@ def gadget_manager():
 
 
 @pytest.fixture()
-def api(clients: ClientManager, network_manager, gadget_manager):
-    api = ApiManager(clients, gadget_manager, network_manager)
+def api(clients: ClientManager, network_manager):
+    api = ApiManager(clients, network_manager)
     yield api
     api.__del__()
 

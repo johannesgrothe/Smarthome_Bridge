@@ -11,10 +11,10 @@ from smarthome_bridge.network_manager import NetworkManager
 
 from gadgets.gadget import Gadget
 from smarthome_bridge.gadget_manager import GadgetManager
-from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 
-from smarthome_bridge.api_encoder import ApiEncoder
+from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
+from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 
 
 PATH_HEARTBEAT = "heartbeat"
@@ -22,43 +22,44 @@ PATH_SYNC_CLIENT = "sync/client"
 PATH_SYNC_GADGET = "sync/gadget"
 
 
-class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpdatePublisher):
+class ApiManager(Subscriber, LoggingInterface):
 
     _validator: Validator
+
+    _delegate: ApiManagerDelegate
+
     _clients: ClientManager
-    _gadgets: GadgetManager
     _network: NetworkManager
 
-    _gadget_sync_lock: threading.Lock
     _gadget_sync_connection: Optional[str]
 
-    def __init__(self, clients: ClientManager, gadgets: GadgetManager, network: NetworkManager):
+    def __init__(self, delegate: ApiManagerDelegate, clients: ClientManager,
+                 network: NetworkManager):
         super().__init__()
+        self._delegate = delegate
         self._clients = clients
-        self._gadgets = gadgets
         self._network = network
         self._network.subscribe(self)
         self._validator = Validator()
-        self._gadget_sync_lock = threading.Lock()
         self._gadget_sync_connection = None
-
-        self._gadgets.subscribe(self)
 
     def __del__(self):
         pass
 
-    def receive_update(self, gadget: Gadget):
-        self._logger.info(f"Forwarding update for {gadget.get_name()}")
-        self._handle_gadget_update(gadget)
-
     def receive(self, req: Request):
         self._handle_request(req)
 
-    def _handle_gadget_update(self, gadget: Gadget):
-        gadget_data = ApiEncoder().encode_gadget(gadget)
-        self._network.send_broadcast(PATH_SYNC_GADGET,
-                                     {"gadget": gadget_data},
-                                     0)
+    def request_sync(self, name: str):
+        self._network.send_request(PATH_SYNC_CLIENT, name, {}, 0)
+
+    def send_gadget_update(self, gadget: Gadget):
+        try:
+            gadget_data = ApiEncoder().encode_gadget(gadget)
+            self._network.send_broadcast(PATH_SYNC_GADGET,
+                                         {"gadget": gadget_data},
+                                         0)
+        except GadgetEncodeError as err:
+            self._logger.error(err.args[0])
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
@@ -79,13 +80,8 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
         except ValidationError:
             self._logger.error(f"Request validation error at '{PATH_HEARTBEAT}'")
 
-        client = self._clients.get_client(req.get_sender())
         rt_id = req.get_payload()["runtime_id"]
-        if client:
-            if client.get_runtime_id() != rt_id:
-                self._network.send_request(PATH_SYNC_CLIENT, req.get_sender(), {}, 0)
-            else:
-                client.trigger_activity()
+        self._delegate.handle_heartbeat(req.get_sender(), rt_id)
 
     def _handle_client_sync(self, req: Request):
         """
@@ -155,8 +151,7 @@ class ApiManager(Subscriber, LoggingInterface, GadgetUpdateSubscriber, GadgetUpd
 
         try:
             buf_gadget = decoder.decode_gadget(gadget_data, client_id)
-            with self._gadget_sync_lock:
-                self._gadgets.receive_update(buf_gadget)
+            self._delegate.handle_gadget_update(buf_gadget)
 
         except GadgetDecodeError as err:
             self._logger.error(err.args[0])

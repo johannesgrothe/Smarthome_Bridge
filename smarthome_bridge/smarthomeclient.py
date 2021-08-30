@@ -1,64 +1,78 @@
 """Module for the SmarthomeClient Class"""
 from datetime import datetime, timedelta
 from typing import Optional
-import logging
+from logging_interface import LoggingInterface
 
 # Maximum timeout in seconds before the client is considered inactive
 DEFAULT_TIMEOUT = 17
 
 
-class SmarthomeClient:
+class SmarthomeClient(LoggingInterface):
     """Smarthome client information"""
 
     # The name of the client
-    __name: str
+    _name: str
 
     # When the client was last connected
-    __last_connected: datetime
+    _last_connected: datetime
 
     # When the client was created
-    __created: datetime
+    _created: datetime
 
     # A unique runtime id provided by the chip. Has to change on every reboot of the client
-    __runtime_id: int
+    _runtime_id: int
 
     # Date the chip was flashed (if available)
-    __flash_time: Optional[datetime]
+    _flash_time: Optional[datetime]
 
     # Software-commit hash
-    __software_commit: Optional[str]
+    _software_commit: Optional[str]
 
     # Branch the current software is on
-    __software_branch: Optional[str]
+    _software_branch: Optional[str]
 
     # Mapping for the ports on the client
-    __port_mapping: dict
+    _port_mapping: dict
 
     # Boot mode of the client
-    __boot_mode: int
-
-    __logger: logging.Logger
+    _boot_mode: int
 
     def __init__(self, name: str, runtime_id: int, flash_date: Optional[datetime],
                  software_commit: Optional[str], software_branch: Optional[str],
                  port_mapping: dict, boot_mode: int, connection_timeout: int = DEFAULT_TIMEOUT):
-        self.__name = name
-        self.__last_connected = datetime(1900, 1, 1)
-        self.__created = datetime.now()
-        self.__runtime_id = runtime_id
+        super().__init__()
+        self._name = name
+        self._last_connected = datetime(1900, 1, 1)
+        self._created = datetime.now()
+        self._runtime_id = runtime_id
         self._timeout = connection_timeout
-        self._logger = logging.getLogger(self.__class__.__name__)
 
-        self.__flash_time = flash_date
-        self.__software_commit = software_commit
-        self.__software_branch = software_branch
+        if flash_date:
+            self._flash_time = flash_date - timedelta(microseconds=flash_date.microsecond)
+        else:
+            self._flash_time = None
+
+        self._software_commit = software_commit
+        self._software_branch = software_branch
 
         # Set boot mode to "Unknown_Mode"
-        self.__boot_mode = boot_mode
+        self._boot_mode = boot_mode
 
-        has_err, self.__port_mapping = self._filter_mapping(port_mapping)
+        has_err, self._port_mapping = self._filter_mapping(port_mapping)
         if has_err:
             self._logger.warning(f"Detected problem in port mapping: '{port_mapping}'")
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, self.__class__):
+            return self.get_name() == other.get_name() and \
+                   self.get_runtime_id() == other.get_runtime_id() and \
+                   self.get_sw_flash_time() == other.get_sw_flash_time() and \
+                   self.get_sw_commit() == other.get_sw_commit() and \
+                   self.get_sw_branch() == other.get_sw_branch() and \
+                   self.get_boot_mode() == other.get_boot_mode() and \
+                   self.get_port_mapping() == other.get_port_mapping()
+        return NotImplemented
 
     def _filter_mapping(self, in_map: dict) -> (bool, dict):
         """Filters a port mapping dict to not contain any non-int or negative keys and no double values.
@@ -82,59 +96,50 @@ class SmarthomeClient:
 
     def get_name(self):
         """Returns the name of the client"""
-        return self.__name
+        return self._name
 
     def get_created(self) -> datetime:
         """Gets the timestamp when the client was created in seconds since the epoch"""
-        return self.__created
+        return self._created
 
     def get_last_connected(self) -> datetime:
         """Returns when the client was last active in seconds since the epoch"""
-        return self.__last_connected
+        return self._last_connected
 
     def get_runtime_id(self) -> int:
-        return self.__runtime_id
-
-    def get_flash_date(self) -> datetime:
-        return self.__flash_time
-
-    def get_software_commit(self) -> str:
-        return self.__software_commit
-
-    def get_software_branch(self) -> str:
-        return self.__software_branch
+        return self._runtime_id
 
     def trigger_activity(self):
         """Reports any activity of the client"""
-        self.__last_connected = datetime.now()
+        self._last_connected = datetime.now()
 
     def is_active(self) -> bool:
         """Returns whether the client is still considered active"""
-        return self.__last_connected + timedelta(seconds=self._timeout) > datetime.now()
+        return self._last_connected + timedelta(seconds=self._timeout) > datetime.now()
 
     def update_runtime_id(self, runtime_id: int):
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
-        self.__runtime_id = runtime_id
+        self._runtime_id = runtime_id
 
     def get_port_mapping(self) -> dict:
         """Returns the port mapping of the client"""
-        return self.__port_mapping
+        return self._port_mapping
 
     def get_sw_flash_time(self) -> Optional[datetime]:
         """Returns the date, the software was written on the chip"""
-        return self.__flash_time
+        return self._flash_time
 
     def get_sw_commit(self) -> Optional[str]:
         """Returns the software commit if available"""
-        return self.__software_commit
+        return self._software_commit
 
     def get_sw_branch(self) -> Optional[str]:
         """Returns the software branch name if available"""
-        return self.__software_branch
+        return self._software_branch
 
     def get_boot_mode(self) -> int:
         """Returns the boot mode of the chip"""
-        return self.__boot_mode
+        return self._boot_mode
 
     def set_timeout(self, seconds: int):
         self._timeout = seconds

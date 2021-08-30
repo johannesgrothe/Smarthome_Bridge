@@ -15,6 +15,9 @@ class GadgetEncodeError(Exception):
         super().__init__(f"Cannot encode {class_name} '{gadget_name}'")
 
 
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
 class ApiEncoder(LoggingInterface):
     def __init__(self):
         super().__init__()
@@ -28,18 +31,18 @@ class ApiEncoder(LoggingInterface):
         """
         self._logger.debug(f"Serializing client '{client.get_name()}'")
         out_date = None
-        if client.get_flash_date() is not None:
-            out_date = client.get_flash_date().strftime("%Y-%m-%d %H:%M:%S")
+        if client.get_sw_flash_time() is not None:
+            out_date = client.get_sw_flash_time().strftime(DATETIME_FORMAT)
 
         return {"name": client.get_name(),
-                "created": client.get_created().strftime("%Y-%m-%d %H:%M:%S"),
-                "last_connected": client.get_last_connected().strftime("%Y-%m-%d %H:%M:%S"),
+                "created": client.get_created().strftime(DATETIME_FORMAT),
+                "last_connected": client.get_last_connected().strftime(DATETIME_FORMAT),
                 "runtime_id": client.get_runtime_id(),
                 "is_active": client.is_active(),
                 "boot_mode": client.get_boot_mode(),
                 "sw_uploaded": out_date,
-                "sw_commit": client.get_software_commit(),
-                "sw_branch": client.get_software_branch(),
+                "sw_commit": client.get_sw_commit(),
+                "sw_branch": client.get_sw_branch(),
                 "port_mapping": client.get_port_mapping()}
 
     def encode_gadget(self, gadget: Gadget) -> dict:
