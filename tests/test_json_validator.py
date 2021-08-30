@@ -1,5 +1,5 @@
 import pytest
-from json_validator import Validator, ValidationError, SchemaDoesNotExistException
+from json_validator import Validator, ValidationError, SchemaDoesNotExistError
 
 TEST_REQ_OK = {"sender": "me",
                "receiver": "you",
@@ -11,32 +11,28 @@ REQ_SCHEMA_NAME = "request_basic_structure"
 ILLEGAL_SCHEMA_NAME = "yolokopter"
 
 
-@pytest.fixture
-def validator():
-    validator = Validator()
-    yield validator
+def dict_contains_key(search_key: str, json_obj: dict) -> bool:
+    for key in json_obj:
+        if key == search_key:
+            return True
+        else:
+            if isinstance(json_obj[key], dict):
+                return dict_contains_key(search_key, json_obj[key])
+    return False
 
 
-def test_json_validator(validator: Validator):
-    validation_error = None
-    try:
-        validator.validate(TEST_REQ_OK, REQ_SCHEMA_NAME)
-    except ValidationError as e:
-        validation_error = e
-    assert validation_error is None
+def test_json_validator(f_validator: Validator):
+    f_validator.validate(TEST_REQ_OK, REQ_SCHEMA_NAME)
 
-    validation_error = None
-    try:
-        validator.validate(TEST_REQ_ERR, REQ_SCHEMA_NAME)
-    except ValidationError as e:
-        validation_error = e
+    with pytest.raises(ValidationError):
+        f_validator.validate(TEST_REQ_ERR, REQ_SCHEMA_NAME)
 
-    assert validation_error is not None
+    with pytest.raises(SchemaDoesNotExistError):
+        f_validator.validate(TEST_REQ_OK, ILLEGAL_SCHEMA_NAME)
 
-    validation_error = None
-    try:
-        validator.validate(TEST_REQ_OK, ILLEGAL_SCHEMA_NAME)
-    except SchemaDoesNotExistException as e:
-        validation_error = e
 
-    assert validation_error is not None
+def test_json_validator_refs(f_validator: Validator):
+    assert len(f_validator.get_schema_names()) > 0
+    for schema_name in f_validator.get_schema_names():
+        assert dict_contains_key("$ref", f_validator.get_schema(schema_name)) is False
+        assert dict_contains_key("$schema", f_validator.get_schema(schema_name)) is False
