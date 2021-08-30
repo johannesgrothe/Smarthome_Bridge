@@ -44,7 +44,7 @@ class ApiEncoder(LoggingInterface):
 
     def encode_gadget(self, gadget: Gadget) -> dict:
         try:
-            identifier = self._get_type_for_gadget(gadget)
+            identifier = self.encode_gadget_identifier(gadget)
         except IdentifierEncodeError as err:
             self._logger.error(err.args[0])
             raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name())
@@ -58,17 +58,7 @@ class ApiEncoder(LoggingInterface):
         return gadget_json
 
     @staticmethod
-    def encode_characteristic(characteristic: Characteristic):
-        return {"type": int(characteristic.get_type()),
-                "min": characteristic.get_min(),
-                "max": characteristic.get_max(),
-                "steps": characteristic.get_steps(),
-                "step_value": characteristic.get_step_value(),
-                "true_value": characteristic.get_true_value(),
-                "percentage_value": characteristic.get_percentage_value()}
-
-    @staticmethod
-    def _get_type_for_gadget(gadget: Gadget) -> GadgetIdentifier:
+    def encode_gadget_identifier(gadget: Gadget) -> GadgetIdentifier:
         switcher = {
             "AnyGadget": GadgetIdentifier.any_gadget,
             "FanWestinghouseIR": GadgetIdentifier.fan_westinghouse_ir,
@@ -78,3 +68,13 @@ class ApiEncoder(LoggingInterface):
         if identifier is None:
             raise IdentifierEncodeError(gadget.__class__.__name__)
         return identifier
+
+    @staticmethod
+    def encode_characteristic(characteristic: Characteristic):
+        return {"type": int(characteristic.get_type()),
+                "min": characteristic.get_min(),
+                "max": characteristic.get_max(),
+                "steps": characteristic.get_steps(),
+                "step_value": characteristic.get_step_value(),
+                "true_value": characteristic.get_true_value(),
+                "percentage_value": characteristic.get_percentage_value()}

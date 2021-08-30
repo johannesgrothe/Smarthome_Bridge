@@ -53,6 +53,5 @@ def test_api_encoder_characteristic(encoder: ApiEncoder, f_characteristic_fan_sp
 @pytest.mark.bridge
 def test_api_encoder_gadget(f_validator: Validator, encoder: ApiEncoder, f_any_gadget: Gadget):
     serialized_data = encoder.encode_gadget(f_any_gadget)
-    validate_req = {"gadget": serialized_data}
-    f_validator.validate(validate_req, "api_gadget_data")
+    f_validator.validate(serialized_data, "api_gadget_data")
     assert serialized_data != {}
