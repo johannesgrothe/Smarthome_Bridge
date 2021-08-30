@@ -29,7 +29,9 @@
               "min",
               "max",
               "steps",
-              "val"
+              "step_value",
+              "true_value",
+              "percentage_value"
             ],
             "properties": {
               "type": {
@@ -42,12 +44,21 @@
               "max": {
                 "type": "integer"
               },
-              "step": {
+              "steps": {
                 "type": "integer",
                 "minimum": 0
               },
-              "value": {
+              "step_value": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "true_value": {
                 "type": "integer"
+              },
+              "percentage_value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
               }
             }
           }

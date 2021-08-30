@@ -1,9 +1,9 @@
 from logging_interface import LoggingInterface
 
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier, Characteristic, CharacteristicIdentifier
-from smarthome_bridge.gadgets.fan import Fan
-from smarthome_bridge.gadgets.lamp import Lamp
-from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator
+from gadgets.gadget import Gadget, CharacteristicIdentifier
+from gadgets.fan import Fan
+from gadgets.lamp import Lamp
+from gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator
 
 # https://www.npmjs.com/package/homebridge-mqtt
 # https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/ServiceDefinitions.ts
@@ -23,7 +23,7 @@ from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator imp
 
 class GadgetEncodeError(Exception):
     def __init__(self, gadget: Gadget):
-        super().__init__(f"Failed to decode {gadget.get_name()}/{gadget.get_type()}")
+        super().__init__(f"Failed to decode {gadget.get_name()}/{gadget.__class__.__name__}")
 
 
 class HomebridgeEncoder(LoggingInterface):

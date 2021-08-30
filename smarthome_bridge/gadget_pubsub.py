@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABCMeta
 
-from smarthome_bridge.gadgets.gadget import Gadget
+from gadgets.gadget import Gadget
 
 
 class GadgetUpdateSubscriber(metaclass=ABCMeta):

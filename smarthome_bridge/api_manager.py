@@ -6,12 +6,10 @@ from pubsub import Subscriber
 from json_validator import Validator, ValidationError
 
 from logging_interface import LoggingInterface
-from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError, ClientAlreadyExistsError
+from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
 from smarthome_bridge.network_manager import NetworkManager
 
-from smarthome_bridge.smarthomeclient import SmarthomeClient
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
-from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
+from gadgets.gadget import Gadget
 from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 

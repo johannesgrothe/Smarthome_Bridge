@@ -7,11 +7,9 @@ from smarthome_bridge.bridge import Bridge
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from network.mqtt_connector import MQTTConnector
-from network.socket_server import SocketServer
-from network.serial_server import SerialServer
 
-from smarthome_bridge.gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
-from smarthome_bridge.gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBridge
+from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
+from gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBridge
 
 
 def get_sender() -> str:
@@ -26,7 +24,7 @@ def parse_args():
     parser.add_argument('--mqtt_ip', help='IP of the MQTT Broker', type=str)
     parser.add_argument('--mqtt_port', help='Port of the MQTT Broker', type=int)
     parser.add_argument('--mqtt_user', help='Username for the MQTT Broker', type=Optional[str], default=None)
-    parser.add_argument('--mqtt_pw', help='mPassword for the MQTT Broker', type=Optional[str], default=None)
+    parser.add_argument('--mqtt_pw', help='Password for the MQTT Broker', type=Optional[str], default=None)
     parser.add_argument('--dummy_data', help='Adds dummy data for debugging.', action="store_true")
     parser.add_argument('--api_port', help='Port for the REST-API', type=int)
     parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
@@ -80,7 +78,7 @@ def main():
     # Insert dummy data if wanted
     if args.dummy_data:
 
-        from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
+        from gadgets.fan_westinghouse_ir import FanWestinghouseIR
         from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 
         gadget = FanWestinghouseIR("dummy_fan",

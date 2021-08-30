@@ -1,15 +1,12 @@
-import logging
 from typing import Optional
 
 from logging_interface import LoggingInterface
-from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher
-from smarthome_bridge.gadget_update_connector import GadgetUpdateConnector
+from gadget_publishers.gadget_publisher import GadgetPublisher
 
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.characteristic import CharacteristicIdentifier
+from gadgets.gadget import Gadget
+from gadgets.any_gadget import AnyGadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
-from smarthome_bridge.gadgets.gadget_factory import GadgetFactory, GadgetCreationError
+from gadgets.gadget_factory import GadgetFactory, GadgetCreationError
 
 
 class GadgetDoesntExistError(Exception):
@@ -41,29 +38,6 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
                 return found_gadget
         return None
 
-    @staticmethod
-    def _gadgets_are_identical(first: Gadget, second: Gadget) -> bool:
-        if first.__class__ != second.__class__:
-            return False
-        for characteristic in first.get_characteristic_types():
-            first_c = first.get_characteristic(characteristic)
-            second_c = second.get_characteristic(characteristic)
-            if first_c != second_c:
-                return False
-            if first_c.get_step_value() != second_c.get_step_value():
-                return False
-
-        return first.get_name() == second.get_name()
-
-    @staticmethod
-    def _merge_gadgets(old_gadget: Gadget, new_gadget: Gadget) -> Gadget:
-        factory = GadgetFactory()
-        merged_gadget = factory.create_gadget(old_gadget.get_type(),
-                                              old_gadget.get_name(),
-                                              old_gadget.get_host_client(),
-                                              new_gadget.get_characteristics())
-        return merged_gadget
-
     def receive_update(self, gadget: Gadget):
         found_gadget = self._get_gadget_by_name(gadget.get_name())
         if found_gadget is None:
@@ -74,12 +48,13 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
             else:
                 self._logger.error(f"Received sync data for unknown gadget '{gadget.get_name()}'")
         else:
-            if self._gadgets_are_identical(gadget, found_gadget):
+            if gadget.__class__ == found_gadget.__class__ and gadget.equals_in_characteristic_values(found_gadget):
                 return
             self._logger.info(f"Syncing existing gadget '{gadget.get_name()}'")
             self._gadgets.remove(found_gadget)
             try:
-                merged_gadget = self._merge_gadgets(found_gadget, gadget)
+                factory = GadgetFactory()
+                merged_gadget = factory.merge_gadgets(found_gadget, gadget)
             except GadgetCreationError as err:
                 self._logger.error(err.args[0])
                 return

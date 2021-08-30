@@ -1,11 +1,7 @@
 import pytest
 
-from smarthome_bridge.gadget_publishers.homebridge_decoder import HomebridgeDecoder
+from gadget_publishers.homebridge_decoder import HomebridgeDecoder
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadgets.lamp_neopixel_basic import LampNeopixelBasic
-from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
 
 HOMEBRIDGE_RESPONSE = {
     "test_fan": {

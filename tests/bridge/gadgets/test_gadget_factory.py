@@ -1,10 +1,10 @@
 import pytest
 
-from smarthome_bridge.gadgets.gadget_factory import GadgetFactory, GadgetCreationError
-from smarthome_bridge.gadgets.gadget import GadgetIdentifier
+from gadgets.gadget_factory import GadgetFactory, GadgetCreationError
+from gadgets.gadget import GadgetIdentifier
 
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadgets.lamp_neopixel_basic import LampNeopixelBasic
+from gadgets.any_gadget import AnyGadget
+from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 
 
 GADGET_NAME = "unittest"
@@ -20,7 +20,7 @@ def factory():
 @pytest.mark.bridge
 def test_gadget_factory_any_gadget(factory: GadgetFactory, f_characteristic_fan_speed, f_any_gadget: AnyGadget):
     with pytest.raises(NotImplementedError):
-        factory.create_gadget(gadget_type=f_any_gadget.get_type(),
+        factory.create_gadget(gadget_type=GadgetIdentifier.any_gadget,
                               name=f_any_gadget.get_name(),
                               host_client=f_any_gadget.get_host_client(),
                               characteristics=[f_characteristic_fan_speed])

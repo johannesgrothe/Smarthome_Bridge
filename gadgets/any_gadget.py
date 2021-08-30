@@ -1,5 +1,5 @@
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
-from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
+from gadgets.gadget import Gadget, GadgetIdentifier
+from smarthome_bridge.characteristic import Characteristic
 
 
 class AnyGadget(Gadget):
@@ -9,6 +9,5 @@ class AnyGadget(Gadget):
                  host_client: str,
                  characteristics: list[Characteristic]):
         super().__init__(name,
-                         GadgetIdentifier.any_gadget,
                          host_client,
                          characteristics)

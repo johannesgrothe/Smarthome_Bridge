@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 from logging_interface import LoggingInterface
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier, Characteristic, CharacteristicIdentifier
+from gadgets.gadget import CharacteristicIdentifier
 
 CharacteristicUpdateCallback = Callable[[str, CharacteristicIdentifier, int], None]
 

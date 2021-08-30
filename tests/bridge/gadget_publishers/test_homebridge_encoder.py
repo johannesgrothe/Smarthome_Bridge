@@ -1,11 +1,11 @@
 import pytest
 
-from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
+from gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadgets.lamp_neopixel_basic import LampNeopixelBasic
-from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
+from gadgets.any_gadget import AnyGadget
+from gadgets.lamp_neopixel_basic import LampNeopixelBasic
+from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 
 
 TEST_CLIENT = "test_client"

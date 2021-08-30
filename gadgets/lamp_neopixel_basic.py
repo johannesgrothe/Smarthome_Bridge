@@ -1,4 +1,4 @@
-from smarthome_bridge.gadgets.lamp import Lamp, GadgetIdentifier
+from gadgets.lamp import Lamp, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 
 
@@ -10,6 +10,5 @@ class LampNeopixelBasic(Lamp):
                  brightness: Characteristic,
                  hue: Characteristic):
         super().__init__(name,
-                         GadgetIdentifier.fan_westinghouse_ir,
                          host_client,
                          [status, brightness, hue])

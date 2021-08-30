@@ -1,14 +1,14 @@
 from typing import Optional
 
 from gadgetlib import CharacteristicIdentifier
-from smarthome_bridge.gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
+from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
     GadgetUpdateError, GadgetCreationError
-from smarthome_bridge.gadgets.gadget import Gadget
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator, \
+from gadgets.gadget import Gadget
+from gadgets.any_gadget import AnyGadget
+from gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator, \
     CharacteristicParsingError
-from smarthome_bridge.gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
-from smarthome_bridge.gadget_publishers.homebridge_decoder import HomebridgeDecoder
+from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
+from gadget_publishers.homebridge_decoder import HomebridgeDecoder
 
 
 # https://www.npmjs.com/package/homebridge-mqtt

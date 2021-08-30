@@ -1,7 +1,6 @@
 from logging_interface import LoggingInterface
 from smarthome_bridge.characteristic import Characteristic
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator,\
+from gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator,\
     CharacteristicParsingError
 
 

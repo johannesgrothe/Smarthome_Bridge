@@ -1,6 +1,7 @@
 from logging_interface import LoggingInterface
 
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from smarthome_bridge.smarthomeclient import SmarthomeClient
+from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 
 
@@ -17,6 +18,29 @@ class GadgetEncodeError(Exception):
 class ApiEncoder(LoggingInterface):
     def __init__(self):
         super().__init__()
+
+    def encode_client(self, client: SmarthomeClient) -> dict:
+        """
+        Serializes a clients data according to api specification
+
+        :param client: The client to serialize
+        :return: The serialized version of the client as dict
+        """
+        self._logger.debug(f"Serializing client '{client.get_name()}'")
+        out_date = None
+        if client.get_flash_date() is not None:
+            out_date = client.get_flash_date().strftime("%Y-%m-%d %H:%M:%S")
+
+        return {"name": client.get_name(),
+                "created": client.get_created().strftime("%Y-%m-%d %H:%M:%S"),
+                "last_connected": client.get_last_connected().strftime("%Y-%m-%d %H:%M:%S"),
+                "runtime_id": client.get_runtime_id(),
+                "is_active": client.is_active(),
+                "boot_mode": client.get_boot_mode(),
+                "sw_uploaded": out_date,
+                "sw_commit": client.get_software_commit(),
+                "sw_branch": client.get_software_branch(),
+                "port_mapping": client.get_port_mapping()}
 
     def encode_gadget(self, gadget: Gadget) -> dict:
         try:
@@ -39,7 +63,9 @@ class ApiEncoder(LoggingInterface):
                 "min": characteristic.get_min(),
                 "max": characteristic.get_max(),
                 "steps": characteristic.get_steps(),
-                "val": characteristic.get_step_value()}
+                "step_value": characteristic.get_step_value(),
+                "true_value": characteristic.get_true_value(),
+                "percentage_value": characteristic.get_percentage_value()}
 
     @staticmethod
     def _get_type_for_gadget(gadget: Gadget) -> GadgetIdentifier:

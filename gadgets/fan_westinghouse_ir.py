@@ -1,4 +1,4 @@
-from smarthome_bridge.gadgets.fan import Fan, Characteristic, GadgetIdentifier
+from gadgets.fan import Fan, Characteristic, GadgetIdentifier
 
 
 class FanWestinghouseIR(Fan):
@@ -8,6 +8,5 @@ class FanWestinghouseIR(Fan):
                  status: Characteristic,
                  fan_speed: Characteristic):
         super().__init__(name,
-                         GadgetIdentifier.fan_westinghouse_ir,
                          host_client,
                          [status, fan_speed])

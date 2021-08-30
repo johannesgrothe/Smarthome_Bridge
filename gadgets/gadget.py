@@ -20,17 +20,14 @@ class CharacteristicNotPresentError(Exception):
 class Gadget(object, metaclass=ABCMeta):
     _characteristics: [Characteristic]
     _name: str
-    _type: GadgetIdentifier
     _host_client: str
     _logger: logging.Logger
 
     def __init__(self,
                  name: str,
-                 g_type: GadgetIdentifier,
                  host_client: str,
                  characteristics: list[Characteristic]):
         self._name = name
-        self._type = g_type
         self._host_client = host_client
         self._characteristics = characteristics
         self._characteristics.sort()
@@ -38,17 +35,17 @@ class Gadget(object, metaclass=ABCMeta):
 
     def __del__(self):
         pass
-        # while self._characteristics:
-        #     characteristic = self._characteristics.pop()
-        #     characteristic.__del__()
 
     def __eq__(self, other):
         """Overrides the default implementation"""
         if isinstance(other, self.__class__):
-            return self.equals(other)
+            return self.equals(other) and self.equals_in_characteristics(other)
         return NotImplemented
 
-    def equals(self, other, ignore: list[Callable] = []) -> bool:
+    def equals(self, other, ignore: Optional[list[Callable]] = None) -> bool:
+        if ignore is None:
+            ignore = []
+
         if not isinstance(other, self.__class__):
             return False
 
@@ -56,15 +53,22 @@ class Gadget(object, metaclass=ABCMeta):
             if self.get_name() != other.get_name():
                 return False
 
-        if self.get_type not in ignore:
-            if self.get_type() != other.get_type():
-                return False
-
         if self.get_host_client not in ignore:
             if self.get_host_client() != other.get_host_client():
                 return False
 
+        return True
+
+    def equals_in_characteristics(self, other):
         return self.get_characteristics() == other.get_characteristics()
+
+    def equals_in_characteristic_values(self, other):
+        if not self.get_characteristics() == other.get_characteristics():
+            return False
+        for a, b in zip(self.get_characteristics(), other.get_characteristics()):
+            if not a.get_step_value() == b.get_step_value():
+                return False
+        return True
 
     def get_characteristic(self, c_type: CharacteristicIdentifier) -> Optional[Characteristic]:
         """
@@ -117,9 +121,6 @@ class Gadget(object, metaclass=ABCMeta):
 
     def get_name(self) -> str:
         return self._name
-
-    def get_type(self) -> GadgetIdentifier:
-        return self._type
 
     def get_characteristic_types(self) -> [CharacteristicIdentifier]:
         buf_list: [CharacteristicIdentifier] = []

@@ -1,10 +1,10 @@
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from logging_interface import LoggingInterface
 
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadgets.fan_westinghouse_ir import FanWestinghouseIR
-from smarthome_bridge.gadgets.lamp_neopixel_basic import LampNeopixelBasic
+from gadgets.any_gadget import AnyGadget
+from gadgets.fan_westinghouse_ir import FanWestinghouseIR
+from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 
 
 class CharacteristicNotFoundError(Exception):
@@ -36,6 +36,15 @@ class GadgetFactory(LoggingInterface):
             if characteristic.get_type() == ident:
                 return characteristic
         raise CharacteristicNotFoundError(ident)
+
+    @staticmethod
+    def merge_gadgets(old_gadget: Gadget, new_gadget: Gadget) -> Gadget:
+        factory = GadgetFactory()
+        merged_gadget = factory.create_gadget(old_gadget.get_type(),
+                                              old_gadget.get_name(),
+                                              old_gadget.get_host_client(),
+                                              new_gadget.get_characteristics())
+        return merged_gadget
 
     @staticmethod
     def create_any_gadget(name: str,

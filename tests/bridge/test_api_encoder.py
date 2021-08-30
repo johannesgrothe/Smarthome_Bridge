@@ -1,11 +1,9 @@
-import pytest
 import random
 
-from smarthome_bridge.serializer import Serializer
-
+from smarthome_bridge.api_encoder import ApiEncoder
+from json_validator import Validator, ValidationError
 from smarthome_bridge.smarthomeclient import SmarthomeClient
-from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget
 
 from test_helpers.gadget_fixtures import *
 
@@ -21,9 +19,9 @@ C_BOOT_MODE = 1
 
 
 @pytest.fixture()
-def serializer():
-    serializer = Serializer()
-    yield serializer
+def encoder():
+    encoder = ApiEncoder()
+    yield encoder
 
 
 @pytest.fixture()
@@ -40,18 +38,21 @@ def test_client():
 
 
 @pytest.mark.bridge
-def test_serializer_client(serializer: Serializer, test_client: SmarthomeClient):
-    serialized_data = serializer.serialize_client(test_client)
+def test_api_encoder_client(f_validator: Validator, encoder: ApiEncoder, test_client: SmarthomeClient):
+    serialized_data = encoder.encode_client(test_client)
+    f_validator.validate(serialized_data, "api_client_data")
     assert serialized_data != {}
 
 
 @pytest.mark.bridge
-def test_serializer_characteristic(serializer: Serializer, f_characteristic_fan_speed: Characteristic):
-    serialized_data = serializer.serialize_characteristic(f_characteristic_fan_speed)
+def test_api_encoder_characteristic(encoder: ApiEncoder, f_characteristic_fan_speed: Characteristic):
+    serialized_data = encoder.encode_characteristic(f_characteristic_fan_speed)
     assert serialized_data != {}
 
 
 @pytest.mark.bridge
-def test_serializer_gadget(serializer: Serializer, f_any_gadget: Gadget):
-    serialized_data = serializer.serialize_gadget(f_any_gadget)
+def test_api_encoder_gadget(f_validator: Validator, encoder: ApiEncoder, f_any_gadget: Gadget):
+    serialized_data = encoder.encode_gadget(f_any_gadget)
+    validate_req = {"gadget": serialized_data}
+    f_validator.validate(validate_req, "api_gadget_data")
     assert serialized_data != {}

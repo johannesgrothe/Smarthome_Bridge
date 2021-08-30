@@ -1,7 +1,7 @@
 import pytest
 
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
-from smarthome_bridge.gadgets.gadget import GadgetIdentifier
+from gadgets.any_gadget import AnyGadget
+from gadgets.gadget import GadgetIdentifier
 from smarthome_bridge.characteristic import CharacteristicIdentifier
 
 
@@ -15,7 +15,6 @@ def test_gadget_getters(f_characteristic_status):
                        HOST,
                        [f_characteristic_status])
     assert gadget.get_name() == NAME
-    assert gadget.get_type() == GadgetIdentifier.any_gadget
     assert gadget.get_host_client() == HOST
     assert len(gadget.get_characteristic_types()) == 1
     assert gadget.get_characteristics() == [f_characteristic_status]

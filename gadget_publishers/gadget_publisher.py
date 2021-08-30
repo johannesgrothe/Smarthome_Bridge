@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 import threading
 
-from smarthome_bridge.gadgets.gadget import Gadget
+from gadgets.gadget import Gadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 
 

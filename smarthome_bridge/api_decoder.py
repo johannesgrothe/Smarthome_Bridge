@@ -1,8 +1,8 @@
 from datetime import datetime
 from logging_interface import LoggingInterface
-from smarthome_bridge.gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from smarthome_bridge.gadgets.gadget_factory import GadgetFactory
+from gadgets.gadget_factory import GadgetFactory
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 
 

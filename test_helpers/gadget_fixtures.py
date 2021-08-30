@@ -1,6 +1,6 @@
 import pytest
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from smarthome_bridge.gadgets.any_gadget import AnyGadget
+from gadgets.any_gadget import AnyGadget
 
 
 @pytest.fixture()

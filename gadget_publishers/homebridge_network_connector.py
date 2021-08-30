@@ -8,9 +8,9 @@ from typing import Optional, Callable
 
 from logging_interface import LoggingInterface
 from network.mqtt_credentials_container import MqttCredentialsContainer
-from smarthome_bridge.gadget_publishers.homebridge_request import HomeBridgeRequest
-from smarthome_bridge.gadgets.gadget import Gadget
-from smarthome_bridge.gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
+from gadget_publishers.homebridge_request import HomeBridgeRequest
+from gadgets.gadget import Gadget
+from gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
 from thread_manager import ThreadManager
 
 

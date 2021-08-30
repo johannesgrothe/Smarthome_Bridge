@@ -2,6 +2,7 @@ import os
 
 from test_helpers.gadget_fixtures import *
 from network.mqtt_credentials_container import MqttCredentialsContainer
+from json_validator import Validator
 
 
 def pytest_addoption(parser):
@@ -21,3 +22,9 @@ def f_mqtt_credentials(pytestconfig):
                                     port,
                                     username,
                                     password)
+
+
+@pytest.fixture()
+def f_validator():
+    json_validator = Validator()
+    yield json_validator
