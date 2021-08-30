@@ -1,9 +1,10 @@
 import random
+from datetime import datetime
 
-from smarthome_bridge.api_encoder import ApiEncoder
+from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError, IdentifierEncodeError
 from json_validator import Validator, ValidationError
 from smarthome_bridge.smarthomeclient import SmarthomeClient
-from gadgets.gadget import Gadget
+from gadgets.gadget import Gadget, GadgetIdentifier
 
 from test_helpers.gadget_fixtures import *
 
@@ -11,8 +12,8 @@ from test_helpers.gadget_fixtures import *
 
 C_NAME = "test_client"
 C_RUNTIME_ID = random.randint(0, 10000)
-C_FLASH_DATE = None
-C_BRANCH = None
+C_FLASH_DATE = datetime.now()
+C_BRANCH = "develop"
 C_COMMIT = None
 C_PORT_MAPPING = {}
 C_BOOT_MODE = 1
@@ -51,7 +52,19 @@ def test_api_encoder_characteristic(encoder: ApiEncoder, f_characteristic_fan_sp
 
 
 @pytest.mark.bridge
-def test_api_encoder_gadget(f_validator: Validator, encoder: ApiEncoder, f_any_gadget: Gadget):
+def test_api_encoder_gadget(f_validator: Validator, encoder: ApiEncoder, f_any_gadget: Gadget,
+                            f_dummy_gadget: Gadget):
     serialized_data = encoder.encode_gadget(f_any_gadget)
     f_validator.validate(serialized_data, "api_gadget_data")
-    assert serialized_data != {}
+
+    with pytest.raises(GadgetEncodeError):
+        encoder.encode_gadget(f_dummy_gadget)
+
+
+@pytest.mark.bridge
+def test_api_encoder_gadget_identifier(encoder: ApiEncoder, f_any_gadget: Gadget, f_dummy_gadget: Gadget):
+    identifier = encoder.encode_gadget_identifier(f_any_gadget)
+    assert identifier == GadgetIdentifier.any_gadget
+
+    with pytest.raises(IdentifierEncodeError):
+        encoder.encode_gadget_identifier(f_dummy_gadget)

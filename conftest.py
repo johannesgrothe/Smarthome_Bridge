@@ -3,6 +3,7 @@ import os
 from test_helpers.gadget_fixtures import *
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from json_validator import Validator
+from test_helpers.dummy_gadget import DummyGadget
 
 
 def pytest_addoption(parser):
@@ -28,3 +29,10 @@ def f_mqtt_credentials(pytestconfig):
 def f_validator():
     json_validator = Validator()
     yield json_validator
+
+
+@pytest.fixture()
+def f_dummy_gadget():
+    dummy_gadget = DummyGadget("dummy_gadget")
+    yield dummy_gadget
+    dummy_gadget.__del__()

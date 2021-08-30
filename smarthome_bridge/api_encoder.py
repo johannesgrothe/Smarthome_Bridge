@@ -43,6 +43,13 @@ class ApiEncoder(LoggingInterface):
                 "port_mapping": client.get_port_mapping()}
 
     def encode_gadget(self, gadget: Gadget) -> dict:
+        """
+        Serializes a gadget according to api specification
+
+        :param gadget: The gadget to serialize
+        :return: The serialized version of the gadget as dict
+        :raises GadgetEncodeError: If anything goes wrong during the serialization process
+        """
         try:
             identifier = self.encode_gadget_identifier(gadget)
         except IdentifierEncodeError as err:
@@ -59,6 +66,13 @@ class ApiEncoder(LoggingInterface):
 
     @staticmethod
     def encode_gadget_identifier(gadget: Gadget) -> GadgetIdentifier:
+        """
+        Gets a gadget identifier for the class of the passed gadget
+
+        :param gadget: The gadget to get the identifier for
+        :return: The gadget identifier
+        :raises IdentifierEncodeError: If no Identifier for the gadget can be found
+        """
         switcher = {
             "AnyGadget": GadgetIdentifier.any_gadget,
             "FanWestinghouseIR": GadgetIdentifier.fan_westinghouse_ir,
@@ -71,6 +85,12 @@ class ApiEncoder(LoggingInterface):
 
     @staticmethod
     def encode_characteristic(characteristic: Characteristic):
+        """
+        Serializes a characteristic according to api specification
+
+        :param characteristic: The characteristic to serialize
+        :return: The serialized version of the characteristic as dict
+        """
         return {"type": int(characteristic.get_type()),
                 "min": characteristic.get_min(),
                 "max": characteristic.get_max(),
