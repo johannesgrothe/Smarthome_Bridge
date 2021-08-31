@@ -1,7 +1,7 @@
 import pytest
 
 from client_controller import ClientController, NoClientResponseException
-from test_helpers.mock_network_connector import MockNetworkConnector
+from test_helpers.dummy_network_connector import DummyNetworkConnector
 from client_config_manager import ClientConfigManager
 from json_validator import ValidationError
 from smarthome_bridge.network_manager import NetworkManager
@@ -14,7 +14,7 @@ WORKING_CONFIG_NAME = "Example"
 
 @pytest.fixture()
 def connector():
-    connector = MockNetworkConnector(TEST_SENDER_NAME)
+    connector = DummyNetworkConnector(TEST_SENDER_NAME)
     yield connector
     connector.__del__()
 
@@ -34,7 +34,7 @@ def manager():
 
 
 def test_client_controller_reboot(network: NetworkManager, manager: ClientConfigManager,
-                                  connector: MockNetworkConnector):
+                                  connector: DummyNetworkConnector):
     controller = ClientController(TEST_CLIENT_NAME, network)
     try:
         controller.reboot_client()
@@ -54,7 +54,7 @@ def test_client_controller_reboot(network: NetworkManager, manager: ClientConfig
         assert result is True
 
 
-def test_client_controller_reset_config(network: NetworkManager, connector: MockNetworkConnector, manager: ClientConfigManager):
+def test_client_controller_reset_config(network: NetworkManager, connector: DummyNetworkConnector, manager: ClientConfigManager):
     controller = ClientController(TEST_CLIENT_NAME, network)
     with pytest.raises(NoClientResponseException):
         controller.reset_config()
@@ -70,7 +70,7 @@ def test_client_controller_reset_config(network: NetworkManager, connector: Mock
         assert result is True
 
 
-def test_client_controller_write_config(network: NetworkManager, connector: MockNetworkConnector, manager: ClientConfigManager):
+def test_client_controller_write_config(network: NetworkManager, connector: DummyNetworkConnector, manager: ClientConfigManager):
     controller = ClientController(TEST_CLIENT_NAME, network)
     working_config = manager.get_config(WORKING_CONFIG_NAME)
     assert working_config is not None

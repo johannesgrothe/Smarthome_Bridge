@@ -1,16 +1,13 @@
 from typing import Optional, Callable
-import threading
 
 from network.request import Request
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
 
 from logging_interface import LoggingInterface
-from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
 from smarthome_bridge.network_manager import NetworkManager
 
 from gadgets.gadget import Gadget
-from smarthome_bridge.gadget_manager import GadgetManager
 
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
@@ -28,16 +25,13 @@ class ApiManager(Subscriber, LoggingInterface):
 
     _delegate: ApiManagerDelegate
 
-    _clients: ClientManager
     _network: NetworkManager
 
     _gadget_sync_connection: Optional[str]
 
-    def __init__(self, delegate: ApiManagerDelegate, clients: ClientManager,
-                 network: NetworkManager):
+    def __init__(self, delegate: ApiManagerDelegate, network: NetworkManager):
         super().__init__()
         self._delegate = delegate
-        self._clients = clients
         self._network = network
         self._network.subscribe(self)
         self._validator = Validator()
@@ -79,6 +73,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "bridge_heartbeat_request")
         except ValidationError:
             self._logger.error(f"Request validation error at '{PATH_HEARTBEAT}'")
+            return
 
         rt_id = req.get_payload()["runtime_id"]
         self._delegate.handle_heartbeat(req.get_sender(), rt_id)
@@ -94,11 +89,6 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_client_sync_request")
         except ValidationError:
             self._logger.error(f"Request validation error at '{PATH_SYNC_CLIENT}'")
-
-        try:
-            self._clients.remove_client(req.get_sender())
-        except ClientDoesntExistsError:
-            pass
 
         client_id = req.get_sender()
 
@@ -117,7 +107,7 @@ class ApiManager(Subscriber, LoggingInterface):
         for gadget in gadget_data:
             self._update_gadget(client_id, gadget)
 
-        self._clients.add_client(new_client)
+        self._delegate.handle_client_update(new_client)
 
     def _handle_gadget_sync(self, req: Request):
         """

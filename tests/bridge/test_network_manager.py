@@ -1,7 +1,7 @@
 import pytest
 
 from smarthome_bridge.network_manager import NetworkManager
-from test_helpers.mock_network_connector import MockNetworkConnector
+from test_helpers.dummy_network_connector import DummyNetworkConnector
 
 HOST_NAME = "test_connector"
 
@@ -15,13 +15,13 @@ def manager():
 
 @pytest.fixture()
 def connector():
-    connector = MockNetworkConnector(HOST_NAME)
+    connector = DummyNetworkConnector(HOST_NAME)
     yield connector
     connector.__del__()
 
 
 @pytest.mark.bridge
-def test_client_manager(manager: NetworkManager, connector: MockNetworkConnector):
+def test_client_manager(manager: NetworkManager, connector: DummyNetworkConnector):
     assert manager.get_connector_count() == 0
     manager.add_connector(connector)
     assert manager.get_connector_count() == 1

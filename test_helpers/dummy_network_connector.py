@@ -6,7 +6,7 @@ from typing import Optional
 import threading
 
 
-class MockNetworkConnector(NetworkConnector):
+class DummyNetworkConnector(NetworkConnector):
 
     _mock_ack: Optional[bool]
     _thread_request: Optional[Request]

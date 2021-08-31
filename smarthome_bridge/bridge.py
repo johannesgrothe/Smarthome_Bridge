@@ -3,12 +3,13 @@ import threading
 
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.client_manager import ClientManager
+from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
 from smarthome_bridge.api_manager import ApiManager
 from smarthome_bridge.gadget_manager import GadgetManager
 
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from gadgets.gadget import Gadget
+from smarthome_bridge.smarthomeclient import SmarthomeClient
 
 
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
@@ -32,7 +33,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._client_manager = ClientManager()
         self._gadget_manager = GadgetManager()
         self._gadget_sync_lock = threading.Lock()
-        self._api = ApiManager(self, self._client_manager, self._network_manager)
+        self._api = ApiManager(self, self._network_manager)
 
         self._gadget_manager.subscribe(self)
 
@@ -68,3 +69,10 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     def handle_gadget_update(self, gadget: Gadget):
         with self._gadget_sync_lock:
             self._gadget_manager.receive_update(gadget)
+
+    def handle_client_update(self, client: SmarthomeClient):
+        try:
+            self._client_manager.remove_client(client.get_name())
+        except ClientDoesntExistsError:
+            pass
+        self._client_manager.add_client(client)
