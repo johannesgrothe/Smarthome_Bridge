@@ -1,6 +1,9 @@
 import logging
+import os
 import threading
+from datetime import datetime
 
+from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
@@ -10,12 +13,15 @@ from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from gadgets.gadget import Gadget
 from smarthome_bridge.smarthomeclient import SmarthomeClient
+from repository_manager import RepositoryManager
+from system_tools_info import SystemToolsInfo
 
 
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     _logger: logging.Logger
     _name: str
+    _running_since: datetime
 
     _network_manager: NetworkManager
     _client_manager: ClientManager
@@ -27,6 +33,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     def __init__(self, name: str):
         super().__init__()
         self._name = name
+        self._running_since = datetime.now()
         self._logger = logging.getLogger(f"Bridge[{self._name}]")
         self._logger.info("Starting bridge")
         self._network_manager = NetworkManager()
@@ -76,3 +83,14 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         except ClientDoesntExistsError:
             pass
         self._client_manager.add_client(client)
+
+    def get_bridge_info(self) -> BridgeInformationContainer:
+        repo_manager = RepositoryManager(os.getcwd(), None)
+        return BridgeInformationContainer(self._name,
+                                          repo_manager.get_branch(),
+                                          repo_manager.get_commit_hash(),
+                                          self._running_since,
+                                          SystemToolsInfo.read_pio_version(),
+                                          SystemToolsInfo.read_pipenv_version(),
+                                          SystemToolsInfo.read_git_version(),
+                                          SystemToolsInfo.read_python_version())

@@ -13,14 +13,16 @@ from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 
-
 PATH_HEARTBEAT = "heartbeat"
 PATH_SYNC_CLIENT = "sync/client"
 PATH_SYNC_GADGET = "sync/gadget"
 
+PATH_INFO_BRIDGE = "info/bridge"
+PATH_INFO_GADGETS = "info/gadget"
+PATH_INFO_CLIENTS = "info/clients"
+
 
 class ApiManager(Subscriber, LoggingInterface):
-
     _validator: Validator
 
     _delegate: ApiManagerDelegate
@@ -60,7 +62,10 @@ class ApiManager(Subscriber, LoggingInterface):
         switcher = {
             PATH_HEARTBEAT: self._handle_heartbeat,
             PATH_SYNC_CLIENT: self._handle_client_sync,
-            PATH_SYNC_GADGET: self._handle_gadget_sync
+            PATH_SYNC_GADGET: self._handle_gadget_sync,
+            PATH_INFO_BRIDGE: self._handle_info_bridge,
+            PATH_INFO_GADGETS: self._handle_info_gadgets,
+            PATH_INFO_CLIENTS: self._handle_info_clients
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -123,6 +128,18 @@ class ApiManager(Subscriber, LoggingInterface):
         self._logger.info(f"Syncing gadget from '{client_id}'")
         gadget_data = req.get_payload()["gadget"]
         self._update_gadget(client_id, gadget_data)
+
+    def _handle_info_bridge(self, req: Request):
+        data = self._delegate.get_bridge_info()
+        encoder = ApiEncoder()
+        resp_data = encoder.encode_bridge_info(data)
+        req.respond(resp_data)
+
+    def _handle_info_gadgets(self, req: Request):
+        pass
+
+    def _handle_info_clients(self, req: Request):
+        pass
 
     def _update_gadget(self, client_id: str, gadget_data: dict):
         """

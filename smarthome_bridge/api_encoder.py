@@ -1,8 +1,10 @@
 from logging_interface import LoggingInterface
+from datetime import datetime
 
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
+from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 
 
 class IdentifierEncodeError(Exception):
@@ -87,7 +89,7 @@ class ApiEncoder(LoggingInterface):
         return identifier
 
     @staticmethod
-    def encode_characteristic(characteristic: Characteristic):
+    def encode_characteristic(characteristic: Characteristic) -> dict:
         """
         Serializes a characteristic according to api specification
 
@@ -101,3 +103,20 @@ class ApiEncoder(LoggingInterface):
                 "step_value": characteristic.get_step_value(),
                 "true_value": characteristic.get_true_value(),
                 "percentage_value": characteristic.get_percentage_value()}
+
+    @staticmethod
+    def encode_bridge_info(bridge_info: BridgeInformationContainer) -> dict:
+        """
+        Serializes bridge information according to api specification
+
+        :param bridge_info: Container for the bridge information
+        :return:
+        """
+        return {"bridge_name": bridge_info.name,
+                "software_commit": bridge_info.git_commit,
+                "software_branch": bridge_info.git_branch,
+                "running_since": datetime.strftime(bridge_info.running_since, DATETIME_FORMAT),
+                "platformio_version": None,
+                "git_version": None,
+                "python_version": None,
+                "pipenv_version": None}
