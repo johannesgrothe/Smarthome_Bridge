@@ -20,8 +20,8 @@ class CharacteristicDecodeError(Exception):
 
 
 class ClientDecodeError(Exception):
-    def __init__(self):
-        super().__init__("Error decoding client")
+    def __init__(self, message: str):
+        super().__init__(f"Error decoding client: {message}")
 
 
 class ApiDecoder(LoggingInterface):
@@ -111,5 +111,4 @@ class ApiDecoder(LoggingInterface):
                                          boot_mode)
             return out_client
         except KeyError as err:
-            self._logger.error(err.args[0])
-            raise ClientDecodeError()
+            raise ClientDecodeError(f"Key Error at '{err.args[0]}'")

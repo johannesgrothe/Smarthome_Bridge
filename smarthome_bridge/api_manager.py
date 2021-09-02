@@ -89,6 +89,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_client_sync_request")
         except ValidationError:
             self._logger.error(f"Request validation error at '{PATH_SYNC_CLIENT}'")
+            return
 
         client_id = req.get_sender()
 
@@ -96,11 +97,7 @@ class ApiManager(Subscriber, LoggingInterface):
 
         decoder = ApiDecoder()
 
-        try:
-            new_client = decoder.decode_client(req.get_payload(), req.get_sender())
-        except ClientDecodeError as err:
-            self._logger.error(err.args[0])
-            return
+        new_client = decoder.decode_client(req.get_payload()["client"], req.get_sender())
 
         gadget_data = req.get_payload()["gadgets"]
 
