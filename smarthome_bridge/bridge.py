@@ -94,3 +94,15 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                                           SystemToolsInfo.read_pipenv_version(),
                                           SystemToolsInfo.read_git_version(),
                                           SystemToolsInfo.read_python_version())
+
+    def get_client_info(self) -> list[SmarthomeClient]:
+        return [self._client_manager.get_client(x)
+                for x
+                in self._client_manager.get_client_ids()
+                if self._client_manager.get_client(x) is not None]
+
+    def get_gadget_info(self) -> list[Gadget]:
+        return [self._gadget_manager.get_gadget(x)
+                for x
+                in self._gadget_manager.get_gadget_ids()
+                if self._gadget_manager.get_gadget(x) is not None]

@@ -32,14 +32,20 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
             publisher = self._gadget_publishers.pop()
             publisher.__del__()
 
-    def _get_gadget_by_name(self, name: str) -> Optional[Gadget]:
+    def get_gadget(self, name: str) -> Optional[Gadget]:
         for found_gadget in self._gadgets:
             if found_gadget.get_name() == name:
                 return found_gadget
         return None
 
+    def get_gadget_ids(self) -> list[str]:
+        return [x.get_name() for x in self._gadgets]
+
+    def get_gadget_count(self) -> int:
+        return len(self._gadgets)
+
     def receive_update(self, gadget: Gadget):
-        found_gadget = self._get_gadget_by_name(gadget.get_name())
+        found_gadget = self.get_gadget(gadget.get_name())
         if found_gadget is None:
             if not isinstance(gadget, AnyGadget):
                 self._logger.info(f"Adding gadget '{gadget.get_name()}'")
@@ -83,7 +89,7 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
         :return: None
         :raises GadgetDoesntExistError: If no gadget with the given name exists
         """
-        delete_gadget = self._get_gadget_by_name(gadget_name)
+        delete_gadget = self.get_gadget(gadget_name)
         if not delete_gadget:
             raise GadgetDoesntExistError(gadget_name)
         self._gadgets.remove(delete_gadget)

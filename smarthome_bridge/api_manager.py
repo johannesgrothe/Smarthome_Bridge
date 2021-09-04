@@ -136,10 +136,16 @@ class ApiManager(Subscriber, LoggingInterface):
         req.respond(resp_data)
 
     def _handle_info_gadgets(self, req: Request):
-        pass
+        data = self._delegate.get_gadget_info()
+        encoder = ApiEncoder()
+        resp_data = encoder.encode_all_gadgets_info(data)
+        req.respond(resp_data)
 
     def _handle_info_clients(self, req: Request):
-        pass
+        data = self._delegate.get_client_info()
+        encoder = ApiEncoder()
+        resp_data = encoder.encode_all_clients_info(data)
+        req.respond(resp_data)
 
     def _update_gadget(self, client_id: str, gadget_data: dict):
         """

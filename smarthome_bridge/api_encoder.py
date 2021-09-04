@@ -120,3 +120,21 @@ class ApiEncoder(LoggingInterface):
                 "git_version": None,
                 "python_version": None,
                 "pipenv_version": None}
+
+    def encode_all_gadgets_info(self, gadget_info: list[Gadget]) -> dict:
+        gadget_data = []
+        for gadget in gadget_info:
+            try:
+                gadget_data.append(self.encode_gadget(gadget))
+            except GadgetEncodeError:
+                self._logger.error(f"Failed to encode gadget '{gadget.get_name()}'")
+        return {"gadgets": gadget_data}
+
+    def encode_all_clients_info(self, client_info: list[SmarthomeClient]) -> dict:
+        client_data = []
+        for client in client_info:
+            try:
+                client_data.append(self.encode_client(client))
+            except GadgetEncodeError:
+                self._logger.error(f"Failed to encode client '{client.get_name()}'")
+        return {"clients": client_data}

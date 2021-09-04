@@ -1,7 +1,9 @@
 from typing import Optional
+from datetime import datetime
 
 from gadgets.gadget import Gadget
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
+from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 
 
@@ -43,3 +45,19 @@ class DummyApiDelegate(ApiManagerDelegate):
 
     def get_last_gadget(self) -> Optional[Gadget]:
         return self._last_gadget
+
+    def get_bridge_info(self) -> BridgeInformationContainer:
+        return BridgeInformationContainer("test_data",
+                                          "develop",
+                                          "abc1776",
+                                          datetime.now(),
+                                          "1.0.0",
+                                          "1.1.0",
+                                          "1.2.0",
+                                          "1.3.0")
+
+    def get_client_info(self) -> list[SmarthomeClient]:
+        pass
+
+    def get_gadget_info(self) -> list[Gadget]:
+        pass

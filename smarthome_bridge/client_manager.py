@@ -55,11 +55,7 @@ class ClientManager:
         if client is None:
             raise ClientDoesntExistsError(client_id)
         self._clients.remove(client)
-        self._remove_client_from_remotes(client)
         # client.__del__()
-
-    def _remove_client_from_remotes(self, client: SmarthomeClient):
-        pass
 
     def get_client(self, client_id: str) -> Optional[SmarthomeClient]:
         """
@@ -72,6 +68,9 @@ class ClientManager:
             if client.get_name() == client_id:
                 return client
         return None
+
+    def get_client_ids(self) -> list[str]:
+        return [x.get_name() for x in self._clients]
 
     def get_client_count(self) -> int:
         """

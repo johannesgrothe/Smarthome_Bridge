@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 from gadgets.gadget import Gadget
 from smarthome_bridge.smarthomeclient import SmarthomeClient
-from bridge_information_container import BridgeInformationContainer
+from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 
 
 class ApiManagerDelegate(metaclass=ABCMeta):
@@ -41,4 +41,20 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         Returns the bridge information
 
         :return: Information about the bridge
+        """
+
+    @abstractmethod
+    def get_client_info(self) -> list[SmarthomeClient]:
+        """
+        Returns information about all the clients
+
+        :return: All of the saved clients
+        """
+
+    @abstractmethod
+    def get_gadget_info(self) -> list[Gadget]:
+        """
+        Returns information about all the gadgets
+
+        :return: All of the saved gadgets
         """

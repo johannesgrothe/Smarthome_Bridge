@@ -3,8 +3,10 @@ import pytest
 from smarthome_bridge.api_manager import ApiManager
 from smarthome_bridge.network_manager import NetworkManager
 from test_helpers.dummy_api_delegate import DummyApiDelegate
-from network.request import Request
+from network.request import Request, NoResponsePossibleException
+from test_helpers.dummy_network_connector import DummyNetworkConnector
 
+HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"
 REQ_RUNTIME = 123456
 
@@ -70,8 +72,15 @@ def delegate():
 
 
 @pytest.fixture()
-def network_manager():
+def network():
+    network = DummyNetworkConnector(HOSTNAME)
+    yield network
+
+
+@pytest.fixture()
+def network_manager(network):
     manager = NetworkManager()
+    manager.add_connector(network)
     yield manager
     manager.__del__()
 
@@ -84,86 +93,62 @@ def api(delegate: DummyApiDelegate, network_manager: NetworkManager):
 
 
 @pytest.mark.bridge
-def test_api_unknown(api: ApiManager, network_manager: NetworkManager, delegate: DummyApiDelegate):
-    heartbeat_req = Request("yolokopter",
-                            None,
-                            REQ_SENDER,
-                            None,
-                            {"test": 0x01})
-    network_manager.receive(heartbeat_req)
+def test_api_unknown(api: ApiManager, network: DummyNetworkConnector):
+    network.mock_receive("unknown_path",
+                         REQ_SENDER,
+                         {"test": 0x01})
 
 
 @pytest.mark.bridge
-def test_api_heartbeat(api: ApiManager, network_manager: NetworkManager, delegate: DummyApiDelegate):
-    heartbeat_req = Request("heartbeat",
-                            None,
-                            REQ_SENDER,
-                            None,
-                            {"test": 0x01})
-    network_manager.receive(heartbeat_req)
+def test_api_heartbeat(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    network.mock_receive("heartbeat",
+                         REQ_SENDER,
+                         {"test": 0x01})
     assert delegate.get_last_heartbeat_name() is None
     assert delegate.get_last_heartbeat_runtime() is None
 
-    heartbeat_req = Request("heartbeat",
-                            None,
-                            REQ_SENDER,
-                            None,
-                            {"runtime_id": REQ_RUNTIME})
-    network_manager.receive(heartbeat_req)
+    network.mock_receive("heartbeat",
+                         REQ_SENDER,
+                         {"runtime_id": REQ_RUNTIME})
     assert delegate.get_last_heartbeat_name() == REQ_SENDER
     assert delegate.get_last_heartbeat_runtime() == REQ_RUNTIME
 
 
 @pytest.mark.bridge
-def test_api_gadget_sync(api: ApiManager, network_manager: NetworkManager, delegate: DummyApiDelegate):
-    sync_req = Request("sync/gadget",
-                       None,
-                       REQ_SENDER,
-                       None,
-                       {"gadget": {"yolo": "blub"}})
-    network_manager.receive(sync_req)
+def test_api_gadget_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    network.mock_receive("sync/gadget",
+                         REQ_SENDER,
+                         {"gadget": {"yolo": "blub"}})
     assert delegate.get_last_gadget() is None
 
-    sync_req = Request("sync/gadget",
-                       None,
-                       REQ_SENDER,
-                       None,
-                       payload={
-                           "gadget": GADGET_CONFIG_ERR
-                       })
-    network_manager.receive(sync_req)
+    network.mock_receive("sync/gadget",
+                         REQ_SENDER,
+                         {
+                             "gadget": GADGET_CONFIG_ERR
+                         })
     assert delegate.get_last_gadget() is None
 
-    sync_req = Request("sync/gadget",
-                       None,
-                       REQ_SENDER,
-                       None,
-                       payload=GADGET_CONFIG_OK)
-    network_manager.receive(sync_req)
+    network.mock_receive("sync/gadget",
+                         REQ_SENDER,
+                         GADGET_CONFIG_OK)
     assert delegate.get_last_gadget() is not None
     assert delegate.get_last_gadget().get_name() == GADGET_NAME
 
 
 @pytest.mark.bridge
-def test_api_client_sync(api: ApiManager, network_manager: NetworkManager, delegate: DummyApiDelegate):
-    sync_req = Request("sync/client",
-                       None,
-                       REQ_SENDER,
-                       None,
-                       {"client":
-                           {
-                               "yolo": "blub"
-                           }
-                       })
-    network_manager.receive(sync_req)
+def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    network.mock_receive("sync/client",
+                         REQ_SENDER,
+                         {"client":
+                             {
+                                 "yolo": "blub"
+                             }
+                         })
     assert delegate.get_last_client() is None
 
-    sync_req = Request("sync/client",
-                       None,
-                       REQ_SENDER,
-                       None,
-                       payload=CLIENT_CONFIG_OK)
-    network_manager.receive(sync_req)
+    network.mock_receive("sync/client",
+                         REQ_SENDER,
+                         payload=CLIENT_CONFIG_OK)
     assert delegate.get_last_client() is not None
     assert delegate.get_last_client().get_runtime_id() == REQ_RUNTIME
     assert delegate.get_last_client().get_name() == REQ_SENDER
@@ -172,11 +157,29 @@ def test_api_client_sync(api: ApiManager, network_manager: NetworkManager, deleg
 
 
 @pytest.mark.bridge
-def test_api_request_sync(api: ApiManager, network_manager: NetworkManager, delegate: DummyApiDelegate):
+def test_api_request_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
     api.request_sync(REQ_SENDER)
+    last_send = network.get_last_send_req()
+    assert last_send is not None
+    assert last_send.get_receiver() == REQ_SENDER
+    assert last_send.get_sender() == HOSTNAME
 
 
 @pytest.mark.bridge
-def test_api_send_gadget_update(api: ApiManager, f_any_gadget, f_dummy_gadget):
+def test_api_send_gadget_update(api: ApiManager, network: DummyNetworkConnector, f_any_gadget, f_dummy_gadget):
     api.send_gadget_update(f_any_gadget)
+    assert network.get_last_send_req() is not None
+    assert network.get_last_send_req().get_receiver() is None
+
+    network.reset()
+
     api.send_gadget_update(f_dummy_gadget)
+    assert network.get_last_send_req() is None
+
+
+@pytest.mark.bridge
+def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    with pytest.raises(NoResponsePossibleException):
+        network.mock_receive("info/bridge",
+                             REQ_SENDER,
+                             {})
