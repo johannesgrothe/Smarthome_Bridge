@@ -18,7 +18,7 @@ PATH_SYNC_CLIENT = "sync/client"
 PATH_SYNC_GADGET = "sync/gadget"
 
 PATH_INFO_BRIDGE = "info/bridge"
-PATH_INFO_GADGETS = "info/gadget"
+PATH_INFO_GADGETS = "info/gadgets"
 PATH_INFO_CLIENTS = "info/clients"
 
 

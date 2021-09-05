@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 
 from smarthome_bridge.api_manager import ApiManager
@@ -5,12 +7,16 @@ from smarthome_bridge.network_manager import NetworkManager
 from test_helpers.dummy_api_delegate import DummyApiDelegate
 from network.request import Request, NoResponsePossibleException
 from test_helpers.dummy_network_connector import DummyNetworkConnector
+from gadgets.fan_westinghouse_ir import FanWestinghouseIR
+from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 
 HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"
 REQ_RUNTIME = 123456
 
 GADGET_NAME = "test_fan"
+CLIENT_NAME = "test_client"
 
 GADGET_CONFIG_OK = {
     "gadget": {
@@ -66,8 +72,37 @@ CLIENT_CONFIG_OK = {
 
 
 @pytest.fixture()
-def delegate():
+def gadget():
+    gadget = FanWestinghouseIR(GADGET_NAME,
+                               CLIENT_NAME,
+                               Characteristic(CharacteristicIdentifier.status,
+                                              0,
+                                              1),
+                               Characteristic(CharacteristicIdentifier.fanSpeed,
+                                              0,
+                                              100,
+                                              4))
+    yield gadget
+    gadget.__del__()
+
+
+@pytest.fixture()
+def client():
+    client = SmarthomeClient(CLIENT_NAME,
+                             1773,
+                             datetime.datetime.now(),
+                             None,
+                             None,
+                             {},
+                             1)
+    yield client
+
+
+@pytest.fixture()
+def delegate(gadget, client):
     delegate = DummyApiDelegate()
+    delegate.add_gadget(gadget)
+    delegate.add_client(client)
     yield delegate
 
 
@@ -178,8 +213,36 @@ def test_api_send_gadget_update(api: ApiManager, network: DummyNetworkConnector,
 
 
 @pytest.mark.bridge
-def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    with pytest.raises(NoResponsePossibleException):
-        network.mock_receive("info/bridge",
-                             REQ_SENDER,
-                             {})
+def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
+    assert network.get_last_send_response() is None
+    network.mock_receive("info/bridge",
+                         REQ_SENDER,
+                         {})
+    resp = network.get_last_send_response()
+    assert resp is not None
+    assert resp.get_receiver() == REQ_SENDER
+    f_validator.validate(resp.get_payload(), "api_get_info_response")
+
+
+@pytest.mark.bridge
+def test_api_get_gadget_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
+    assert network.get_last_send_response() is None
+    network.mock_receive("info/gadgets",
+                         REQ_SENDER,
+                         {})
+    resp = network.get_last_send_response()
+    assert resp is not None
+    assert resp.get_receiver() == REQ_SENDER
+    f_validator.validate(resp.get_payload(), "api_get_all_gadgets_response")
+
+
+@pytest.mark.bridge
+def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
+    assert network.get_last_send_response() is None
+    network.mock_receive("info/clients",
+                         REQ_SENDER,
+                         {})
+    resp = network.get_last_send_response()
+    assert resp is not None
+    assert resp.get_receiver() == REQ_SENDER
+    f_validator.validate(resp.get_payload(), "api_get_all_clients_response")

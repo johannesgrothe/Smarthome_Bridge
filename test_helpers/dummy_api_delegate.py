@@ -14,6 +14,9 @@ class DummyApiDelegate(ApiManagerDelegate):
     _last_gadget: Optional[Gadget]
     _last_client: Optional[SmarthomeClient]
 
+    _gadgets: list[Gadget]
+    _clients: list[SmarthomeClient]
+
     def __init__(self):
         super().__init__()
         self.reset()
@@ -23,6 +26,8 @@ class DummyApiDelegate(ApiManagerDelegate):
         self._last_heartbeat_runtime = None
         self._last_gadget = None
         self._last_client = None
+        self._clients = []
+        self._gadgets = []
 
     def handle_heartbeat(self, client_name: str, runtime_id: int):
         self._last_heartbeat_name = client_name
@@ -46,6 +51,12 @@ class DummyApiDelegate(ApiManagerDelegate):
     def get_last_gadget(self) -> Optional[Gadget]:
         return self._last_gadget
 
+    def add_gadget(self, gadget: Gadget):
+        self._gadgets.append(gadget)
+
+    def add_client(self, client: SmarthomeClient):
+        self._clients.append(client)
+
     def get_bridge_info(self) -> BridgeInformationContainer:
         return BridgeInformationContainer("test_data",
                                           "develop",
@@ -57,7 +68,7 @@ class DummyApiDelegate(ApiManagerDelegate):
                                           "1.3.0")
 
     def get_client_info(self) -> list[SmarthomeClient]:
-        pass
+        return self._clients
 
     def get_gadget_info(self) -> list[Gadget]:
-        pass
+        return self._gadgets

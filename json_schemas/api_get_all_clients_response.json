@@ -2,10 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "client_count": {
-      "type": "integer",
-      "minimum": 0
-    },
     "clients": {
       "type": "array",
       "items": {

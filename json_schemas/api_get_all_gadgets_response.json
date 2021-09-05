@@ -2,10 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "gadget_count": {
-      "type": "integer",
-      "minimum": 0
-    },
     "gadgets": {
       "type": "array",
       "items": {
