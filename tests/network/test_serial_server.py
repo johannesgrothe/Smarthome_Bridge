@@ -1,19 +1,13 @@
 import pytest
 import time
+import os
 
+from smarthome_bridge.network_manager import NetworkManager
 from network.serial_server import SerialServer
-from tests.network.connector_tests import send_test, send_split_test, broadcast_test,\
-    broadcast_single_response_test,  test_payload_small, test_payload_big
+from tests.network.connector_tests import send_test, send_split_test, broadcast_test
 
 _blocked_clients = ["/dev/tty.SLAB_USBtoUART"]
 _start_delay = 2
-CLIENT_NAME = "TestClient"
-
-
-def dummy_fixture_usage():
-    """Used to artificially 'use' fixtures to prevent them from being auto-removed"""
-    s = test_payload_small()
-    b = test_payload_big()
 
 
 @pytest.fixture
@@ -23,34 +17,42 @@ def server():
     for client_id in _blocked_clients:
         server.block_address(client_id)
     time.sleep(_start_delay)
+    if server.get_client_count() == 0:
+        server.__del__()
+        raise Exception("No client connected to serial server")
     yield server
     server.__del__()
 
 
+@pytest.fixture
+def manager(server):
+    manager = NetworkManager()
+    manager.add_connector(server)
+    yield manager
+    manager.__del__()
+
+
 @pytest.mark.network
-def test_serial_server_send(server: SerialServer, test_payload_small: dict):
-    send_test(server, CLIENT_NAME, test_payload_small)
+def test_serial_server_send(manager: NetworkManager, f_payload_small: dict):
+    name = os.getenv('SERIAL_CLIENT_NAME')
+    print(f"Serial client: {name}")
+    assert name is not None
+    send_test(manager, name, f_payload_small)
 
 
 # TODO: Check why large payloads fuck up
-# @pytest.mark.network
-# def test_serial_server_send_split_long(server: SerialServer, test_payload_big: dict):
-#     send_split_test(server, CLIENT_NAME, test_payload_big, part_max_len=50)
+@pytest.mark.network
+def test_serial_server_send_split_long(manager: NetworkManager, f_payload_big: dict):
+    name = os.getenv('SERIAL_CLIENT_NAME')
+    send_split_test(manager, name, f_payload_big, part_max_len=50)
 
 
 @pytest.mark.network
-def test_serial_server_send_split_short(server: SerialServer, test_payload_small: dict):
-    send_split_test(server, CLIENT_NAME, test_payload_small)
+def test_serial_server_send_split_short(manager: NetworkManager, f_payload_small: dict):
+    name = os.getenv('SERIAL_CLIENT_NAME')
+    send_split_test(manager, name, f_payload_small)
 
 
 @pytest.mark.network
-def test_serial_server_broadcast(server: SerialServer, test_payload_small):
-    assert server.get_client_count() == 1
-    broadcast_test(server, test_payload_small)
-
-
-@pytest.mark.network
-def test_serial_server_broadcast_max_responses(server: SerialServer, test_payload_small):
-    assert server.get_client_count() == 1
-    broadcast_single_response_test(server, test_payload_small)
-
+def test_serial_server_broadcast(manager: NetworkManager, f_payload_small):
+    broadcast_test(manager, f_payload_small)

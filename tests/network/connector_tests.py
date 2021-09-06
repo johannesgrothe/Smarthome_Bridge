@@ -1,42 +1,12 @@
-import pytest
-from network.network_connector import NetworkConnector
-from network.request import Request
-from network.echo_client import TestEchoClient
 from smarthome_bridge.network_manager import NetworkManager
 
 TEST_PATH = "test"
 TEST_SENDER = "unittest"
 
-LOREM_IPSUM = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut " \
-              "labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores " \
-              "et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem " \
-              "ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore " \
-              "et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea " \
-              "rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."
 
-LOREM_IPSUM_SHORT = "Lorem ipsum, digga"
+def send_test(connector: NetworkManager, receiver_name: str, payload: dict):
 
-
-@pytest.fixture
-def test_payload_big() -> dict:
-    return {"data": 12345,
-            "list": [1, 2, 3, 4, 5],
-            "strings":
-                {
-                    "lorem_long": LOREM_IPSUM,
-                    "lorem_short": LOREM_IPSUM_SHORT
-                }
-            }
-
-
-@pytest.fixture
-def test_payload_small() -> dict:
-    return {"lorem": LOREM_IPSUM_SHORT}
-
-
-def send_test(connector: NetworkManager, echo_client: TestEchoClient, payload: dict):
-
-    response = connector.send_request(TEST_PATH, echo_client.get_hostname(), payload)
+    response = connector.send_request(TEST_PATH, receiver_name, payload)
     assert response is not None
     assert response.get_payload() == payload
     return

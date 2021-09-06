@@ -3,6 +3,7 @@ import os
 import serial
 
 from network.network_server import NetworkServer
+from network.request import Request
 from network.serial_server_client import SerialServerClient
 
 
