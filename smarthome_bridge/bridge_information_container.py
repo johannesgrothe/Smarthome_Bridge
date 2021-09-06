@@ -1,20 +1,22 @@
 from datetime import datetime
+from typing import Optional
 
 
 class BridgeInformationContainer:
 
     name: str
-    git_branch: str
-    git_commit: str
+    git_branch: Optional[str]
+    git_commit: Optional[str]
     running_since: datetime
 
-    pio_version: str
-    pipenv_version: str
-    git_version: str
-    python_version: str
+    pio_version: Optional[str]
+    pipenv_version: Optional[str]
+    git_version: Optional[str]
+    python_version: Optional[str]
 
-    def __init__(self, name: str, git_branch: str, git_commit: str, running_since: datetime, pio_version: str,
-                 pipenv_version: str, git_version: str, python_version: str):
+    def __init__(self, name: str, git_branch: Optional[str], git_commit: Optional[str], running_since: datetime,
+                 pio_version: Optional[str], pipenv_version: Optional[str], git_version: Optional[str],
+                 python_version: Optional[str]):
         self.name = name
         self.git_branch = git_branch
         self.git_commit = git_commit

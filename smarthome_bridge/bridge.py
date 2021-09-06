@@ -14,7 +14,7 @@ from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from gadgets.gadget import Gadget
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 from repository_manager import RepositoryManager
-from system_tools_info import SystemToolsInfo
+from system_info_tools import SystemInfoTools
 
 
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
@@ -90,10 +90,10 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                                           repo_manager.get_branch(),
                                           repo_manager.get_commit_hash(),
                                           self._running_since,
-                                          SystemToolsInfo.read_pio_version(),
-                                          SystemToolsInfo.read_pipenv_version(),
-                                          SystemToolsInfo.read_git_version(),
-                                          SystemToolsInfo.read_python_version())
+                                          SystemInfoTools.read_pio_version(),
+                                          SystemInfoTools.read_pipenv_version(),
+                                          SystemInfoTools.read_git_version(),
+                                          SystemInfoTools.read_python_version())
 
     def get_client_info(self) -> list[SmarthomeClient]:
         return [self._client_manager.get_client(x)
