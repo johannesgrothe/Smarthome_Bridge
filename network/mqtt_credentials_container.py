@@ -17,9 +17,6 @@ class MqttCredentialsContainer:
         try:
             if not isinstance(ip, str):
                 raise ValueError()
-            ip_list = [int(x) for x in ip.split(".") if 0 <= int(x) <= 0xFF]
-            if len(ip_list) != 4:
-                raise ValueError()
         except ValueError:
             raise MqttCredentialsError(f"Illegal ip for MQTT credentials: '{ip}'")
         if not isinstance(port, int) or port < 0:
