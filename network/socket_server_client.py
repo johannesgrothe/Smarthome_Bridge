@@ -4,7 +4,7 @@ from typing import Optional
 
 from jsonschema import ValidationError
 
-from network.network_connector import req_validation_scheme_name
+from network.network_connector import REQ_VALIDATION_SCHEME_NAME
 from network.request import Request
 from network.network_server import NetworkServerClient
 
@@ -53,7 +53,7 @@ class SocketServerClient(NetworkServerClient):
         req_body = buf_json['body']
 
         try:
-            self._validator.validate(req_body, req_validation_scheme_name)
+            self._validator.validate(req_body, REQ_VALIDATION_SCHEME_NAME)
         except ValidationError:
             self._logger.info(f"Received JSON is no valid Request: '{req_body}'")
             return None

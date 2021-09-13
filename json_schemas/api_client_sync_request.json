@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": ["client", "gadgets"],
+  "properties": {
+    "client": {
+      "$ref": "api_client_data.json"
+    },
+    "gadgets": {
+      "type": "array",
+      "items": {
+        "$ref": "api_gadget_data.json"
+      }
+    }
+  }
+}

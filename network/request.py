@@ -29,7 +29,6 @@ class Request:
     _receiver: Optional[str]
     _payload: dict
     _response_function: Optional[response_callback_type]
-    _connection_type: Optional[str]
 
     def __init__(self, path: str, session_id: Optional[int], sender: str, receiver: Optional[str],
                  payload: dict, connection_type: Optional[str] = None):
@@ -51,6 +50,10 @@ class Request:
         self._payload = payload
         self._response_function = None
         self._connection_type = connection_type
+
+    def __str__(self):
+        """Converts the request to a string"""
+        return "<'{}': {}>".format(self.get_path(), self.get_body())
 
     def set_callback_method(self, function: response_callback_type):
         self._response_function = function
@@ -110,9 +113,9 @@ class Request:
             return self._payload["status_msg"]
         return None
 
-    def to_string(self) -> str:
-        """Converts the request to a string"""
-        return "<'{}': {}>".format(self.get_path(), self.get_body())
+    def get_connection_type(self) -> Optional[str]:
+        """Returns the connection type of the request (the gadget that received this request)"""
+        return self._connection_type
 
 
 response_callback_type = Callable[[Request, dict, Optional[str]], None]

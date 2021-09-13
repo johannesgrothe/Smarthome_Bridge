@@ -2,47 +2,10 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "gadget_count": {
-      "type": "integer",
-      "minimum": 0
-    },
     "gadgets": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "type": {
-            "type": "integer"
-          },
-          "characteristics": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "max": {
-                  "type": "integer"
-                },
-                "min": {
-                  "type": "integer"
-                },
-                "step": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "type": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "value": {
-                  "type": "integer"
-                }
-              }
-            }
-          }
-        }
+        "$ref": "api_gadget_data.json"
       }
     }
   }

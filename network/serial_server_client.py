@@ -6,7 +6,7 @@ import serial
 import threading
 from jsonschema import ValidationError
 
-from network.network_connector import req_validation_scheme_name
+from network.network_connector import REQ_VALIDATION_SCHEME_NAME
 from network.network_server_client import NetworkServerClient
 from network.request import Request
 
@@ -72,7 +72,7 @@ class SerialServerClient(NetworkServerClient):
                 json_body = json.loads(req_dict["b"])
 
                 try:
-                    self._validator.validate(json_body, req_validation_scheme_name)
+                    self._validator.validate(json_body, REQ_VALIDATION_SCHEME_NAME)
                 except ValidationError:
                     self._logger.warning("Could not decode Request, Schema Validation failed.")
                     return None

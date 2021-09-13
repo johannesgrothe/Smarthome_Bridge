@@ -45,7 +45,7 @@ class RepositoryManager:
     _logger: logging.Logger
     _safe_mode: bool
 
-    def __init__(self, base_path: str, repository_name: str, remote_url: Optional[str] = None):
+    def __init__(self, base_path: str, repository_name: Optional[str], remote_url: Optional[str] = None):
         """
         Constructor for the RepositoryManager Class
         :param base_path: Path the repository folder exists or should be created in
@@ -55,7 +55,10 @@ class RepositoryManager:
         self._safe_mode = False
         self._base_path = os.path.abspath(base_path)
         self._repo_name = repository_name
-        self._path = os.path.join(self._base_path, self._repo_name)
+        if repository_name is not None:
+            self._path = os.path.join(self._base_path, self._repo_name)
+        else:
+            self._path = self._base_path
         self._remote_url = remote_url
         self._logger = logging.getLogger("RepositoryManager")
 
@@ -92,7 +95,7 @@ class RepositoryManager:
         :raises RepositoryUnsafeToDeleteException: When the repository folder is not safe to delete
         """
         if not self._dir_is_safe_to_delete():
-            raise RepositoryUnsafeToDeleteException
+            raise RepositoryUnsafeToDeleteException()
 
         for root, dirs, files in os.walk(self._path, topdown=False):
             for name in files:
@@ -122,11 +125,15 @@ class RepositoryManager:
             if os.path.isdir(self._path):
                 self.delete_folder()
 
+            if self._repo_name is None:
+                self._logger.error(f"Cannot clone repository without its name set")
+                raise RepositoryCloneException()
+
             repo_works = os.system(f"cd {self._base_path};git clone {self._remote_url} {self._repo_name} --quiet") == 0
 
         if not repo_works:
             self._logger.error(f"Error cloning repository from '{self._remote_url}'")
-            raise RepositoryCloneException
+            raise RepositoryCloneException()
 
     def fetch(self):
         """
@@ -137,7 +144,7 @@ class RepositoryManager:
         fetch_ok = self._exec_git_command("git fetch --all --quiet")
         if not fetch_ok:
             self._logger.error("Fetching repository failed.")
-            raise RepositoryFetchException
+            raise RepositoryFetchException()
         else:
             self._logger.info("Fetching repository was successful.")
 
@@ -162,13 +169,13 @@ class RepositoryManager:
         pull_ok = self._exec_git_command("git pull --quiet")
         if not pull_ok:
             self._logger.error("Failed to pull from remote repository")
-            raise RepositoryPullException
+            raise RepositoryPullException()
         self._logger.info("Pulling from remote repository was successful")
 
     def get_commit_hash(self) -> str:
         """
         Gets the current git commit hash.
-        :return: The current commit hash
+        :return: The current commit hash.
         """
         return os.popen(f"cd {self._path};git rev-parse HEAD").read().strip("\n")
 
@@ -182,5 +189,5 @@ class RepositoryManager:
                        in os.popen(f"cd {self._path};git branch").read().strip("\n").split("\n")
                        if x.strip().startswith("*")]
         if len(branch_list) != 1:
-            raise RepositoryStatusException
+            raise RepositoryStatusException()
         return branch_list[0]

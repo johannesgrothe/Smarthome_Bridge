@@ -3,7 +3,7 @@
 import logging
 from network.request import NoClientResponseException
 from typing import Optional, Callable
-from network.network_connector import NetworkConnector
+from smarthome_bridge.network_manager import NetworkManager
 from json_validator import Validator, ValidationError
 
 # Declare Type of callback function for hinting
@@ -27,11 +27,11 @@ class ClientController:
 
     _client_name: str
     _sender_id: str
-    _network: NetworkConnector
+    _network: NetworkManager
     _validator: Validator
     _logger: logging.Logger
 
-    def __init__(self, client_name: str, network_connector: NetworkConnector):
+    def __init__(self, client_name: str, network_connector: NetworkManager):
         self._client_name = client_name
         self._network = network_connector
         self._validator = Validator()

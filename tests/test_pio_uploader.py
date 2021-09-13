@@ -1,3 +1,4 @@
+import pytest
 from pio_uploader import PioUploader, PioUploadException, PioNoProjectFoundException
 import os
 import time
@@ -16,6 +17,7 @@ def pio_test_callback(code: int, message: str):
     _message_received = True
 
 
+@pytest.mark.github_skip
 def test_pio_uploader():
     global _message_received
     repo_manager = RepositoryManager(_repo_base_path, _repo_name, _repo_url)

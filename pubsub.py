@@ -5,6 +5,9 @@ from network.request import Request
 
 class Subscriber(metaclass=ABCMeta):
 
+    def __init__(self):
+        super().__init__()
+
     @abstractmethod
     def receive(self, req: Request):
         pass
@@ -15,6 +18,7 @@ class Publisher(metaclass=ABCMeta):
     __subscriber_clients: list
 
     def __init__(self):
+        super().__init__()
         self.__subscriber_clients = []
 
     def subscribe(self, client: Subscriber):

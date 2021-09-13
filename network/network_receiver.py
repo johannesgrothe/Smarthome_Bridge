@@ -11,12 +11,10 @@ class NetworkReceiver(Subscriber):
     _request_queue: Queue
     _keep_queue: bool
 
-    def __init__(self, network: Publisher):
+    def __init__(self):
         super().__init__()
         self._request_queue = Queue()
         self._keep_queue = False
-        self._network = network
-        self._network.subscribe(self)
 
     def __del__(self):
         pass
@@ -30,7 +28,7 @@ class NetworkReceiver(Subscriber):
         self._request_queue = Queue()
         self._keep_queue = True
 
-    def wait_for_responses(self, out_req: Request, timeout: int = 300,
+    def wait_for_responses(self, out_req: Request, timeout: int = 5,
                            max_resp_count: Optional[int] = 1) -> list[Request]:
         if not self._keep_queue:
             self._request_queue = Queue()
@@ -41,13 +39,11 @@ class NetworkReceiver(Subscriber):
         timeout_time = datetime.now() + timedelta(seconds=timeout)
 
         while timeout and datetime.now() < timeout_time:
+            if max_resp_count and len(responses) >= max_resp_count:  # return responses if enough are collected
+                return responses
             if not self._request_queue.empty():
                 res: Request = self._request_queue.get()
                 if res.get_session_id() == out_req.get_session_id() and out_req.get_sender() != res.get_sender():
-
                     responses.append(res)
-
-                    if max_resp_count and len(responses) >= max_resp_count:
-                        return responses
 
         return responses

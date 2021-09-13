@@ -4,6 +4,8 @@ import json
 from typing import Optional
 from json_validator import Validator, ValidationError
 
+from logging_interface import LoggingInterface
+
 _config_path = "configs"
 _validation_schema_name = "client_config"
 
@@ -18,14 +20,13 @@ class ConfigAlreadyExistsException(Exception):
         super().__init__(f"Config is already existing")
 
 
-class ClientConfigManager:
+class ClientConfigManager(LoggingInterface):
 
     _config_data: dict
-    _logger: logging.Logger
     _validator: Validator
 
     def __init__(self):
-        self._logger = logging.getLogger("ClientConfigManager")
+        super().__init__()
         self._validator = Validator()
         self.reload()
 

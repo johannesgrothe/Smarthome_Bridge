@@ -12,6 +12,8 @@ pysimplegui = {version="*"}
 jsonschema = {version="*"}
 pytest = {version="*"}
 coverage = {version="*"}
+pytest-cov = {version="*"}
+pytest-dotenv = {version="*"}
 
 [dev-packages]
 
