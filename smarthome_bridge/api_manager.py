@@ -14,6 +14,7 @@ from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDe
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 
 PATH_HEARTBEAT = "heartbeat"
+PATH_SYNC_REQUEST = "sync"
 PATH_SYNC_CLIENT = "sync/client"
 PATH_SYNC_GADGET = "sync/gadget"
 
@@ -46,7 +47,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._handle_request(req)
 
     def request_sync(self, name: str):
-        self._network.send_request(PATH_SYNC_CLIENT, name, {}, 0)
+        self._network.send_request(PATH_SYNC_REQUEST, name, {}, 0)
 
     def send_gadget_update(self, gadget: Gadget):
         try:
