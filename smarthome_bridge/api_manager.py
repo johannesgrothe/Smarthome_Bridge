@@ -49,6 +49,10 @@ class ApiManager(Subscriber, LoggingInterface):
     def request_sync(self, name: str):
         self._network.send_request(PATH_SYNC_REQUEST, name, {}, 0)
 
+    def _respond_with_error(self, req: Request, err_type: str, message: str):
+        req.respond({"error_type": err_type, "message": message})
+        self._logger.error(f"{err_type}: {message}")
+
     def send_gadget_update(self, gadget: Gadget):
         try:
             gadget_data = ApiEncoder().encode_gadget(gadget)
@@ -78,7 +82,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "bridge_heartbeat_request")
         except ValidationError:
-            self._logger.error(f"Request validation error at '{PATH_HEARTBEAT}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_HEARTBEAT}'")
             return
 
         rt_id = req.get_payload()["runtime_id"]
@@ -94,7 +98,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_sync_request")
         except ValidationError:
-            self._logger.error(f"Request validation error at '{PATH_SYNC_CLIENT}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_SYNC_CLIENT}'")
             return
 
         client_id = req.get_sender()
@@ -122,7 +126,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_gadget_sync_request")
         except ValidationError:
-            self._logger.error(f"Request validation error at '{PATH_SYNC_GADGET}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_SYNC_GADGET}'")
             return
         client_id = req.get_sender()
 

@@ -14,6 +14,7 @@ pytest = {version="*"}
 coverage = {version="*"}
 pytest-cov = {version="*"}
 pytest-dotenv = {version="*"}
+werkzeug = {version="*"}
 
 [dev-packages]
 

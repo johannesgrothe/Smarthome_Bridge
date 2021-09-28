@@ -10,6 +10,7 @@ from smarthome_bridge.bridge import Bridge
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from network.mqtt_connector import MQTTConnector
+from network.rest_server import RestServer
 
 from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBridge
@@ -56,9 +57,8 @@ def main():
 
     # REST
     if args.api_port:
-        pass
-        # bridge.set_api_port(args.api_port)
-        # bridge.run_api()
+        rest_server = RestServer(bridge_name, args.api_port)
+        bridge.get_network_manager().add_connector(rest_server)
 
     # SOCKET
     if args.socket_port:
