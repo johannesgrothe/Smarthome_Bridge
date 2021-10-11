@@ -10,12 +10,14 @@ from test_helpers.dummy_network_connector import DummyNetworkConnector
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.smarthomeclient import SmarthomeClient
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
+from gadgets.gadget import Gadget
 
 HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"
 REQ_RUNTIME = 123456
 
 GADGET_NAME = "test_fan"
+GADGET_CHARACTERISTIC_TYPE = 1
 CLIENT_NAME = "test_client"
 
 GADGET_CONFIG_OK = {
@@ -42,6 +44,25 @@ GADGET_CONFIG_OK = {
     }
 }
 
+GADGET_CHARACTERISTICS = [{
+        "type": 1,
+            "min": 0,
+            "max": 1,
+            "steps": 1,
+            "step_value": 1,
+            "true_value": 1,
+            "percentage_value": 100
+        }, {
+            "type": 2,
+            "min": 0,
+            "max": 100,
+            "steps": 4,
+            "step_value": 4,
+            "true_value": 100,
+            "percentage_value": 100
+}]
+
+
 GADGET_CONFIG_ERR = {
     "type": 55,
     "name": GADGET_NAME,
@@ -53,6 +74,29 @@ GADGET_CONFIG_ERR = {
         "step_value": 1,
         "true_value": 1,
         "percentage_value": 100
+    }]
+}
+
+GADGET_UPDATE_ERR = {
+    "id": GADGET_NAME,
+    "characteristics": [{
+        "type": GADGET_CHARACTERISTIC_TYPE,
+    }]
+}
+
+GADGET_UPDATE_ERR_UNKNOWN = {
+    "id": "blubb",
+    "characteristics": [{
+        "type": GADGET_CHARACTERISTIC_TYPE,
+        "step_value": 0
+    }]
+}
+
+GADGET_UPDATE_OK = {
+    "id": GADGET_NAME,
+    "characteristics": [{
+        "type": GADGET_CHARACTERISTIC_TYPE,
+        "step_value": 0
     }]
 }
 
@@ -168,6 +212,41 @@ def test_api_gadget_sync(api: ApiManager, network: DummyNetworkConnector, delega
                          GADGET_CONFIG_OK)
     assert delegate.get_last_gadget() is not None
     assert delegate.get_last_gadget().get_name() == GADGET_NAME
+
+
+@pytest.mark.bridge
+def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    delegate.add_gadget(Gadget(
+        GADGET_NAME,
+        "spongolopolus",
+        [Characteristic(
+            CharacteristicIdentifier.status,
+            0,
+            1,
+            1,
+            1
+        )]))
+
+    network.mock_receive("update/gadget",
+                         REQ_SENDER,
+                         {"gadget": {"yolo": "blub"}})
+    assert delegate.get_last_gadget() is None
+
+    network.mock_receive("update/gadget",
+                         REQ_SENDER,
+                         GADGET_UPDATE_ERR)
+    assert delegate.get_last_gadget() is None
+
+    network.mock_receive("update/gadget",
+                         REQ_SENDER,
+                         GADGET_UPDATE_ERR_UNKNOWN)
+    assert delegate.get_last_gadget() is None
+
+    network.mock_receive("update/gadget",
+                         REQ_SENDER,
+                         GADGET_UPDATE_OK)
+    assert delegate.get_last_gadget() is not None
+    assert delegate.get_last_gadget().get_characteristic_types()[0] == GADGET_CHARACTERISTIC_TYPE
 
 
 @pytest.mark.bridge

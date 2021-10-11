@@ -178,6 +178,7 @@ class ApiManager(Subscriber, LoggingInterface):
         gadget_info = [x for x in self._delegate.get_gadget_info() if x.get_name() == req.get_payload()["id"]]
         if not gadget_info:
             self._respond_with_error(req, "GagdetDoesNeeExist", "sadly no gagdet with the given id exists")
+            return
         encoded_gadget = ApiEncoder().encode_gadget(gadget_info[0])
         for characteristic in req.get_payload()["characteristics"]:
             for characteristic_encoded_gadget in encoded_gadget["characteristics"]:
