@@ -17,10 +17,15 @@ PATH_HEARTBEAT = "heartbeat"
 PATH_SYNC_REQUEST = "sync"
 PATH_SYNC_CLIENT = "sync/client"
 PATH_SYNC_GADGET = "sync/gadget"
+PATH_UPDATE_GADGET = "update/gadget"
 
 PATH_INFO_BRIDGE = "info/bridge"
 PATH_INFO_GADGETS = "info/gadgets"
 PATH_INFO_CLIENTS = "info/clients"
+
+PATH_CLIENT_CONFIG_WRITE = "config/write"
+PATH_CLIENT_CONFIG_DELETE = "config/delete"
+PATH_CLIENT_REBOOT = "reboot/client"
 
 
 class ApiManager(Subscriber, LoggingInterface):
@@ -70,7 +75,11 @@ class ApiManager(Subscriber, LoggingInterface):
             PATH_SYNC_GADGET: self._handle_gadget_sync,
             PATH_INFO_BRIDGE: self._handle_info_bridge,
             PATH_INFO_GADGETS: self._handle_info_gadgets,
-            PATH_INFO_CLIENTS: self._handle_info_clients
+            PATH_INFO_CLIENTS: self._handle_info_clients,
+            PATH_UPDATE_GADGET: self._handle_update_gadget,
+            PATH_CLIENT_REBOOT: self._handle_client_reboot,
+            PATH_CLIENT_CONFIG_WRITE: self._handle_client_config_write,
+            PATH_CLIENT_CONFIG_DELETE: self._handle_client_config_delete
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -151,6 +160,73 @@ class ApiManager(Subscriber, LoggingInterface):
         encoder = ApiEncoder()
         resp_data = encoder.encode_all_clients_info(data)
         req.respond(resp_data)
+
+    def _handle_update_gadget(self, req: Request):
+        """
+        Handles a characteristic update request, for a gadget, from any foreign source
+
+        :param req: Request containing the gadget update request
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_gadget_update_request")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            return
+        client_id = req.get_sender()
+
+        gadget_info = [x for x in self._delegate.get_gadget_info() if x.get_name() == req.get_payload()["id"]]
+        if not gadget_info:
+            self._respond_with_error(req, "GagdetDoesNeeExist", "sadly no gagdet with the given id exists")
+        encoded_gadget = ApiEncoder().encode_gadget(gadget_info[0])
+        for characteristic in req.get_payload()["characteristics"]:
+            for characteristic_encoded_gadget in encoded_gadget["characteristics"]:
+                if characteristic["type"] == characteristic_encoded_gadget["type"]:
+                    characteristic_encoded_gadget["step_value"] = characteristic["step_value"]
+                    break
+
+        self._logger.info(f"Updating gadget from '{client_id}'")
+        self._update_gadget(gadget_info[0].get_host_client(), encoded_gadget)
+
+    def _handle_client_reboot(self, req: Request):
+        """
+        Handles a client reboot request
+        :param req: Request containing the client id to reboot
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_client_reboot_request")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            return
+        # TODO: handle the request
+        # client_id = req.get_payload()["id"]
+
+    def _handle_client_config_write(self, req: Request):
+        """
+        Handles a client config write request
+        :param req: Request containing the client config to write
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_client_config_write")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            return
+        #TODO: handle the request
+
+    def _handle_client_config_delete(self, req: Request):
+        """
+        Handles a client config delete request
+        :param req: Request containing the client config to delete
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_client_config_delete")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            return
+        # TODO: handle the request
 
     def _update_gadget(self, client_id: str, gadget_data: dict):
         """

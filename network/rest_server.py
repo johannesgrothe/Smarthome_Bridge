@@ -14,7 +14,10 @@ GET_ROUTES = ["info/bridge",
               "info/gadgets",
               "info/clients"]
 
-UPDATE_ROUTES = ["sync/gadget"]
+UPDATE_ROUTES = ["sync/gadget",
+                 "config/write",
+                 "config/delete",
+                 "update/gadget"]
 
 
 class RestServerThread(threading.Thread):

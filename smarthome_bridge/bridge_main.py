@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.append(os.getcwd())
 import logging
 import argparse
@@ -44,7 +45,7 @@ def main():
         bridge_name = args.bridge_name
     else:
         bridge_name = get_sender()
-    
+
     # Create Bridge
     bridge = Bridge(bridge_name)
 
@@ -80,9 +81,10 @@ def main():
 
     # Insert dummy data if wanted
     if args.dummy_data:
-
         from gadgets.fan_westinghouse_ir import FanWestinghouseIR
         from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
+        from smarthome_bridge.smarthomeclient import SmarthomeClient
+        from datetime import datetime
 
         gadget = FanWestinghouseIR("dummy_fan",
                                    "bridge",
@@ -95,6 +97,15 @@ def main():
                                                   100,
                                                   4))
         bridge.get_gadget_manager().receive_update(gadget)
+        date = datetime.utcnow()
+        client = SmarthomeClient(name="dummy_client",
+                                 runtime_id=18298931,
+                                 flash_date=date,
+                                 software_commit="2938479384",
+                                 software_branch="spongo",
+                                 port_mapping={},
+                                 boot_mode=1)
+        bridge.get_client_manager().add_client(client)
 
     while True:
         pass
