@@ -56,6 +56,10 @@
           }
         }
       }
+    },
+    "client": {
+      "type": "string",
+      "description": "When communicating gadget information from the bridge to an app/webinterface the client id needed"
     }
   }
 }
