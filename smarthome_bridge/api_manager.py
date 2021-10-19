@@ -28,6 +28,11 @@ PATH_CLIENT_CONFIG_DELETE = "config/delete"
 PATH_CLIENT_REBOOT = "reboot/client"
 
 
+class UnknownClientException(Exception):
+    def __init__(self, name: str):
+        super(UnknownClientException, self).__init__(f"client with name: {name} does nee exist")
+
+
 class ApiManager(Subscriber, LoggingInterface):
     _validator: Validator
 
@@ -200,8 +205,25 @@ class ApiManager(Subscriber, LoggingInterface):
         except ValidationError:
             self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
             return
-        # TODO: handle the request
-        # client_id = req.get_payload()["id"]
+        try:
+            self.trigger_client_reboot(req.get_payload()["id"])
+        except UnknownClientException:
+            self._respond_with_error(req,
+                                     "UnknownClientException",
+                                     f"nee client with the id: {req.get_payload()['id']} exists")
+
+    def trigger_client_reboot(self, name: str):
+        """
+        Triggers the reboot of the specified client
+        :param name: Name of the client (id)
+        :return: None
+        """
+        client_info = [x for x in self._delegate.get_client_info() if x.get_name() == name]
+        if not client_info:
+            raise UnknownClientException(name)
+        self._network.send_request(PATH_CLIENT_REBOOT,
+                                   name,
+                                   {})
 
     def _handle_client_config_write(self, req: Request):
         """
@@ -214,7 +236,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except ValidationError:
             self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
             return
-        #TODO: handle the request
+        # TODO: handle the request
 
     def _handle_client_config_delete(self, req: Request):
         """

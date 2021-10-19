@@ -108,4 +108,4 @@ class RestServer(NetworkServer):
 
         for route in UPDATE_ROUTES:
             flask_route = f"/{route}"
-            self._app.add_url_rule(flask_route, route, self._generate_get_method(route), methods=["POST"])
+            self._app.add_url_rule(flask_route, route, self._generate_update_method(route), methods=["POST"])

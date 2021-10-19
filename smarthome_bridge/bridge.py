@@ -106,3 +106,4 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                 for x
                 in self._gadget_manager.get_gadget_ids()
                 if self._gadget_manager.get_gadget(x) is not None]
+
