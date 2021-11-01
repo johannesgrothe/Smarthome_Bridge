@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
+  "required": [
+    "id"
+  ],
   "properties": {
-    "clients": {
-      "type": "array",
-      "items": {
-        "$ref": "api_client_data.json"
-      }
+    "id": {
+      "type": "string"
     }
   }
 }
