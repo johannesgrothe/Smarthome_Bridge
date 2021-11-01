@@ -3,6 +3,7 @@ from typing import Optional, Callable
 import logging
 from abc import ABCMeta, abstractmethod
 
+from gadgets.gadget_event_mapping import GadgetEventMapping
 from smarthome_bridge.characteristic import Characteristic
 from gadgetlib import GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
 
@@ -22,6 +23,7 @@ class Gadget(object, metaclass=ABCMeta):
     _name: str
     _host_client: str
     _logger: logging.Logger
+    _event_mapping: list[GadgetEventMapping]
 
     def __init__(self,
                  name: str,
@@ -32,6 +34,7 @@ class Gadget(object, metaclass=ABCMeta):
         self._characteristics = characteristics
         self._characteristics.sort()
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._event_mapping = []
 
     def __del__(self):
         pass
@@ -122,8 +125,14 @@ class Gadget(object, metaclass=ABCMeta):
     def get_name(self) -> str:
         return self._name
 
-    def get_characteristic_types(self) -> [CharacteristicIdentifier]:
+    def get_characteristic_types(self) -> list[CharacteristicIdentifier]:
         buf_list: [CharacteristicIdentifier] = []
         for characteristic in self._characteristics:
             buf_list.append(characteristic.get_type())
         return buf_list
+
+    def get_event_mapping(self) -> list[GadgetEventMapping]:
+        return self._event_mapping
+
+    def set_event_mapping(self, mapping: list[GadgetEventMapping]):
+        self._event_mapping = mapping

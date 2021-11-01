@@ -63,9 +63,17 @@ class ApiEncoder(LoggingInterface):
 
         characteristics_json = [self.encode_characteristic(x) for x in gadget.get_characteristics()]
 
+        mapping_json = {}
+        for mapping in gadget.get_event_mapping():
+            if mapping.get_id() in mapping_json:
+                self._logger.error(f"found double mapping for {mapping.get_id()}")
+                continue
+            mapping_json[mapping.get_id()] = mapping.get_list()
+
         gadget_json = {"type": int(identifier),
                        "name": gadget.get_name(),
-                       "characteristics": characteristics_json}
+                       "characteristics": characteristics_json,
+                       "event_map": mapping_json}
 
         return gadget_json
 
