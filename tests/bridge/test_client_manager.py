@@ -2,7 +2,7 @@ import pytest
 import random
 
 from smarthome_bridge.client_manager import *
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 
 
 TEST_CLIENT_NAME = "test_client"
@@ -18,19 +18,19 @@ def manager():
 
 @pytest.fixture()
 def test_client():
-    client = SmarthomeClient(TEST_CLIENT_NAME,
-                             random.randint(0, 10000),
-                             None,
-                             None,
-                             None,
-                             {},
-                             1)
+    client = Client(TEST_CLIENT_NAME,
+                    random.randint(0, 10000),
+                    None,
+                    None,
+                    None,
+                    {},
+                    1)
     yield client
     # client.__del__()
 
 
 @pytest.mark.bridge
-def test_client_manager(manager: ClientManager, test_client: SmarthomeClient):
+def test_client_manager(manager: ClientManager, test_client: Client):
     assert manager.get_client_count() == 0
     assert manager.get_client(TEST_CLIENT_NAME) is None
 

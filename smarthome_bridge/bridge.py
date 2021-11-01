@@ -12,7 +12,7 @@ from smarthome_bridge.gadget_manager import GadgetManager
 
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from gadgets.gadget import Gadget
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 from repository_manager import RepositoryManager
 from system_info_tools import SystemInfoTools
 
@@ -77,7 +77,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         with self._gadget_sync_lock:
             self._gadget_manager.receive_update(gadget)
 
-    def handle_client_update(self, client: SmarthomeClient):
+    def handle_client_update(self, client: Client):
         try:
             self._client_manager.remove_client(client.get_name())
         except ClientDoesntExistsError:
@@ -95,7 +95,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                                           SystemInfoTools.read_git_version(),
                                           SystemInfoTools.read_python_version())
 
-    def get_client_info(self) -> list[SmarthomeClient]:
+    def get_client_info(self) -> list[Client]:
         return [self._client_manager.get_client(x)
                 for x
                 in self._client_manager.get_client_ids()

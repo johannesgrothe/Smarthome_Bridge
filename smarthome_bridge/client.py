@@ -7,7 +7,7 @@ from logging_interface import LoggingInterface
 DEFAULT_TIMEOUT = 17
 
 
-class SmarthomeClient(LoggingInterface):
+class Client(LoggingInterface):
     """Smarthome client information"""
 
     # The name of the client

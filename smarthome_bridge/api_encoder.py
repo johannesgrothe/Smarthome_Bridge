@@ -1,7 +1,7 @@
 from logging_interface import LoggingInterface
 from datetime import datetime
 
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
@@ -24,7 +24,7 @@ class ApiEncoder(LoggingInterface):
     def __init__(self):
         super().__init__()
 
-    def encode_client(self, client: SmarthomeClient) -> dict:
+    def encode_client(self, client: Client) -> dict:
         """
         Serializes a clients data according to api specification
 
@@ -130,7 +130,7 @@ class ApiEncoder(LoggingInterface):
                 self._logger.error(f"Failed to encode gadget '{gadget.get_name()}'")
         return {"gadgets": gadget_data}
 
-    def encode_all_clients_info(self, client_info: list[SmarthomeClient]) -> dict:
+    def encode_all_clients_info(self, client_info: list[Client]) -> dict:
         client_data = []
         for client in client_info:
             try:

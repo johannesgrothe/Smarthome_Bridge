@@ -1,7 +1,7 @@
 import pytest
 import time
 import datetime
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 
 
 CLIENT_NAME = "test_client"
@@ -19,19 +19,19 @@ CLIENT_BOOT_MODE = 1
 
 @pytest.fixture
 def client():
-    client = SmarthomeClient(name=CLIENT_NAME,
-                             runtime_id=RUNTIME_ID,
-                             flash_date=CLIENT_FLASH_DATE,
-                             software_commit=CLIENT_SW_COMMIT,
-                             software_branch=CLIENT_BRANCH_NAME,
-                             port_mapping=CLIENT_FAULTY_PORT_MAPPING,
-                             boot_mode=CLIENT_BOOT_MODE)
+    client = Client(name=CLIENT_NAME,
+                    runtime_id=RUNTIME_ID,
+                    flash_date=CLIENT_FLASH_DATE,
+                    software_commit=CLIENT_SW_COMMIT,
+                    software_branch=CLIENT_BRANCH_NAME,
+                    port_mapping=CLIENT_FAULTY_PORT_MAPPING,
+                    boot_mode=CLIENT_BOOT_MODE)
     client.set_timeout(CONNECTION_TIMEOUT)
     yield client
 
 
 @pytest.mark.bridge
-def test_smarthome_client_getters(client: SmarthomeClient):
+def test_smarthome_client_getters(client: Client):
     assert client.get_name() == CLIENT_NAME
     assert client.get_created() + datetime.timedelta(seconds=1) > datetime.datetime.now()
     assert client.get_boot_mode() == CLIENT_BOOT_MODE
@@ -43,7 +43,7 @@ def test_smarthome_client_getters(client: SmarthomeClient):
 
 
 @pytest.mark.bridge
-def test_smarthome_client_last_connected(client: SmarthomeClient):
+def test_smarthome_client_last_connected(client: Client):
     assert client.is_active() is False
     first_trigger = datetime.datetime.now()
     client.trigger_activity()

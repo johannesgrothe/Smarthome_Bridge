@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 
 
 class ClientAlreadyExistsError(Exception):
@@ -17,7 +17,7 @@ class ClientDoesntExistsError(Exception):
 class ClientManager:
 
     _logger: logging.Logger
-    _clients: list[SmarthomeClient]
+    _clients: list[Client]
 
     def __init__(self):
         super().__init__()
@@ -29,7 +29,7 @@ class ClientManager:
             client = self._clients[0]
             self.remove_client(client.get_name())
 
-    def add_client(self, client: SmarthomeClient):
+    def add_client(self, client: Client):
         """
         Adds a client to the database and takes ownership of it
 
@@ -57,7 +57,7 @@ class ClientManager:
         self._clients.remove(client)
         # client.__del__()
 
-    def get_client(self, client_id: str) -> Optional[SmarthomeClient]:
+    def get_client(self, client_id: str) -> Optional[Client]:
         """
         Returns the client with the given name if present
 

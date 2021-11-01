@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 from gadgets.gadget import Gadget
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 
 
@@ -27,7 +27,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def handle_client_update(self, client: SmarthomeClient):
+    def handle_client_update(self, client: Client):
         """
         Handles an incoming client update request by applying changes the passed gadget contains to the client manager
 
@@ -44,7 +44,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_client_info(self) -> list[SmarthomeClient]:
+    def get_client_info(self) -> list[Client]:
         """
         Returns information about all the clients
 

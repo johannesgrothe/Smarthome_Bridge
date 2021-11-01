@@ -5,7 +5,7 @@ from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError, Identifi
 from smarthome_bridge.api_decoder import ApiDecoder, ClientDecodeError, GadgetDecodeError, CharacteristicDecodeError
 
 from json_validator import Validator, ValidationError
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 from gadgets.gadget import Gadget, GadgetIdentifier
 
 from test_helpers.gadget_fixtures import *
@@ -35,20 +35,20 @@ def decoder():
 
 @pytest.fixture()
 def test_client():
-    client = SmarthomeClient(name=C_NAME,
-                             runtime_id=C_RUNTIME_ID,
-                             flash_date=C_FLASH_DATE,
-                             software_commit=C_COMMIT,
-                             software_branch=C_BRANCH,
-                             port_mapping=C_PORT_MAPPING,
-                             boot_mode=C_BOOT_MODE)
+    client = Client(name=C_NAME,
+                    runtime_id=C_RUNTIME_ID,
+                    flash_date=C_FLASH_DATE,
+                    software_commit=C_COMMIT,
+                    software_branch=C_BRANCH,
+                    port_mapping=C_PORT_MAPPING,
+                    boot_mode=C_BOOT_MODE)
     yield client
     # client.__del__()
 
 
 @pytest.mark.bridge
 def test_api_client_de_serialization(f_validator: Validator, encoder: ApiEncoder, decoder: ApiDecoder,
-                                     test_client: SmarthomeClient):
+                                     test_client: Client):
     serialized_data = encoder.encode_client(test_client)
     f_validator.validate(serialized_data, "api_client_data")
     decoded_client = decoder.decode_client(serialized_data, test_client.get_name())

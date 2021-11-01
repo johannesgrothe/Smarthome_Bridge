@@ -8,7 +8,7 @@ from test_helpers.dummy_api_delegate import DummyApiDelegate
 from network.request import Request, NoResponsePossibleException
 from test_helpers.dummy_network_connector import DummyNetworkConnector
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget import Gadget
 
@@ -132,13 +132,13 @@ def gadget():
 
 @pytest.fixture()
 def client():
-    client = SmarthomeClient(CLIENT_NAME,
-                             1773,
-                             datetime.datetime.now(),
-                             None,
-                             None,
-                             {},
-                             1)
+    client = Client(CLIENT_NAME,
+                    1773,
+                    datetime.datetime.now(),
+                    None,
+                    None,
+                    {},
+                    1)
     yield client
 
 
