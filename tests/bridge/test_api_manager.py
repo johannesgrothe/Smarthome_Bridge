@@ -271,6 +271,24 @@ def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delega
 
 
 @pytest.mark.bridge
+def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    delegate.add_client(SmarthomeClient("spongo",
+                                        123123123,
+                                        datetime.datetime.utcnow(),
+                                        "213132",
+                                        "fb_420",
+                                        {},
+                                        1))
+
+    network.mock_receive("reboot/client",
+                         REQ_SENDER,
+                         {"client": "spongo"})
+
+    network.mock_receive("reboot/client",
+                         REQ_SENDER,
+                         {"id": "spongo"})
+
+@pytest.mark.bridge
 def test_api_request_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
     api.request_sync(REQ_SENDER)
     last_send = network.get_last_send_req()
