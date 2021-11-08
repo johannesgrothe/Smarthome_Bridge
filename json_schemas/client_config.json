@@ -1,7 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "required": ["name", "description", "data", "gadgets"],
+  "required": [
+    "name",
+    "description",
+    "system",
+    "gadgets",
+    "events"],
   "properties": {
     "name": {
       "type": "string",
@@ -12,92 +17,14 @@
       "type": "string",
       "description": "Further information about the config to provide information the name itself can not"
     },
-    "data": {
-      "type": "object",
-      "description": "System configuration data",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "ID for the client to identify itself to the bridge and other tools",
-          "maxLength": 30
-        },
-        "wifi_ssid": {
-          "type": "string"
-        },
-        "wifi_pw": {
-          "type": "string"
-        },
-        "mqtt_ip": {
-          "type": "string",
-          "maxLength": 15,
-          "minLength": 7
-        },
-        "mqtt_port": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "mqtt_user": {
-          "type": ["string", "null"]
-        },
-        "mqtt_pw": {
-          "type": ["string", "null"]
-        },
-        "irrecv_pin": {
-          "type": ["integer", "null"],
-          "minimum": 0
-        },
-        "irsend_pin": {
-          "type": ["integer", "null"],
-          "minimum": 0
-        },
-        "radio_recv_pin": {
-          "type": ["integer", "null"],
-          "minimum": 0
-        },
-        "radio_send_pin": {
-          "type": ["integer", "null"],
-          "minimum": 0
-        },
-        "network_mode": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
+    "system": {
+      "$ref": "client_system_config.json"
     },
     "gadgets": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 255
-          },
-          "name": {
-            "type": "string"
-          },
-          "ports": {
-            "type": "object",
-            "patternProperties": {
-              "^port[0-9]+$": {
-                "type": "integer",
-                "minimum": 0
-              }
-            }
-          },
-          "codes": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "minimum": 0
-              }
-            }
-          }
-        }
-      }
+      "$ref": "client_gadget_config.json"
+    },
+    "events": {
+      "$ref": "client_event_config.json"
     }
   }
 }

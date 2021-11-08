@@ -1,23 +1,25 @@
+from toolkit.client_controller import ClientController
+from toolkit.client_detector import ClientDetector
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from toolkit.toolkit_meta import TOOLKIT_NETWORK_NAME
 from network.serial_server import SerialServer
-from network.network_server import NetworkServer
+from smarthome_bridge.network_manager import NetworkManager
 import time
 
 _blocked_clients = ["/dev/tty.SLAB_USBtoUART"]
 
 
 class DirectSerialConnectionToolkit(DirectConnectionToolkit):
-
-    _network: NetworkServer
+    _network: NetworkManager
     _network: SerialServer
 
     def __init__(self):
         super().__init__()
-        self._network = SerialServer(TOOLKIT_NETWORK_NAME,
-                                     115200)
+        connector = SerialServer(TOOLKIT_NETWORK_NAME,
+                                 115200)
         for client_id in _blocked_clients:
-            self._network.block_address(client_id)
+            connector.block_address(client_id)
+        self._network.add_connector(connector)
 
     def __del__(self):
         super().__del__()
@@ -27,6 +29,4 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
 
     def _scan_for_clients(self) -> [str]:
         time.sleep(7)
-        responses = self._network.send_broadcast("smarthome/broadcast/req", {}, timeout=6)
-        client_names = [res.get_sender() for res in responses]
-        return client_names
+        return ClientDetector(self._network).detect_clients(3)

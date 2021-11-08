@@ -1,14 +1,11 @@
-
-
-from client_controller import ClientController
+from toolkit.client_controller import ClientController
 from client_config_manager import ClientConfigManager
 from loading_indicator import LoadingIndicator
 
-from network.network_connector import NetworkConnector
 from network.request import NoClientResponseException
+from smarthome_bridge.network_manager import NetworkManager
 
 from toolkit.cli_helpers import select_option, ask_for_continue
-from toolkit.toolkit_meta import TOOLKIT_NETWORK_NAME
 from toolkit.toolkit_exceptions import ToolkitException
 
 from abc import ABCMeta, abstractmethod
@@ -16,11 +13,11 @@ from typing import Optional
 
 
 class DirectConnectionToolkit(metaclass=ABCMeta):
-    _network: Optional[NetworkConnector]
+    _network: NetworkManager
     _client_name: Optional[str]
 
     def __init__(self):
-        self._network = None
+        self._network = NetworkManager()
         self._client_name = None
 
     def __del__(self):
@@ -65,7 +62,7 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print()
         print("Overwriting EEPROM:")
 
-        erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        erase_controller = ClientController(self._client_name, self._network)
 
         try:
             ack = erase_controller.reset_config()
@@ -110,7 +107,7 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print()
         print("Writing config:")
 
-        write_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        write_controller = ClientController(self._client_name, self._network)
 
         try:
             with LoadingIndicator():
@@ -129,7 +126,7 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print()
         print("Rebooting Client:")
 
-        reboot_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        reboot_controller = ClientController(self._client_name, self._network)
 
         try:
             with LoadingIndicator():

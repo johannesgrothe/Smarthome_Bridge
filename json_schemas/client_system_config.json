@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Client System configuration data",
+  "required": [
+    "id",
+    "wifi_ssid",
+    "wifi_pw",
+    "mqtt_ip",
+    "mqtt_port",
+    "mqtt_user",
+    "mqtt_pw",
+    "irrecv_pin",
+    "irsend_pin",
+    "radio_recv_pin",
+    "radio_send_pin",
+    "network_mode"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "ID for the client to identify itself to the bridge and other tools",
+      "maxLength": 30
+    },
+    "wifi_ssid": {
+      "type": "string"
+    },
+    "wifi_pw": {
+      "type": "string"
+    },
+    "mqtt_ip": {
+      "type": "string",
+      "maxLength": 15,
+      "minLength": 7
+    },
+    "mqtt_port": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mqtt_user": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mqtt_pw": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "irrecv_pin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "irsend_pin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "radio_recv_pin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "radio_send_pin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "network_mode": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

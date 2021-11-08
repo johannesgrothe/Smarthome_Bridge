@@ -17,7 +17,6 @@ class SerialConnectionFailedException(Exception):
 
 
 class SerialServerClient(NetworkServerClient):
-
     _serial_client: serial.Serial
     _is_closed: bool
 

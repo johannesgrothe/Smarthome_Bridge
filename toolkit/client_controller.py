@@ -1,8 +1,13 @@
 """Module to contain all sorts of client-write-functions to be shared between bridge and command line tool"""
 
 import logging
-from network.request import NoClientResponseException
+import time
+
+from logging_interface import LoggingInterface
+from network.request import NoClientResponseException, Request
 from typing import Optional, Callable
+
+from pubsub import Subscriber
 from smarthome_bridge.network_manager import NetworkManager
 from json_validator import Validator, ValidationError
 
@@ -23,19 +28,16 @@ _upload_gadget_format_error_code = -3
 _upload_gadget_no_gadget_in_cfg_code = 3
 
 
-class ClientController:
-
+class ClientController(LoggingInterface):
     _client_name: str
-    _sender_id: str
     _network: NetworkManager
     _validator: Validator
-    _logger: logging.Logger
 
     def __init__(self, client_name: str, network_connector: NetworkManager):
+        super().__init__()
         self._client_name = client_name
         self._network = network_connector
         self._validator = Validator()
-        self._logger = logging.getLogger("ClientController")
 
     def reset_config(self) -> bool:
         """Resets the config of a client. Select behaviour using 'reset option'."""
