@@ -132,7 +132,8 @@ class Gadget(object, metaclass=ABCMeta):
         return buf_list
 
     def get_event_mapping(self) -> list[GadgetEventMapping]:
+        """Returns the configured event mapping of the client"""
         return self._event_mapping
 
-    def set_event_mapping(self, mapping: list[GadgetEventMapping]):
-        self._event_mapping = mapping
+    def set_event_mapping(self, e_mapping: list[GadgetEventMapping]):
+        self._event_mapping = e_mapping

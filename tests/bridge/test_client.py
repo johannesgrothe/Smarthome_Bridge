@@ -2,7 +2,7 @@ import pytest
 import time
 import datetime
 from smarthome_bridge.client import Client
-
+from smarthome_bridge.client_event_mapping import ClientEventMapping
 
 CLIENT_NAME = "test_client"
 RUNTIME_ID = 1776
@@ -55,3 +55,10 @@ def test_smarthome_client_last_connected(client: Client):
     client.update_runtime_id(RUNTIME_ID+1)
     assert client.get_runtime_id() != RUNTIME_ID
     assert first_trigger.replace(microsecond=0) == client.get_last_connected().replace(microsecond=0)
+
+
+@pytest.mark.bridge
+def test_client_event_mapping(client: Client):
+    mapping = [ClientEventMapping("sp0ng0_", [1])]
+    client.set_event_mapping(mapping)
+    assert client.get_event_mapping() == mapping

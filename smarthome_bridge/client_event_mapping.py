@@ -1,3 +1,4 @@
+
 class ClientEventMapping:
     _event_id: str
     _code_list: list[int]
@@ -14,4 +15,3 @@ class ClientEventMapping:
 
     def get_codes(self) -> list[int]:
         return self._code_list
-    
