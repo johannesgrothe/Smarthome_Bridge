@@ -4,10 +4,12 @@ from typing import Optional
 from logging_interface import LoggingInterface
 
 # Maximum timeout in seconds before the client is considered inactive
+from smarthome_bridge.client_event_mapping import ClientEventMapping
+
 DEFAULT_TIMEOUT = 17
 
 
-class SmarthomeClient(LoggingInterface):
+class Client(LoggingInterface):
     """Smarthome client information"""
 
     # The name of the client
@@ -34,6 +36,9 @@ class SmarthomeClient(LoggingInterface):
     # Mapping for the ports on the client
     _port_mapping: dict
 
+    # Event mapping of the client
+    _event_mapping: list[ClientEventMapping]
+
     # Boot mode of the client
     _boot_mode: int
 
@@ -46,6 +51,7 @@ class SmarthomeClient(LoggingInterface):
         self._created = datetime.now()
         self._runtime_id = runtime_id
         self._timeout = connection_timeout
+        self._event_mapping = []
 
         if flash_date:
             self._flash_time = flash_date - timedelta(microseconds=flash_date.microsecond)
@@ -143,3 +149,12 @@ class SmarthomeClient(LoggingInterface):
 
     def set_timeout(self, seconds: int):
         self._timeout = seconds
+
+    def get_event_mapping(self) -> list[ClientEventMapping]:
+        """Returns the configured event mapping of the client"""
+        return self._event_mapping
+
+    def set_event_mapping(self, e_mapping: list[ClientEventMapping]):
+        self._event_mapping = e_mapping
+
+

@@ -2,8 +2,8 @@ import pytest
 
 from gadgets.any_gadget import AnyGadget
 from gadgets.gadget import GadgetIdentifier
+from gadgets.gadget_event_mapping import GadgetEventMapping
 from smarthome_bridge.characteristic import CharacteristicIdentifier
-
 
 NAME = "unittest"
 HOST = "unittest_host"
@@ -20,3 +20,13 @@ def test_gadget_getters(f_characteristic_status):
     assert gadget.get_characteristics() == [f_characteristic_status]
     assert gadget.get_characteristic(CharacteristicIdentifier.status) == f_characteristic_status
     assert gadget.get_characteristic(CharacteristicIdentifier.fanSpeed) is None
+
+
+@pytest.mark.bridge
+def test_gadget_event_mapping(f_characteristic_status):
+    gadget = AnyGadget(NAME,
+                       HOST,
+                       [f_characteristic_status])
+    mapping = [GadgetEventMapping("b0ng0", [(1, 1)])]
+    gadget.set_event_mapping(mapping)
+    assert gadget.get_event_mapping() == mapping

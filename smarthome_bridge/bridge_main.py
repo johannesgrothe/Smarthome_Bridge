@@ -83,7 +83,8 @@ def main():
     if args.dummy_data:
         from gadgets.fan_westinghouse_ir import FanWestinghouseIR
         from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-        from smarthome_bridge.smarthomeclient import SmarthomeClient
+        from smarthome_bridge.client import Client
+        from gadgets.gadget_event_mapping import GadgetEventMapping
         from datetime import datetime
 
         gadget = FanWestinghouseIR("dummy_fan",
@@ -96,15 +97,18 @@ def main():
                                                   0,
                                                   100,
                                                   4))
+        gadget.set_event_mapping([
+            GadgetEventMapping("ab09d8_", [(1, 1)])
+        ])
         bridge.get_gadget_manager().receive_update(gadget)
         date = datetime.utcnow()
-        client = SmarthomeClient(name="dummy_client",
-                                 runtime_id=18298931,
-                                 flash_date=date,
-                                 software_commit="2938479384",
-                                 software_branch="spongo",
-                                 port_mapping={},
-                                 boot_mode=1)
+        client = Client(name="dummy_client",
+                        runtime_id=18298931,
+                        flash_date=date,
+                        software_commit="2938479384",
+                        software_branch="spongo",
+                        port_mapping={},
+                        boot_mode=1)
         bridge.get_client_manager().add_client(client)
 
     while True:

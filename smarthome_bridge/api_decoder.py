@@ -3,7 +3,7 @@ from logging_interface import LoggingInterface
 from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget_factory import GadgetFactory
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -79,7 +79,7 @@ class ApiDecoder(LoggingInterface):
             self._logger.error(f"Cannot create CharacteristicIdentifier out of '{characteristic_data['type']}'")
         raise CharacteristicDecodeError
 
-    def decode_client(self, client_data: dict, client_name: str) -> SmarthomeClient:
+    def decode_client(self, client_data: dict, client_name: str) -> Client:
         """
         Parses a smarthome-client from the given data
 
@@ -102,13 +102,13 @@ class ApiDecoder(LoggingInterface):
             port_mapping = client_data["port_mapping"]
             boot_mode = client_data["boot_mode"]
 
-            out_client = SmarthomeClient(client_name,
-                                         runtime_id,
-                                         flash_date,
-                                         software_commit,
-                                         software_branch,
-                                         port_mapping,
-                                         boot_mode)
+            out_client = Client(client_name,
+                                runtime_id,
+                                flash_date,
+                                software_commit,
+                                software_branch,
+                                port_mapping,
+                                boot_mode)
             return out_client
         except KeyError as err:
             raise ClientDecodeError(f"Key Error at '{err.args[0]}'")

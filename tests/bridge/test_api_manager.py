@@ -8,7 +8,7 @@ from test_helpers.dummy_api_delegate import DummyApiDelegate
 from network.request import Request, NoResponsePossibleException
 from test_helpers.dummy_network_connector import DummyNetworkConnector
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
-from smarthome_bridge.smarthomeclient import SmarthomeClient
+from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget import Gadget
 
@@ -45,23 +45,22 @@ GADGET_CONFIG_OK = {
 }
 
 GADGET_CHARACTERISTICS = [{
-        "type": 1,
-            "min": 0,
-            "max": 1,
-            "steps": 1,
-            "step_value": 1,
-            "true_value": 1,
-            "percentage_value": 100
-        }, {
-            "type": 2,
-            "min": 0,
-            "max": 100,
-            "steps": 4,
-            "step_value": 4,
-            "true_value": 100,
-            "percentage_value": 100
+    "type": 1,
+    "min": 0,
+    "max": 1,
+    "steps": 1,
+    "step_value": 1,
+    "true_value": 1,
+    "percentage_value": 100
+}, {
+    "type": 2,
+    "min": 0,
+    "max": 100,
+    "steps": 4,
+    "step_value": 4,
+    "true_value": 100,
+    "percentage_value": 100
 }]
-
 
 GADGET_CONFIG_ERR = {
     "type": 55,
@@ -132,13 +131,13 @@ def gadget():
 
 @pytest.fixture()
 def client():
-    client = SmarthomeClient(CLIENT_NAME,
-                             1773,
-                             datetime.datetime.now(),
-                             None,
-                             None,
-                             {},
-                             1)
+    client = Client(CLIENT_NAME,
+                    1773,
+                    datetime.datetime.now(),
+                    None,
+                    None,
+                    {},
+                    1)
     yield client
 
 
@@ -272,13 +271,13 @@ def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delega
 
 @pytest.mark.bridge
 def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    delegate.add_client(SmarthomeClient("spongo",
-                                        123123123,
-                                        datetime.datetime.utcnow(),
-                                        "213132",
-                                        "fb_420",
-                                        {},
-                                        1))
+    delegate.add_client(Client("spongo",
+                               123123123,
+                               datetime.datetime.utcnow(),
+                               "213132",
+                               "fb_420",
+                               {},
+                               1))
 
     network.mock_receive("reboot/client",
                          REQ_SENDER,
@@ -287,6 +286,7 @@ def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, dele
     network.mock_receive("reboot/client",
                          REQ_SENDER,
                          {"id": "spongo"})
+
 
 @pytest.mark.bridge
 def test_api_request_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
