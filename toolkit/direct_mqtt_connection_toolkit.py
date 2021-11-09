@@ -1,4 +1,4 @@
-from toolkit.client_controller import ClientController
+from clients.client_controller import ClientController
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from network.mqtt_connector import MQTTConnector

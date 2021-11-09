@@ -2,7 +2,7 @@
   "$schema": "./../json_schemas/client_config.json",
   "name": "Example",
   "description": "Example config for testing and as reference",
-  "data": {
+  "system": {
     "id": "YoloChip14",
     "wifi_ssid": "test_wifi",
     "wifi_pw": "test_pw",
@@ -19,40 +19,35 @@
     "code_remote": 1,
     "event_remote": 1
   },
-  "gadgets": [
-    {
-      "type": 1,
-      "name": "yolokoptergadget",
-      "ports": {
-        "port0": 2,
-        "port1": 3
+  "gadgets": {
+    "gadgets": [
+      {
+        "type": 1,
+        "name": "test_neopixel",
+        "ports": {
+          "port0": 1
+        },
+        "config": {
+          "length": 15
+        },
+        "events": {
+        }
       },
-      "config": {
-        "length":  15
-      },
-      "codes": {
-        "turnOn": [1],
-        "turnOff": [2, 3]
-      },
-      "remotes": {
-        "gadget": 1,
-        "code": 1,
-        "event": 1
+      {
+        "type": 1,
+        "name": "test_neopixel_2",
+        "ports": {
+          "port0": 2
+        },
+        "config": {
+          "length": 5
+        },
+        "events": {
+        }
       }
-    },
-    {
-      "type": 3,
-      "name": "blubgadget2",
-      "ports": {
-        "port4": 2
-      }
-    },
-    {
-      "type": 3,
-      "name": "blubgadget3",
-      "ports": {
-        "port4": 24
-      }
-    }
-  ]
+    ]
+  },
+  "events": {
+    "events": []
+  }
 }

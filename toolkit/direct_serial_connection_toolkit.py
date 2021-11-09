@@ -1,4 +1,3 @@
-from toolkit.client_controller import ClientController
 from toolkit.client_detector import ClientDetector
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from toolkit.toolkit_meta import TOOLKIT_NETWORK_NAME
@@ -29,4 +28,4 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
 
     def _scan_for_clients(self) -> [str]:
         time.sleep(7)
-        return ClientDetector(self._network).detect_clients(3)
+        return ClientDetector(self._network).detect_clients(6)

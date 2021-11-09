@@ -1,6 +1,6 @@
 import pytest
 
-from toolkit.client_controller import ClientController, NoClientResponseException
+from clients.client_controller import ClientController, NoClientResponseException
 from test_helpers.dummy_network_connector import DummyNetworkConnector
 from client_config_manager import ClientConfigManager
 from json_validator import ValidationError

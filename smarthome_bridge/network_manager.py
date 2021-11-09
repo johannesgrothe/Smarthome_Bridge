@@ -132,6 +132,17 @@ class NetworkManager(Publisher, Subscriber):
 
     def send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
                            timeout: int = 6) -> Optional[Request]:
+        """
+        Sends a request to all attached networks.
+        The request will be split into individual parts with a maximum length.
+
+        :param path: Path to send the request on
+        :param receiver: Receiver for the Request
+        :param payload: Payload to be send
+        :param part_max_size: Maximum size in bytes for each individual payload chunk
+        :param timeout: Maximum timeout to wait for an answer
+        :return: The response if there is any
+        """
         req = Request(path, None, self._hostname, receiver, payload)
         session_id = req.get_session_id()
         path = req.get_path()

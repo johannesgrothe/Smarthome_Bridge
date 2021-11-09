@@ -23,7 +23,7 @@ def enter_file_path() -> Optional[str]:
     return f_path
 
 
-def select_option(input_list: [str], category: Optional[str] = None, back_option: Optional[str] = None) -> int:
+def select_option(input_list: list[str], category: Optional[str] = None, back_option: Optional[str] = None) -> int:
     """Presents every elem from the list and lets the user select one"""
 
     if category is None:
