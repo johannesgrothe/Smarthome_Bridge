@@ -82,10 +82,10 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(system_config, "client_system_config")
-        res = self._network.send_request_split(PATH_CLIENT_SYSTEM_CONFIG_WRITE,
-                                               self._client_id,
-                                               system_config,
-                                               50)
+        res = self._network.send_request(PATH_CLIENT_SYSTEM_CONFIG_WRITE,
+                                         self._client_id,
+                                         system_config,
+                                         50)
         if not res:
             raise NoClientResponseException
         if not res.get_ack():
@@ -102,10 +102,10 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(event_config, "client_event_config")
-        res = self._network.send_request_split(PATH_CLIENT_EVENT_CONFIG_WRITE,
-                                               self._client_id,
-                                               event_config,
-                                               50)
+        res = self._network.send_request(PATH_CLIENT_EVENT_CONFIG_WRITE,
+                                         self._client_id,
+                                         event_config,
+                                         50)
         if not res:
             raise NoClientResponseException
         if not res.get_ack():
@@ -122,10 +122,10 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(gadget_config, "client_gadget_config")
-        res = self._network.send_request_split(PATH_CLIENT_GADGET_CONFIG_WRITE,
-                                               self._client_id,
-                                               gadget_config,
-                                               50)
+        res = self._network.send_request(PATH_CLIENT_GADGET_CONFIG_WRITE,
+                                         self._client_id,
+                                         gadget_config,
+                                         50)
         if not res:
             raise NoClientResponseException
         if not res.get_ack():
