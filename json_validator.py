@@ -30,6 +30,8 @@ class Validator(LoggingInterface):
         """
         global _schema_data
 
+        # TODO: Use schema loader from system/utils
+
         self._logger.info("Reloading Schema Data")
         buf_schemas = {}
         relevant_files = [file for file in os.listdir(_schema_folder)

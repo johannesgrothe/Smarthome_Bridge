@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 
-from network.request import Request
+from network.request import Request, NoClientResponseException
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
 
@@ -13,7 +13,7 @@ from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from smarthome_bridge.api_params import *
-from clients.client_controller import ClientController
+from clients.client_controller import ClientController, ClientRebootError
 
 
 class UnknownClientException(Exception):
@@ -67,6 +67,8 @@ class ApiManager(Subscriber, LoggingInterface):
         :param client_id: ID of the client
         :return: None
         :raises UnknownClientException: If client id is unknown to the system
+        :raises NoClientResponseException: If client did not respond to the request
+        :raises ClientRebootError: If client could not be rebooted for aby reason
         """
         if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
             raise UnknownClientException(client_id)
@@ -260,7 +262,15 @@ class ApiManager(Subscriber, LoggingInterface):
         except UnknownClientException:
             self._respond_with_error(req,
                                      "UnknownClientException",
-                                     f"nee client with the id: {req.get_payload()['id']} exists")
+                                     f"Nee client with the id: {req.get_payload()['id']} exists")
+        except NoClientResponseException:
+            self._respond_with_error(req,
+                                     "NoClientResponseException",
+                                     f"Client did not respond to reboot request")
+        except ClientRebootError:
+            self._respond_with_error(req,
+                                     "ClientRebootError",
+                                     f"Client could not be rebooted for some reason")
 
     def _handle_client_config_write(self, req: Request):
         """
