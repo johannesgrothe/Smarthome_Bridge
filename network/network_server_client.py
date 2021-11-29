@@ -85,7 +85,7 @@ class NetworkServerClient(Publisher):
         self._send(out_req)
 
     def _forward_request(self, req: Request):
-        self._logger.info(f"Received Request by '{req.get_sender()}' at '{req.get_path()}': {req.get_payload()}")
+        self._logger.debug(f"Received Request by '{req.get_sender()}' at '{req.get_path()}': {req.get_payload()}")
         self._publish(req)
 
     def send_request(self, req: Request):

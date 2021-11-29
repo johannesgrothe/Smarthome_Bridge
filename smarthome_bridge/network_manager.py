@@ -59,7 +59,10 @@ class NetworkManager(Publisher, Subscriber):
         return len(self._connectors)
 
     def receive(self, req: Request):
-        self._logger.info(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}'")
+        short_json = json.dumps(req.get_payload())
+        if len(short_json) > 35:
+            short_json = short_json[:35] + f"... + {len(short_json) - 35} bytes"
+        self._logger.info(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}': {short_json}")
         self._publish(req)
 
     @staticmethod

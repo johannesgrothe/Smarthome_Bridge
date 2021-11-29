@@ -12,7 +12,7 @@ from gadgets.gadget import Gadget
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from smarthome_bridge.api_params import *
+from system.api_params import *
 from clients.client_controller import ClientController, ClientRebootError
 
 

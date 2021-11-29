@@ -128,9 +128,9 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         elif write_option == 1:
             w_system = True
         elif write_option == 2:
-            w_event = True
-        elif write_option == 3:
             w_gadget = True
+        elif write_option == 3:
+            w_event = True
 
         if w_system:
             print("Writing system config...")

@@ -1,5 +1,5 @@
 {
-  "$schema": "./../json_schemas/client_config.json",
+  "$schema": "./../system/json_schemas/client_config.json",
   "name": "Example",
   "description": "Example config for testing and as reference",
   "system": {

@@ -1,5 +1,6 @@
 from clients.client_controller import ClientController
 from network.mqtt_credentials_container import MqttCredentialsContainer
+from toolkit.client_detector import ClientDetector
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from network.mqtt_connector import MQTTConnector
 from typing import Optional
@@ -34,4 +35,4 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
         print("Please make sure your Client is connected to the network")
 
     def _scan_for_clients(self) -> [str]:
-        return ClientController.detect_clients(self._network)
+        return ClientDetector(self._network).detect_clients(6)

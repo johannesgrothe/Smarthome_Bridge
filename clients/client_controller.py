@@ -2,7 +2,7 @@
 from logging_interface import LoggingInterface
 from network.request import NoClientResponseException
 
-from smarthome_bridge.api_params import *
+from system.api_params import *
 from smarthome_bridge.network_manager import NetworkManager
 from json_validator import Validator
 
