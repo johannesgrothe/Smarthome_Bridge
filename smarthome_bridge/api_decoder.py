@@ -42,7 +42,7 @@ class ApiDecoder(LoggingInterface):
 
             self._logger.info(f"Decoding gadget of type '{identifier}'")
 
-            name = gadget_data["name"]
+            name = gadget_data["id"]
             characteristics = [self.decode_characteristic(data) for data in gadget_data["characteristics"]]
             factory = GadgetFactory()
             out_gadget = factory.create_gadget(identifier,

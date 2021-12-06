@@ -1,6 +1,7 @@
 import pytest
 
-from clients.client_controller import ClientController, NoClientResponseException
+from clients.client_controller import ClientController, NoClientResponseException, ClientRebootError, \
+    ConfigEraseError, ConfigWriteError
 from test_helpers.dummy_network_connector import DummyNetworkConnector
 from client_config_manager import ClientConfigManager
 from json_validator import ValidationError
@@ -36,69 +37,61 @@ def manager():
 def test_client_controller_reboot(network: NetworkManager, manager: ClientConfigManager,
                                   connector: DummyNetworkConnector):
     controller = ClientController(TEST_CLIENT_NAME, network)
-    try:
+
+    with pytest.raises(NoClientResponseException):
         controller.reboot_client()
-    except NoClientResponseException:
-        pass
-    else:
-        assert False
 
     connector.reset()
 
-    try:
-        connector.mock_ack(True)
-        result = controller.reboot_client()
-    except NoClientResponseException:
-        assert False
-    else:
-        assert result is True
+    connector.mock_ack(False)
+    with pytest.raises(ClientRebootError):
+        controller.reboot_client()
+
+    connector.reset()
+
+    connector.mock_ack(True)
+    controller.reboot_client()
 
 
-def test_client_controller_reset_config(network: NetworkManager, connector: DummyNetworkConnector, manager: ClientConfigManager):
+def test_client_controller_reset_config(network: NetworkManager, connector: DummyNetworkConnector,
+                                        manager: ClientConfigManager):
     controller = ClientController(TEST_CLIENT_NAME, network)
     with pytest.raises(NoClientResponseException):
-        controller.reset_config()
+        controller.erase_config()
 
     connector.reset()
 
-    try:
-        connector.mock_ack(True)
-        result = controller.reset_config()
-    except NoClientResponseException:
-        assert False
-    else:
-        assert result is True
+    connector.mock_ack(False)
+    with pytest.raises(ConfigEraseError):
+        controller.erase_config()
+
+    connector.reset()
+
+    connector.mock_ack(True)
+    controller.erase_config()
 
 
-def test_client_controller_write_config(network: NetworkManager, connector: DummyNetworkConnector, manager: ClientConfigManager):
+def test_client_controller_write_system_config(network: NetworkManager, connector: DummyNetworkConnector,
+                                               manager: ClientConfigManager):
     controller = ClientController(TEST_CLIENT_NAME, network)
-    working_config = manager.get_config(WORKING_CONFIG_NAME)
+    working_config = manager.get_config(WORKING_CONFIG_NAME)["system"]
     assert working_config is not None
 
     with pytest.raises(ValidationError):
-        controller.write_config(BROKEN_CONFIG)
+        controller.write_system_config(BROKEN_CONFIG)
 
     connector.reset()
 
     with pytest.raises(NoClientResponseException):
-        controller.write_config(working_config)
+        controller.write_system_config(working_config)
 
     connector.reset()
 
-    try:
-        connector.mock_ack(True)
-        result = controller.write_config(working_config)
-    except NoClientResponseException:
-        assert False
-    else:
-        assert result is True
+    connector.mock_ack(False)
+    with pytest.raises(ConfigWriteError):
+        controller.write_system_config(working_config)
 
     connector.reset()
 
-    try:
-        connector.mock_ack(False)
-        result = controller.write_config(working_config)
-    except NoClientResponseException:
-        assert False
-    else:
-        assert result is False
+    connector.mock_ack(True)
+    controller.write_system_config(working_config)
