@@ -11,7 +11,6 @@ import paho.mqtt.client as mqtt
 
 
 class MQTTServerClient(NetworkServerClient):
-
     _client: mqtt.Client
     _buf_queue: Queue
     _channel: str
@@ -41,7 +40,9 @@ class MQTTServerClient(NetworkServerClient):
             topic = message.topic
 
             try:
-                json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
+                # json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
+                json_str = message.payload.decode("utf-8")
+
             except UnicodeDecodeError:
                 self._logger.warning("Couldn't format json string")
                 return

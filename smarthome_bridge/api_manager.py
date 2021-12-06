@@ -48,14 +48,15 @@ class ApiManager(Subscriber, LoggingInterface):
         self._network.send_request(PATH_SYNC_REQUEST, name, {}, 0)
 
     def _respond_with_error(self, req: Request, err_type: str, message: str):
+        message = message.replace("\"", "'")
         req.respond({"error_type": err_type, "message": message})
         self._logger.error(f"{err_type}: {message}")
 
     def send_gadget_update(self, gadget: Gadget):
         try:
-            gadget_data = ApiEncoder().encode_gadget(gadget)
-            self._network.send_broadcast(PATH_SYNC_GADGET,
-                                         {"gadget": gadget_data},
+            gadget_data = ApiEncoder().encode_gadget_update(gadget)
+            self._network.send_broadcast(PATH_UPDATE_GADGET,
+                                         gadget_data,
                                          0)
         except GadgetEncodeError as err:
             self._logger.error(err.args[0])
@@ -162,8 +163,10 @@ class ApiManager(Subscriber, LoggingInterface):
         """
         try:
             self._validator.validate(req.get_payload(), "api_client_sync_request")
-        except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_SYNC_CLIENT}'")
+        except ValidationError as err:
+            self._respond_with_error(req,
+                                     "ValidationError",
+                                     f"Request validation error at '{PATH_SYNC_CLIENT}': '{err.message}'")
             return
 
         client_id = req.get_sender()

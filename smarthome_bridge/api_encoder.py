@@ -71,9 +71,24 @@ class ApiEncoder(LoggingInterface):
             mapping_json[mapping.get_id()] = mapping.get_list()
 
         gadget_json = {"type": int(identifier),
-                       "name": gadget.get_name(),
+                       "id": gadget.get_name(),
                        "characteristics": characteristics_json,
                        "event_map": mapping_json}
+
+        return gadget_json
+
+    def encode_gadget_update(self, gadget: Gadget) -> dict:
+        """
+        Serializes gadget update information according to api specification
+
+        :param gadget: The gadget to serialize
+        :return: The serialized version of the changeable gadget information as dict
+        :raises GadgetEncodeError: If anything goes wrong during the serialization process
+        """
+        characteristics_json = [self.encode_characteristic_update(x) for x in gadget.get_characteristics()]
+
+        gadget_json = {"id": gadget.get_name(),
+                       "characteristics": characteristics_json}
 
         return gadget_json
 
@@ -108,9 +123,18 @@ class ApiEncoder(LoggingInterface):
                 "min": characteristic.get_min(),
                 "max": characteristic.get_max(),
                 "steps": characteristic.get_steps(),
-                "step_value": characteristic.get_step_value(),
-                "true_value": characteristic.get_true_value(),
-                "percentage_value": characteristic.get_percentage_value()}
+                "step_value": characteristic.get_step_value()}
+
+    @staticmethod
+    def encode_characteristic_update(characteristic: Characteristic) -> dict:
+        """
+        Serializes a characteristic update information according to api specification
+
+        :param characteristic: The characteristic to serialize
+        :return: The serialized version of the the changeable characteristic information as dict
+        """
+        return {"type": int(characteristic.get_type()),
+                "step_value": characteristic.get_step_value()}
 
     @staticmethod
     def encode_bridge_info(bridge_info: BridgeInformationContainer) -> dict:
