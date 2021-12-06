@@ -159,6 +159,7 @@ def network():
 def network_manager(network):
     manager = NetworkManager()
     manager.add_connector(network)
+    manager.set_default_timeout(2)
     yield manager
     manager.__del__()
 
