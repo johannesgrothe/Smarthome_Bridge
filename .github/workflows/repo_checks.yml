@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check Semi-Linear History
-        run: git merge-base --is-ancestor origin/develop HEAD
+        run: git merge-base --is-ancestor origin/master HEAD
 
   submodule_check:
 
@@ -34,6 +34,6 @@ jobs:
       - name: Check if Submodules are on master
         uses: jtmullen/submodule-branch-check-action@v1
         with:
-          path: "src/system"
+          path: "system"
           branch: "master"
           require_head: true
