@@ -72,6 +72,8 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                 self._api.request_sync(client_name)
             else:
                 client.trigger_activity()
+        else:
+            self._api.request_sync(client_name)
 
     def handle_gadget_update(self, gadget: Gadget):
         with self._gadget_sync_lock:

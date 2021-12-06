@@ -1,3 +1,6 @@
+from clients.client_controller import ClientController
+from network.mqtt_credentials_container import MqttCredentialsContainer
+from toolkit.client_detector import ClientDetector
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from network.mqtt_connector import MQTTConnector
 from typing import Optional
@@ -16,11 +19,13 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
         self._mqtt_username = username
         self._mqtt_password = password
 
-        self._network = MQTTConnector("ConsoleToolkit",
-                                      self._mqtt_ip,
-                                      self._mqtt_port,
-                                      self._mqtt_username,
-                                      self._mqtt_password)
+        self._network.add_connector(MQTTConnector("ConsoleToolkit",
+                                                  MqttCredentialsContainer(self._mqtt_ip,
+                                                                           self._mqtt_port,
+                                                                           self._mqtt_username,
+                                                                           self._mqtt_password),
+                                                  "smarthome"
+                                                  ))
         pass
 
     def __del__(self):
@@ -30,8 +35,4 @@ class DirectMqttConnectionToolkit(DirectConnectionToolkit):
         print("Please make sure your Client is connected to the network")
 
     def _scan_for_clients(self) -> [str]:
-        responses = self._network.send_broadcast("smarthome/broadcast/req", {}, timeout=3)
-
-        client_names = [res.get_sender() for res in responses]
-
-        return client_names
+        return ClientDetector(self._network).detect_clients(6)

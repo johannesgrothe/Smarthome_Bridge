@@ -21,7 +21,7 @@ from toolkit.toolkit_exceptions import ToolkitException
 from chip_flasher import ChipFlasher
 from client_config_manager import ClientConfigManager
 from toolkit.toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
-from bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
+from toolkit.bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
     SoftwareWritingFailedException, ConfigWritingFailedException
 
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]

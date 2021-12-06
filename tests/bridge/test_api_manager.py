@@ -23,7 +23,7 @@ CLIENT_NAME = "test_client"
 GADGET_CONFIG_OK = {
     "gadget": {
         "type": 3,
-        "name": GADGET_NAME,
+        "id": GADGET_NAME,
         "characteristics": [{
             "type": 1,
             "min": 0,
@@ -159,6 +159,7 @@ def network():
 def network_manager(network):
     manager = NetworkManager()
     manager.add_connector(network)
+    manager.set_default_timeout(2)
     yield manager
     manager.__del__()
 
@@ -298,15 +299,10 @@ def test_api_request_sync(api: ApiManager, network: DummyNetworkConnector, deleg
 
 
 @pytest.mark.bridge
-def test_api_send_gadget_update(api: ApiManager, network: DummyNetworkConnector, f_any_gadget, f_dummy_gadget):
+def test_api_send_gadget_update(api: ApiManager, network: DummyNetworkConnector, f_any_gadget):
     api.send_gadget_update(f_any_gadget)
     assert network.get_last_send_req() is not None
     assert network.get_last_send_req().get_receiver() is None
-
-    network.reset()
-
-    api.send_gadget_update(f_dummy_gadget)
-    assert network.get_last_send_req() is None
 
 
 @pytest.mark.bridge

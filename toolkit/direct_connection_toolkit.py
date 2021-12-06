@@ -1,14 +1,11 @@
-
-
-from client_controller import ClientController
+from clients.client_controller import ClientController, ConfigEraseError, ConfigWriteError, ClientRebootError
 from client_config_manager import ClientConfigManager
 from loading_indicator import LoadingIndicator
 
-from network.network_connector import NetworkConnector
 from network.request import NoClientResponseException
+from smarthome_bridge.network_manager import NetworkManager
 
 from toolkit.cli_helpers import select_option, ask_for_continue
-from toolkit.toolkit_meta import TOOLKIT_NETWORK_NAME
 from toolkit.toolkit_exceptions import ToolkitException
 
 from abc import ABCMeta, abstractmethod
@@ -16,11 +13,11 @@ from typing import Optional
 
 
 class DirectConnectionToolkit(metaclass=ABCMeta):
-    _network: Optional[NetworkConnector]
+    _network: NetworkManager
     _client_name: Optional[str]
 
     def __init__(self):
-        self._network = None
+        self._network = NetworkManager()
         self._client_name = None
 
     def __del__(self):
@@ -65,19 +62,17 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print()
         print("Overwriting EEPROM:")
 
-        erase_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        erase_controller = ClientController(self._client_name, self._network)
 
         try:
-            ack = erase_controller.reset_config()
-            if ack is False:
-                print("Failed to reset EEPROM\n")
-                return
-
+            erase_controller.erase_config()
             print("Config was successfully erased\n")
 
         except NoClientResponseException:
             print("Received no Response to Reset Request\n")
             return
+        except ConfigEraseError:
+            print("Failed to reset EEPROM\n")
 
     def _write_config(self):
 
@@ -110,38 +105,99 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
         print()
         print("Writing config:")
 
-        write_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        write_controller = ClientController(self._client_name, self._network)
 
-        try:
-            with LoadingIndicator():
-                ack = write_controller.write_config(config_data)
-            if ack is False:
-                print("Failed to write config\n")
-                return
+        w_system = False
+        w_event = False
+        w_gadget = False
+        has_error = False
 
-            print("Config was successfully written\n")
+        write_option = select_option(["Write complete config",
+                                      "System only",
+                                      "Gadgets only",
+                                      "Events only"],
+                                     "writing task",
+                                     "back")
 
-        except NoClientResponseException:
-            print("Received no response to config write request\n")
+        if write_option == -1:
             return
+        elif write_option == 0:
+            w_system = True
+            w_event = True
+            w_gadget = True
+        elif write_option == 1:
+            w_system = True
+        elif write_option == 2:
+            w_gadget = True
+        elif write_option == 3:
+            w_event = True
+
+        if w_system:
+            print("Writing system config...")
+
+            try:
+                with LoadingIndicator():
+                    write_controller.write_system_config(config_data["system"])
+                print("Config was successfully written\n")
+
+            except NoClientResponseException:
+                print("Received no response to config write request\n")
+                has_error = True
+            except ConfigWriteError:
+                print("Failed to write config on chip\n")
+                has_error = True
+
+        if w_gadget:
+            print("Writing gadget config...")
+
+            try:
+                with LoadingIndicator():
+                    write_controller.write_gadget_config(config_data["gadgets"])
+                print("Config was successfully written\n")
+
+            except NoClientResponseException:
+                print("Received no response to config write request\n")
+                has_error = True
+            except ConfigWriteError:
+                print("Failed to write config on chip\n")
+                has_error = True
+
+        if w_event:
+            print("Writing event config...")
+
+            try:
+                with LoadingIndicator():
+                    write_controller.write_event_config(config_data["events"])
+                print("Config was successfully written\n")
+
+            except NoClientResponseException:
+                print("Received no response to config write request\n")
+                has_error = True
+            except ConfigWriteError:
+                print("Failed to write config on chip\n")
+                has_error = True
+
+        if not has_error:
+            print("All writing efforts were successful\n")
+        else:
+            print("Completed with errors\n")
 
     def _reboot_client(self):
         print()
         print("Rebooting Client:")
 
-        reboot_controller = ClientController(self._client_name, TOOLKIT_NETWORK_NAME, self._network)
+        reboot_controller = ClientController(self._client_name, self._network)
 
         try:
             with LoadingIndicator():
-                ack = reboot_controller.reboot_client()
-            if ack is False:
-                print("Failed to reboot client\n")
-                return
-
+                reboot_controller.reboot_client()
             print("Client reboot successful\n")
 
         except NoClientResponseException:
             print("Received no response to reboot request\n")
+            return
+        except ClientRebootError:
+            print("Failed to reboot client\n")
             return
 
     def _connect_to_client(self):

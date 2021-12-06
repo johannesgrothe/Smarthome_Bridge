@@ -4,8 +4,10 @@ from jsonschema import validate, ValidationError
 
 from logging_interface import LoggingInterface
 
+from system.utils.schema_loader import SchemaLoader
 
-_schema_folder = "json_schemas"
+
+_schema_folder = os.path.join("system", "json_schemas")
 _schema_data: dict = {}  # Schemas do not change at runtime, therefore all Validators can share the same dataset
 
 
@@ -29,34 +31,9 @@ class Validator(LoggingInterface):
         :return: None
         """
         global _schema_data
-
         self._logger.info("Reloading Schema Data")
-        buf_schemas = {}
-        relevant_files = [file for file in os.listdir(_schema_folder)
-                          if os.path.isfile(os.path.join(_schema_folder, file))
-                          and file.endswith('.json')]
-        for filename in relevant_files:
-            with open(os.path.join(_schema_folder, filename)) as f:
-                data = json.load(f)
-                try:
-                    del data["$schema"]
-                except KeyError:
-                    pass
-                buf_schemas[filename[:-5]] = data
-
-        fixed_schemas = True
-        runs = 0
-        while fixed_schemas and runs <= 15:
-            runs += 1
-            fixed_schemas = 0
-            for schema_name in buf_schemas:
-                old_schema = buf_schemas[schema_name]
-                new_schema = self._fix_schema(old_schema, buf_schemas)
-                if new_schema != old_schema:
-                    buf_schemas[schema_name] = new_schema
-                    fixed_schemas = True
-
-        _schema_data = buf_schemas
+        loader = SchemaLoader(_schema_folder)
+        _schema_data = loader.load_schemas()
 
     @staticmethod
     def get_schema(name: str):

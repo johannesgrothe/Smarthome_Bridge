@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 
-from network.request import Request
+from network.request import Request, NoClientResponseException
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
 
@@ -12,20 +12,8 @@ from gadgets.gadget import Gadget
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-
-PATH_HEARTBEAT = "heartbeat"
-PATH_SYNC_REQUEST = "sync"
-PATH_SYNC_CLIENT = "sync/client"
-PATH_SYNC_GADGET = "sync/gadget"
-PATH_UPDATE_GADGET = "update/gadget"
-
-PATH_INFO_BRIDGE = "info/bridge"
-PATH_INFO_GADGETS = "info/gadgets"
-PATH_INFO_CLIENTS = "info/clients"
-
-PATH_CLIENT_CONFIG_WRITE = "config/write"
-PATH_CLIENT_CONFIG_DELETE = "config/delete"
-PATH_CLIENT_REBOOT = "reboot/client"
+from system.api_params import *
+from clients.client_controller import ClientController, ClientRebootError
 
 
 class UnknownClientException(Exception):
@@ -60,17 +48,81 @@ class ApiManager(Subscriber, LoggingInterface):
         self._network.send_request(PATH_SYNC_REQUEST, name, {}, 0)
 
     def _respond_with_error(self, req: Request, err_type: str, message: str):
+        message = message.replace("\"", "'")
         req.respond({"error_type": err_type, "message": message})
         self._logger.error(f"{err_type}: {message}")
 
     def send_gadget_update(self, gadget: Gadget):
         try:
-            gadget_data = ApiEncoder().encode_gadget(gadget)
-            self._network.send_broadcast(PATH_SYNC_GADGET,
-                                         {"gadget": gadget_data},
+            gadget_data = ApiEncoder().encode_gadget_update(gadget)
+            self._network.send_broadcast(PATH_UPDATE_GADGET,
+                                         gadget_data,
                                          0)
         except GadgetEncodeError as err:
             self._logger.error(err.args[0])
+
+    def send_client_reboot(self, client_id: str):
+        """
+        Triggers the reboot of the specified client
+
+        :param client_id: ID of the client
+        :return: None
+        :raises UnknownClientException: If client id is unknown to the system
+        :raises NoClientResponseException: If client did not respond to the request
+        :raises ClientRebootError: If client could not be rebooted for aby reason
+        """
+        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
+            raise UnknownClientException(client_id)
+        writer = ClientController(client_id, self._network)
+        writer.reboot_client()
+
+    def send_client_system_config_write(self, client_id: str, config: dict):
+        """
+        Sends a request to write a system config to a client
+
+        :param client_id: ID of the client to send the config to
+        :param config: Config to write
+        :return: None
+        :raises UnknownClientException: If client id is unknown to the system
+        :raises ConfigWriteError: If client did not acknowledge config writing success
+        :raises ValidationError: If passed config was faulty
+        """
+        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
+            raise UnknownClientException(client_id)
+        writer = ClientController(client_id, self._network)
+        writer.write_system_config(config)
+
+    def send_client_event_config_write(self, client_id: str, config: dict):
+        """
+        Sends a request to write a event config to a client
+
+        :param client_id: ID of the client to send the config to
+        :param config: Config to write
+        :return: None
+        :raises UnknownClientException: If client id is unknown to the system
+        :raises ConfigWriteError: If client did not acknowledge config writing success
+        :raises ValidationError: If passed config was faulty
+        """
+        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
+            raise UnknownClientException(client_id)
+        writer = ClientController(client_id, self._network)
+        writer.write_event_config(config)
+
+    def send_client_gadget_config_write(self, client_id: str, config: dict):
+        """
+        Sends a request to write a gadget config to a client
+
+        :param client_id: ID of the client to send the config to
+        :param config: Config to write
+        :return: None
+        :raises UnknownClientException: If client id is unknown to the system
+        :raises ConfigWriteError: If client did not acknowledge config writing success
+        :raises ValidationError: If passed config was faulty
+        """
+        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
+            raise UnknownClientException(client_id)
+        writer = ClientController(client_id, self._network)
+        writer.write_gadget_config(config)
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
@@ -111,8 +163,10 @@ class ApiManager(Subscriber, LoggingInterface):
         """
         try:
             self._validator.validate(req.get_payload(), "api_client_sync_request")
-        except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_SYNC_CLIENT}'")
+        except ValidationError as err:
+            self._respond_with_error(req,
+                                     "ValidationError",
+                                     f"Request validation error at '{PATH_SYNC_CLIENT}': '{err.message}'")
             return
 
         client_id = req.get_sender()
@@ -197,6 +251,7 @@ class ApiManager(Subscriber, LoggingInterface):
     def _handle_client_reboot(self, req: Request):
         """
         Handles a client reboot request
+
         :param req: Request containing the client id to reboot
         :return: None
         """
@@ -206,24 +261,19 @@ class ApiManager(Subscriber, LoggingInterface):
             self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
             return
         try:
-            self.trigger_client_reboot(req.get_payload()["id"])
+            self.send_client_reboot(req.get_payload()["id"])
         except UnknownClientException:
             self._respond_with_error(req,
                                      "UnknownClientException",
-                                     f"nee client with the id: {req.get_payload()['id']} exists")
-
-    def trigger_client_reboot(self, name: str):
-        """
-        Triggers the reboot of the specified client
-        :param name: Name of the client (id)
-        :return: None
-        """
-        client_info = [x for x in self._delegate.get_client_info() if x.get_name() == name]
-        if not client_info:
-            raise UnknownClientException(name)
-        self._network.send_request(PATH_CLIENT_REBOOT,
-                                   name,
-                                   {})
+                                     f"Nee client with the id: {req.get_payload()['id']} exists")
+        except NoClientResponseException:
+            self._respond_with_error(req,
+                                     "NoClientResponseException",
+                                     f"Client did not respond to reboot request")
+        except ClientRebootError:
+            self._respond_with_error(req,
+                                     "ClientRebootError",
+                                     f"Client could not be rebooted for some reason")
 
     def _handle_client_config_write(self, req: Request):
         """

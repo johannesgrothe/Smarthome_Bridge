@@ -119,7 +119,10 @@ class Characteristic(object):
         return round((raw_val - self._min) / (self._max - self._min) * 100)
 
     def _get_step_list(self) -> list[int]:
-        return [x for x in range(0, 101, 100 // self._steps)]
+        min_step = 100 // self._steps
+        if min_step == 0:
+            min_step = 1
+        return [x for x in range(0, 101, min_step)]
 
     def _get_step_from_percentage(self, percentage: int) -> int:
         step_list = self._get_step_list()

@@ -20,16 +20,17 @@ class NoConnectorsException(Exception):
 
 
 class NetworkManager(Publisher, Subscriber):
-
     _connectors: list[NetworkConnector]
     _hostname: Optional[str]
     _logger: logging.Logger
+    _default_timeout: int
 
     def __init__(self):
         super().__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
         self._connectors = []
         self._hostname = None
+        self._default_timeout = 6
 
     def __del__(self):
         """
@@ -59,7 +60,10 @@ class NetworkManager(Publisher, Subscriber):
         return len(self._connectors)
 
     def receive(self, req: Request):
-        self._logger.info(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}'")
+        short_json = json.dumps(req.get_payload())
+        if len(short_json) > 35:
+            short_json = short_json[:35] + f"... + {len(short_json) - 35} bytes"
+        self._logger.info(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}': {short_json}")
         self._publish(req)
 
     @staticmethod
@@ -97,7 +101,21 @@ class NetworkManager(Publisher, Subscriber):
         responses = req_receiver.wait_for_responses(req, timeout, max_responses)
         return responses
 
-    def send_request(self, path: str, receiver: str, payload: dict, timeout: int = 6) -> Optional[Request]:
+    def set_default_timeout(self, timeout: Optional[int]):
+        """
+        Sets the default timeout used for requests
+
+        :param timeout: Timeout value to use for requests without explicit timeout setting
+        :return: None
+        :raise ValueError: For timeout values below zero
+        """
+        # TODO: Tests fail if set to 1, investigate
+        if timeout < 0:
+            raise ValueError(timeout)
+        self._logger.info(f"Changing default timeout from {self._default_timeout} to {timeout}")
+        self._default_timeout = timeout
+
+    def send_request(self, path: str, receiver: str, payload: dict, timeout: Optional[int] = None) -> Optional[Request]:
         """
         Sends a request and waits for a response by default.
         Returns the Response (if there is any).
@@ -108,6 +126,8 @@ class NetworkManager(Publisher, Subscriber):
         :param timeout: Ho long should be waited for any response to arrive
         :return: The Response (if there is any)
         """
+        if timeout is None:
+            timeout = self._default_timeout
         try:
             req = self._create_request(path, receiver, payload)
         except NoConnectorsException as err:
@@ -119,8 +139,10 @@ class NetworkManager(Publisher, Subscriber):
             return None
         return responses[0]
 
-    def send_broadcast(self, path: str, payload: dict, timeout: int = 5,
+    def send_broadcast(self, path: str, payload: dict, timeout: Optional[int] = None,
                        max_responses: Optional[int] = None) -> list[Request]:
+        if timeout is None:
+            timeout = self._default_timeout
         try:
             req = self._create_request(path, None, payload)
         except NoConnectorsException as err:
@@ -131,7 +153,20 @@ class NetworkManager(Publisher, Subscriber):
         return responses
 
     def send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
-                           timeout: int = 6) -> Optional[Request]:
+                           timeout: Optional[int] = None) -> Optional[Request]:
+        """
+        Sends a request to all attached networks.
+        The request will be split into individual parts with a maximum length.
+
+        :param path: Path to send the request on
+        :param receiver: Receiver for the Request
+        :param payload: Payload to be send
+        :param part_max_size: Maximum size in bytes for each individual payload chunk
+        :param timeout: Maximum timeout to wait for an answer
+        :return: The response if there is any
+        """
+        if timeout is None:
+            timeout = self._default_timeout
         req = Request(path, None, self._hostname, receiver, payload)
         session_id = req.get_session_id()
         path = req.get_path()
