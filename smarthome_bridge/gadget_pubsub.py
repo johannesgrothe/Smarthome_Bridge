@@ -1,16 +1,27 @@
 from abc import abstractmethod, ABCMeta
 
 from gadgets.gadget import Gadget
+from smarthome_bridge.gadget_update_information import GadgetUpdateInformation
 
 
 class GadgetUpdateSubscriber(metaclass=ABCMeta):
 
     @abstractmethod
-    def receive_update(self, gadget: Gadget):
+    def receive_gadget(self, gadget: Gadget):
         """
-        Receive and handle a gadget update
+        Receive and handle a gadget
 
         :param gadget: Gadget with updated values to be handled
+        :return: None
+        """
+        pass
+
+    @abstractmethod
+    def receive_gadget_update(self, gadget: Gadget):
+        """
+        Receive and handle a gadget
+
+        :param gadget: Gadget containing the update information
         :return: None
         """
         pass
@@ -44,15 +55,25 @@ class GadgetUpdatePublisher(metaclass=ABCMeta):
         """
         self.__subscriber_clients.remove(client)
 
-    def _publish_update(self, gadget: Gadget):
+    def _publish_gadget(self, gadget: Gadget):
         """
-        Publishes an gadget update
+        Publishes a new gadget for syncing purposes
 
         :param gadget:
         :return:
         """
         for subscriber in self.__subscriber_clients:
-            subscriber.receive_update(gadget)
+            subscriber.receive_gadget(gadget)
+
+    def _publish_gadget_update(self, gadget: Gadget):
+        """
+        Publishes a new gadget for syncing purposes
+
+        :param gadget: Update information to update the gadgets' status with
+        :return: None
+        """
+        for subscriber in self.__subscriber_clients:
+            subscriber.receive_gadget_update(gadget)
 
     def get_client_number(self) -> int:
         """

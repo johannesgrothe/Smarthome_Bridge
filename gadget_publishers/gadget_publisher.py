@@ -5,6 +5,7 @@ import threading
 
 from gadgets.gadget import Gadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
+from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
 
 
 class GadgetUpdateError(Exception):
@@ -26,21 +27,25 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
 
     __publish_lock: threading.Lock
     _last_published_gadget: Optional[str]
+    _status_supplier: Optional[GadgetStatusSupplier]
 
     def __init__(self):
         super().__init__()
         self.__publish_lock = threading.Lock()
         self._last_published_gadget = None
+        self._status_supplier = None
 
     def __del__(self):
         self._logger.info(f"Deleting {self.__class__.__name__}")
 
+    def set_status_supplier(self, supplier: GadgetStatusSupplier):
+        self._status_supplier = supplier
+
     @abstractmethod
-    def receive_update(self, gadget: Gadget):
+    def receive_gadget(self, gadget: Gadget):
         """
         Updates a gadget. It will be created if it does not exist yet and it will detect which characteristics have
         changed and update those in need of updating
-
         :param gadget: The gadget the changes are made on
         :return: None
         :raises CharacteristicUpdateError: If any error occurred during updating
@@ -69,8 +74,8 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
         """
         pass
 
-    def _publish_update(self, gadget: Gadget):
+    def _publish_gadget(self, gadget: Gadget):
         with self.__publish_lock:
             self._last_published_gadget = gadget.get_name()
-            super()._publish_update(gadget)
+            super()._publish_gadget(gadget)
             self._last_published_gadget = None

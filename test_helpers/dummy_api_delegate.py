@@ -12,6 +12,7 @@ class DummyApiDelegate(ApiManagerDelegate):
     _last_heartbeat_name = Optional[str]
     _last_heartbeat_runtime = Optional[int]
     _last_gadget: Optional[Gadget]
+    _last_gadget_update: Optional[Gadget]
     _last_client: Optional[Client]
 
     _gadgets: list[Gadget]
@@ -25,6 +26,7 @@ class DummyApiDelegate(ApiManagerDelegate):
         self._last_heartbeat_name = None
         self._last_heartbeat_runtime = None
         self._last_gadget = None
+        self._last_gadget_update = None
         self._last_client = None
         self._clients = []
         self._gadgets = []
@@ -34,9 +36,12 @@ class DummyApiDelegate(ApiManagerDelegate):
         self._last_heartbeat_runtime = runtime_id
 
     def handle_gadget_update(self, gadget: Gadget):
+        self._last_gadget_update = gadget
+
+    def handle_gadget_sync(self, gadget: Gadget):
         self._last_gadget = gadget
 
-    def handle_client_update(self, client: Client):
+    def handle_client_sync(self, client: Client):
         self._last_client = client
 
     def get_last_heartbeat_name(self) -> Optional[str]:
@@ -47,6 +52,9 @@ class DummyApiDelegate(ApiManagerDelegate):
 
     def get_last_client(self) -> Optional[Client]:
         return self._last_client
+
+    def get_last_gadget_update(self) -> Optional[Gadget]:
+        return self._last_gadget_update
 
     def get_last_gadget(self) -> Optional[Gadget]:
         return self._last_gadget

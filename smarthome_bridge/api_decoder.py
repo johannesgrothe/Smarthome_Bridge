@@ -4,7 +4,7 @@ from gadgets.gadget import Gadget, GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget_factory import GadgetFactory
 from smarthome_bridge.client import Client
-
+from smarthome_bridge.gadget_update_information import GadgetUpdateInformation, CharacteristicUpdateInformation
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -112,3 +112,41 @@ class ApiDecoder(LoggingInterface):
             return out_client
         except KeyError as err:
             raise ClientDecodeError(f"Key Error at '{err.args[0]}'")
+
+    def decode_characteristic_update(self, characteristic_data: dict) -> CharacteristicUpdateInformation:
+        """
+        Decodes characteristic update information into an object representing the same data
+
+        :param characteristic_data: Data about the characteristic to update
+        :return: A characteristic update container
+        :raises CharacteristicDecodeError: If anything goes wrong during decoding
+        """
+
+        try:
+            identifier = CharacteristicIdentifier(characteristic_data["type"])
+            value = characteristic_data["step_value"]
+            return CharacteristicUpdateInformation(identifier,
+                                                   value)
+        except KeyError:
+            self._logger.error("Missing key in data for characteristic")
+        except ValueError:
+            self._logger.error(f"Cannot create CharacteristicIdentifier out of '{characteristic_data['type']}'")
+        raise CharacteristicDecodeError
+
+    def decode_gadget_update(self, gadget_data: dict) -> GadgetUpdateInformation:
+        """
+        Decodes a gadget update information container from a json
+
+        :param gadget_data: The json data to parse the gadget update info from
+        :return: The parsed gadget update information container
+        :raises GadgetDecodeError: If anything goes wrong decoding
+        """
+        try:
+            name = gadget_data["id"]
+
+            characteristics = [self.decode_characteristic_update(data) for data in gadget_data["characteristics"]]
+            return GadgetUpdateInformation(name,
+                                           characteristics)
+        except (KeyError, CharacteristicDecodeError) as err:
+            self._logger.error(err.args[0])
+            raise GadgetDecodeError

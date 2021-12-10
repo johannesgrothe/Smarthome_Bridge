@@ -59,9 +59,12 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     def get_gadget_manager(self):
         return self._gadget_manager
 
-    def receive_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: Gadget):
         self._logger.info(f"Forwarding update for {gadget.get_name()}")
         self._api.send_gadget_update(gadget)
+
+    def receive_gadget(self, gadget: Gadget):
+        pass
 
     # API delegation
 
@@ -75,11 +78,15 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         else:
             self._api.request_sync(client_name)
 
+    def handle_gadget_sync(self, gadget: Gadget):
+        with self._gadget_sync_lock:
+            self._gadget_manager.receive_gadget(gadget)
+
     def handle_gadget_update(self, gadget: Gadget):
         with self._gadget_sync_lock:
-            self._gadget_manager.receive_update(gadget)
+            self._gadget_manager.receive_gadget_update(gadget)
 
-    def handle_client_update(self, client: Client):
+    def handle_client_sync(self, client: Client):
         try:
             self._client_manager.remove_client(client.get_name())
         except ClientDoesntExistsError:
