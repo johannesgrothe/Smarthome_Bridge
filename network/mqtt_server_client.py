@@ -40,7 +40,6 @@ class MQTTServerClient(NetworkServerClient):
             topic = message.topic
 
             try:
-                # json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
                 json_str = message.payload.decode("utf-8")
 
             except UnicodeDecodeError:

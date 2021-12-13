@@ -73,6 +73,8 @@ class HomebridgeNetworkConnector(LoggingInterface):
         except OSError:
             raise MqttConnectionError(self._mqtt_credentials.ip, self._mqtt_credentials.port)
         self._mqtt_client.on_message = self._gen_message_handler()
+        self._mqtt_client.on_connect = self._generate_connect_callback()
+        self._mqtt_client.on_disconnect = self._generate_disconnect_callback()
         self._mqtt_client.subscribe("homebridge/from/response")
         self._mqtt_client.subscribe("homebridge/from/set")
         self._mqtt_client.loop_start()
@@ -109,6 +111,18 @@ class HomebridgeNetworkConnector(LoggingInterface):
             else:
                 self._received_messages.put(buf_req)
         return on_message
+
+    def _generate_connect_callback(self):
+        def connect_callback(client, userdata, reasonCode, properties=None):
+            self._logger.info("MQTT connected.")
+
+        return connect_callback
+
+    def _generate_disconnect_callback(self):
+        def disconnect_callback(client, userdata, reasonCode, properties=None):
+            self._logger.info("MQTT disconnected.")
+
+        return disconnect_callback
 
     def _request_handler_thread(self):
         if not self._received_messages.empty():

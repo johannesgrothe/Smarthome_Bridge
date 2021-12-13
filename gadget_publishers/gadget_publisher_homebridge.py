@@ -9,6 +9,7 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
     CharacteristicParsingError
 from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from gadget_publishers.homebridge_decoder import HomebridgeDecoder
+from copy import deepcopy
 
 
 # https://www.npmjs.com/package/homebridge-mqtt
@@ -62,6 +63,8 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
             self._logger.error(f"Cannot apply status change to gadget '{gadget_name}' "
                                f"because it does not have the required characteristic")
             return
+
+        characteristic = deepcopy(characteristic)
 
         characteristic.set_true_value(value)
 
