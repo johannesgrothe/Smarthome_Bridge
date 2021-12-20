@@ -38,7 +38,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
             raise GadgetDeletionError(gadget_name)
 
     def create_gadget(self, gadget: Gadget):
-        self._logger.info(f"Creating gadget '{gadget.get_name()}' from external source")
+        self._logger.info(f"Creating gadget '{gadget.get_name()}' on external source")
         adding_successful = self._network_connector.add_gadget(gadget)
         if not adding_successful:
             raise GadgetCreationError(gadget.get_name())
