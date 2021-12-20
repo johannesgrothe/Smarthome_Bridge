@@ -13,7 +13,7 @@ from gadgets.gadget import Gadget
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from system.api_params import *
+from system.api_definitions import ApiURIs
 from clients.client_controller import ClientController, ClientRebootError
 
 
@@ -46,7 +46,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._handle_request(req)
 
     def request_sync(self, name: str):
-        self._network.send_request(PATH_SYNC_REQUEST, name, {}, 0)
+        self._network.send_request(str(ApiURIs.sync_request), name, {}, 0)
 
     def _respond_with_error(self, req: Request, err_type: str, message: str):
         message = message.replace("\"", "'")
@@ -56,7 +56,7 @@ class ApiManager(Subscriber, LoggingInterface):
     def send_gadget_update(self, gadget: Gadget):
         try:
             gadget_data = ApiEncoder().encode_gadget_update(gadget)
-            self._network.send_broadcast(PATH_UPDATE_GADGET,
+            self._network.send_broadcast(str(ApiURIs.update_gadget),
                                          gadget_data,
                                          0)
         except GadgetEncodeError as err:
@@ -128,15 +128,15 @@ class ApiManager(Subscriber, LoggingInterface):
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
         switcher = {
-            PATH_HEARTBEAT: self._handle_heartbeat,
-            PATH_SYNC_CLIENT: self._handle_client_sync,
-            PATH_INFO_BRIDGE: self._handle_info_bridge,
-            PATH_INFO_GADGETS: self._handle_info_gadgets,
-            PATH_INFO_CLIENTS: self._handle_info_clients,
-            PATH_UPDATE_GADGET: self._handle_update_gadget,
-            PATH_CLIENT_REBOOT: self._handle_client_reboot,
-            PATH_CLIENT_CONFIG_WRITE: self._handle_client_config_write,
-            PATH_CLIENT_CONFIG_DELETE: self._handle_client_config_delete
+            str(ApiURIs.heartbeat): self._handle_heartbeat,
+            str(ApiURIs.sync_client): self._handle_client_sync,
+            str(ApiURIs.info_bridge): self._handle_info_bridge,
+            str(ApiURIs.info_gadgets): self._handle_info_gadgets,
+            str(ApiURIs.info_clients): self._handle_info_clients,
+            str(ApiURIs.update_gadget): self._handle_update_gadget,
+            str(ApiURIs.client_reboot): self._handle_client_reboot,
+            str(ApiURIs.client_config_write): self._handle_client_config_write,
+            str(ApiURIs.client_config_delete): self._handle_client_config_delete
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -148,7 +148,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "bridge_heartbeat_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_HEARTBEAT}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.heartbeat)}'")
             return
 
         rt_id = req.get_payload()["runtime_id"]
@@ -166,7 +166,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except ValidationError as err:
             self._respond_with_error(req,
                                      "ValidationError",
-                                     f"Request validation error at '{PATH_SYNC_CLIENT}': '{err.message}'")
+                                     f"Request validation error at '{str(ApiURIs.sync_client)}': '{err.message}'")
             return
 
         client_id = req.get_sender()
@@ -212,7 +212,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_gadget_update_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
             return
 
         try:
@@ -220,7 +220,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except GadgetDecodeError:
             self._respond_with_error(req,
                                      "GadgetDecodeError",
-                                     f"Gadget update decode error at '{PATH_SYNC_CLIENT}'")
+                                     f"Gadget update decode error at '{str(ApiURIs.sync_client)}'")
             return
 
         client_id = req.get_sender()
@@ -256,7 +256,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_reboot_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
             return
         try:
             self.send_client_reboot(req.get_payload()["id"])
@@ -282,7 +282,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_config_write")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
             return
         # TODO: handle the request
 
@@ -295,7 +295,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_config_delete")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
             return
         # TODO: handle the request
 
