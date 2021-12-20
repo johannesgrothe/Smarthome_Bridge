@@ -128,15 +128,15 @@ class ApiManager(Subscriber, LoggingInterface):
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
         switcher = {
-            str(ApiURIs.heartbeat): self._handle_heartbeat,
-            str(ApiURIs.sync_client): self._handle_client_sync,
-            str(ApiURIs.info_bridge): self._handle_info_bridge,
-            str(ApiURIs.info_gadgets): self._handle_info_gadgets,
-            str(ApiURIs.info_clients): self._handle_info_clients,
-            str(ApiURIs.update_gadget): self._handle_update_gadget,
-            str(ApiURIs.client_reboot): self._handle_client_reboot,
-            str(ApiURIs.client_config_write): self._handle_client_config_write,
-            str(ApiURIs.client_config_delete): self._handle_client_config_delete
+            ApiURIs.heartbeat.value: self._handle_heartbeat,
+            ApiURIs.sync_client.value: self._handle_client_sync,
+            ApiURIs.info_bridge.value: self._handle_info_bridge,
+            ApiURIs.info_gadgets.value: self._handle_info_gadgets,
+            ApiURIs.info_clients.value: self._handle_info_clients,
+            ApiURIs.update_gadget.value: self._handle_update_gadget,
+            ApiURIs.client_reboot.value: self._handle_client_reboot,
+            ApiURIs.client_config_write.value: self._handle_client_config_write,
+            ApiURIs.client_config_delete.value: self._handle_client_config_delete
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -148,7 +148,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "bridge_heartbeat_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.heartbeat)}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.heartbeat.value}'")
             return
 
         rt_id = req.get_payload()["runtime_id"]
@@ -166,7 +166,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except ValidationError as err:
             self._respond_with_error(req,
                                      "ValidationError",
-                                     f"Request validation error at '{str(ApiURIs.sync_client)}': '{err.message}'")
+                                     f"Request validation error at '{ApiURIs.sync_client.value}': '{err.message}'")
             return
 
         client_id = req.get_sender()
