@@ -33,7 +33,8 @@ def test_gadget_factory_any_gadget(factory: GadgetFactory, f_characteristic_fan_
 
 @pytest.mark.bridge
 def test_gadget_factory_lamp_neopixel_basic(factory: GadgetFactory, f_characteristic_status,
-                                            f_characteristic_brightness, f_characteristic_hue):
+                                            f_characteristic_brightness, f_characteristic_hue,
+                                            f_characteristic_saturation):
     with pytest.raises(GadgetCreationError):
         factory.create_gadget(GadgetIdentifier.lamp_neopixel_basic,
                               GADGET_NAME,
@@ -44,10 +45,12 @@ def test_gadget_factory_lamp_neopixel_basic(factory: GadgetFactory, f_characteri
                                            GADGET_HOST,
                                            [f_characteristic_status,
                                             f_characteristic_hue,
-                                            f_characteristic_brightness])
+                                            f_characteristic_brightness,
+                                            f_characteristic_saturation])
 
     assert factory_gadget == LampNeopixelBasic(GADGET_NAME,
                                                GADGET_HOST,
                                                f_characteristic_status,
                                                f_characteristic_brightness,
-                                               f_characteristic_hue)
+                                               f_characteristic_hue,
+                                               f_characteristic_saturation)
