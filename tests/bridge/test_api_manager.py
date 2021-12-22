@@ -11,6 +11,7 @@ from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget import Gadget
+from system.api_definitions import ApiURIs
 
 HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"
@@ -180,13 +181,13 @@ def test_api_unknown(api: ApiManager, network: DummyNetworkConnector):
 
 @pytest.mark.bridge
 def test_api_heartbeat(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    network.mock_receive("heartbeat",
+    network.mock_receive(ApiURIs.heartbeat.value,
                          REQ_SENDER,
                          {"test": 0x01})
     assert delegate.get_last_heartbeat_name() is None
     assert delegate.get_last_heartbeat_runtime() is None
 
-    network.mock_receive("heartbeat",
+    network.mock_receive(ApiURIs.heartbeat.value,
                          REQ_SENDER,
                          {"runtime_id": REQ_RUNTIME})
     assert delegate.get_last_heartbeat_name() == REQ_SENDER
@@ -206,22 +207,22 @@ def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnecto
             1
         )]))
 
-    network.mock_receive("update/gadget",
+    network.mock_receive(ApiURIs.update_gadget.value,
                          REQ_SENDER,
                          {"gadget": {"yolo": "blub"}})
     assert delegate.get_last_gadget_update() is None
 
-    network.mock_receive("update/gadget",
+    network.mock_receive(ApiURIs.update_gadget.value,
                          REQ_SENDER,
                          GADGET_UPDATE_ERR)
     assert delegate.get_last_gadget_update() is None
 
-    network.mock_receive("update/gadget",
+    network.mock_receive(ApiURIs.update_gadget.value,
                          REQ_SENDER,
                          GADGET_UPDATE_ERR_UNKNOWN)
     assert delegate.get_last_gadget_update() is None
 
-    network.mock_receive("update/gadget",
+    network.mock_receive(ApiURIs.update_gadget.value,
                          REQ_SENDER,
                          GADGET_UPDATE_OK)
     assert delegate.get_last_gadget_update() is not None
@@ -230,7 +231,7 @@ def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnecto
 
 @pytest.mark.bridge
 def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    network.mock_receive("sync/client",
+    network.mock_receive(ApiURIs.sync_client.value,
                          REQ_SENDER,
                          {"client":
                              {
@@ -239,7 +240,7 @@ def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delega
                          })
     assert delegate.get_last_client() is None
 
-    network.mock_receive("sync/client",
+    network.mock_receive(ApiURIs.sync_client.value,
                          REQ_SENDER,
                          payload=CLIENT_CONFIG_OK)
     assert delegate.get_last_client() is not None
@@ -251,6 +252,7 @@ def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delega
 
 @pytest.mark.bridge
 def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
+    # TODO: finish test!
     delegate.add_client(Client("spongo",
                                123123123,
                                datetime.datetime.utcnow(),
@@ -259,11 +261,11 @@ def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, dele
                                {},
                                1))
 
-    network.mock_receive("reboot/client",
+    network.mock_receive(ApiURIs.client_reboot.value,
                          REQ_SENDER,
                          {"client": "spongo"})
 
-    network.mock_receive("reboot/client",
+    network.mock_receive(ApiURIs.client_reboot.value,
                          REQ_SENDER,
                          {"id": "spongo"})
 
@@ -287,7 +289,7 @@ def test_api_send_gadget_update(api: ApiManager, network: DummyNetworkConnector,
 @pytest.mark.bridge
 def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
     assert network.get_last_send_response() is None
-    network.mock_receive("info/bridge",
+    network.mock_receive(ApiURIs.info_bridge.value,
                          REQ_SENDER,
                          {})
     resp = network.get_last_send_response()
@@ -299,7 +301,7 @@ def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, de
 @pytest.mark.bridge
 def test_api_get_gadget_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
     assert network.get_last_send_response() is None
-    network.mock_receive("info/gadgets",
+    network.mock_receive(ApiURIs.info_gadgets.value,
                          REQ_SENDER,
                          {})
     resp = network.get_last_send_response()
@@ -311,7 +313,7 @@ def test_api_get_gadget_info(api: ApiManager, network: DummyNetworkConnector, de
 @pytest.mark.bridge
 def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
     assert network.get_last_send_response() is None
-    network.mock_receive("info/clients",
+    network.mock_receive(ApiURIs.info_clients.value,
                          REQ_SENDER,
                          {})
     resp = network.get_last_send_response()

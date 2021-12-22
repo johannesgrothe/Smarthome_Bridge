@@ -2,7 +2,7 @@
 from logging_interface import LoggingInterface
 from network.request import NoClientResponseException
 
-from system.api_params import *
+from system.api_definitions import ApiURIs
 from smarthome_bridge.network_manager import NetworkManager
 from json_validator import Validator
 
@@ -51,7 +51,7 @@ class ClientController(LoggingInterface):
 
         payload = {"subject": "reboot"}
 
-        res = self._network.send_request(PATH_CLIENT_REBOOT, self._client_id, payload)
+        res = self._network.send_request(ApiURIs.client_reboot.value, self._client_id, payload)
         if not res:
             raise NoClientResponseException
         if not res.get_ack():
@@ -65,7 +65,7 @@ class ClientController(LoggingInterface):
         :raises NoClientResponseException: If client does not respond
         :raises ConfigEraseError: If erasing fails for any reason
         """
-        res = self._network.send_request(PATH_CLIENT_CONFIG_DELETE, self._client_id, {})
+        res = self._network.send_request(ApiURIs.client_config_delete.value, self._client_id, {})
         if not res:
             raise NoClientResponseException
         if not res.get_ack():
@@ -82,7 +82,7 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(system_config, "client_system_config")
-        res = self._network.send_request(PATH_CLIENT_SYSTEM_CONFIG_WRITE,
+        res = self._network.send_request(ApiURIs.client_config_write.value,
                                          self._client_id,
                                          system_config)
         if not res:
@@ -101,7 +101,7 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(event_config, "client_event_config")
-        res = self._network.send_request(PATH_CLIENT_EVENT_CONFIG_WRITE,
+        res = self._network.send_request(ApiURIs.client_event_config_write.value,
                                          self._client_id,
                                          event_config)
         if not res:
@@ -120,7 +120,7 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(gadget_config, "client_gadget_config")
-        res = self._network.send_request(PATH_CLIENT_GADGET_CONFIG_WRITE,
+        res = self._network.send_request(ApiURIs.client_gadget_config_write.value,
                                          self._client_id,
                                          gadget_config)
         if not res:
