@@ -46,7 +46,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._handle_request(req)
 
     def request_sync(self, name: str):
-        self._network.send_request(str(ApiURIs.sync_request), name, {}, 0)
+        self._network.send_request(ApiURIs.sync_request.value, name, {}, 0)
 
     def _respond_with_error(self, req: Request, err_type: str, message: str):
         message = message.replace("\"", "'")
@@ -56,7 +56,7 @@ class ApiManager(Subscriber, LoggingInterface):
     def send_gadget_update(self, gadget: Gadget):
         try:
             gadget_data = ApiEncoder().encode_gadget_update(gadget)
-            self._network.send_broadcast(str(ApiURIs.update_gadget),
+            self._network.send_broadcast(ApiURIs.update_gadget.value,
                                          gadget_data,
                                          0)
         except GadgetEncodeError as err:
@@ -212,7 +212,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_gadget_update_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
 
         try:
@@ -220,7 +220,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except GadgetDecodeError:
             self._respond_with_error(req,
                                      "GadgetDecodeError",
-                                     f"Gadget update decode error at '{str(ApiURIs.sync_client)}'")
+                                     f"Gadget update decode error at '{ApiURIs.sync_client.value}'")
             return
 
         client_id = req.get_sender()
@@ -256,7 +256,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_reboot_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
         try:
             self.send_client_reboot(req.get_payload()["id"])
@@ -282,7 +282,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_config_write")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
         # TODO: handle the request
 
@@ -295,7 +295,7 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_config_delete")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{str(ApiURIs.update_gadget)}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
         # TODO: handle the request
 
