@@ -131,11 +131,13 @@ class GadgetFactory(LoggingInterface):
             status = self._get_characteristic_from_list(CharacteristicIdentifier.status, characteristics)
             brightness = self._get_characteristic_from_list(CharacteristicIdentifier.brightness, characteristics)
             hue = self._get_characteristic_from_list(CharacteristicIdentifier.hue, characteristics)
+            saturation = self._get_characteristic_from_list(CharacteristicIdentifier.saturation, characteristics)
             lamp = LampNeopixelBasic(name,
                                      host_client,
                                      status,
                                      brightness,
-                                     hue)
+                                     hue,
+                                     saturation)
             return lamp
         except CharacteristicNotFoundError as err:
             self._logger.error(err.args[0])

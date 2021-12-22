@@ -19,6 +19,11 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
 #     "service": "Lightbulb",
 #     "Brightness": "default"
 # }
+#
+# homebridge/to/remove
+# {
+#     "name": "living_lamp",
+# }
 
 
 class GadgetEncodeError(Exception):
