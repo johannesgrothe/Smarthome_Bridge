@@ -7,6 +7,7 @@ from gadgets.gadget import Gadget
 from gadgets.any_gadget import AnyGadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 from gadgets.gadget_factory import GadgetFactory, GadgetCreationError
+from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
 
 
 class GadgetDoesntExistError(Exception):
@@ -14,8 +15,7 @@ class GadgetDoesntExistError(Exception):
         super().__init__(f"Gadget '{gadget_name}' does not exist")
 
 
-class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscriber):
-
+class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscriber, GadgetStatusSupplier):
     _gadgets: list[Gadget]
     _gadget_publishers: list[GadgetPublisher]
 
@@ -44,13 +44,33 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
     def get_gadget_count(self) -> int:
         return len(self._gadgets)
 
-    def receive_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: Gadget):
+        found_gadget = self.get_gadget(gadget.get_name())
+        if found_gadget is None:
+            self._logger.error(f"Received update data for unknown gadget '{gadget.get_name()}'")
+            return
+        changed_characteristics = []
+        for c in found_gadget.get_characteristics():
+            buf_characteristic = gadget.get_characteristic(c.get_type())
+            if buf_characteristic is None:
+                continue
+            if c.get_step_value() != buf_characteristic.get_step_value():
+                c.set_step_value(buf_characteristic.get_step_value())
+                changed_characteristics.append(c)
+
+        if changed_characteristics:
+            buf_gadget = AnyGadget(gadget.get_name(),
+                                   "any",
+                                   changed_characteristics)
+            self._publish_gadget_update(buf_gadget)
+
+    def receive_gadget(self, gadget: Gadget):
         found_gadget = self.get_gadget(gadget.get_name())
         if found_gadget is None:
             if not isinstance(gadget, AnyGadget):
                 self._logger.info(f"Adding gadget '{gadget.get_name()}'")
                 self._gadgets.append(gadget)
-                self._publish_update(gadget)
+                self._publish_gadget(gadget)
             else:
                 self._logger.error(f"Received sync data for unknown gadget '{gadget.get_name()}'")
         else:
@@ -68,7 +88,7 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
                 self._logger.error(f"Merging gadgets of the type '{gadget.__class__.__name__}' is not implemented")
                 return
             self._gadgets.append(merged_gadget)
-            self._publish_update(merged_gadget)
+            self._publish_gadget(merged_gadget)
 
     def _remove_gadget_from_publishers(self, gadget: Gadget):
         """
@@ -103,8 +123,9 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
         :return: None
         """
         self._logger.info(f"Adding gadget publisher '{publisher.__class__.__name__}'")
+        publisher.set_status_supplier(self)
         self.subscribe(publisher)
         publisher.subscribe(self)
         self._gadget_publishers.append(publisher)
         for gadget in self._gadgets:
-            publisher.receive_update(gadget)
+            publisher.receive_gadget(gadget)

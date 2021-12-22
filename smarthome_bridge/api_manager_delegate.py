@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from gadgets.gadget import Gadget
 from smarthome_bridge.client import Client
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
+from smarthome_bridge.gadget_update_information import GadgetUpdateInformation
 
 
 class ApiManagerDelegate(metaclass=ABCMeta):
@@ -18,16 +19,25 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def handle_gadget_update(self, gadget: Gadget):
+    def handle_gadget_sync(self, gadget: Gadget):
         """
-        Handles an incoming gadget update request by applying changes the passed gadget contains to the gadget manager
+        Handles an incoming gadget sync request by applying the changes
 
         :param gadget: Gadget containing the incoming update data
         :return: None
         """
 
     @abstractmethod
-    def handle_client_update(self, client: Client):
+    def handle_gadget_update(self, gadget: Gadget):
+        """
+        Handles an incoming gadget update request by applying changes from the passed container to the gadget manager
+
+        :param gadget: Gadget update information
+        :return: None
+        """
+
+    @abstractmethod
+    def handle_client_sync(self, client: Client):
         """
         Handles an incoming client update request by applying changes the passed gadget contains to the client manager
 

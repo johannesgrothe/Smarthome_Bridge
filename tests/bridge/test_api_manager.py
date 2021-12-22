@@ -194,27 +194,6 @@ def test_api_heartbeat(api: ApiManager, network: DummyNetworkConnector, delegate
 
 
 @pytest.mark.bridge
-def test_api_gadget_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    network.mock_receive("sync/gadget",
-                         REQ_SENDER,
-                         {"gadget": {"yolo": "blub"}})
-    assert delegate.get_last_gadget() is None
-
-    network.mock_receive("sync/gadget",
-                         REQ_SENDER,
-                         {
-                             "gadget": GADGET_CONFIG_ERR
-                         })
-    assert delegate.get_last_gadget() is None
-
-    network.mock_receive("sync/gadget",
-                         REQ_SENDER,
-                         GADGET_CONFIG_OK)
-    assert delegate.get_last_gadget() is not None
-    assert delegate.get_last_gadget().get_name() == GADGET_NAME
-
-
-@pytest.mark.bridge
 def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
     delegate.add_gadget(Gadget(
         GADGET_NAME,
@@ -230,23 +209,23 @@ def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnecto
     network.mock_receive("update/gadget",
                          REQ_SENDER,
                          {"gadget": {"yolo": "blub"}})
-    assert delegate.get_last_gadget() is None
+    assert delegate.get_last_gadget_update() is None
 
     network.mock_receive("update/gadget",
                          REQ_SENDER,
                          GADGET_UPDATE_ERR)
-    assert delegate.get_last_gadget() is None
+    assert delegate.get_last_gadget_update() is None
 
     network.mock_receive("update/gadget",
                          REQ_SENDER,
                          GADGET_UPDATE_ERR_UNKNOWN)
-    assert delegate.get_last_gadget() is None
+    assert delegate.get_last_gadget_update() is None
 
     network.mock_receive("update/gadget",
                          REQ_SENDER,
                          GADGET_UPDATE_OK)
-    assert delegate.get_last_gadget() is not None
-    assert delegate.get_last_gadget().get_characteristic_types()[0] == GADGET_CHARACTERISTIC_TYPE
+    assert delegate.get_last_gadget_update() is not None
+    assert delegate.get_last_gadget_update().get_characteristic_types()[0] == GADGET_CHARACTERISTIC_TYPE
 
 
 @pytest.mark.bridge

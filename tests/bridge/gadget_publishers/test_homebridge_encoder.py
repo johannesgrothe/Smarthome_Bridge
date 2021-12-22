@@ -17,6 +17,7 @@ L_CHARACTERISTIC_MIN = 0
 L_STATUS_MAX = 1
 L_BRIGHTNESS_MAX = 100
 L_HUE_MAX = 255
+L_SATURATION_MAX = 100
 
 L_RESULT = {
     "name": L_NAME,
@@ -25,6 +26,7 @@ L_RESULT = {
     "On": {"minValue": L_CHARACTERISTIC_MIN, "maxValue": L_STATUS_MAX, "minStep": 1},
     "Brightness": {"minValue": L_CHARACTERISTIC_MIN, "maxValue": L_BRIGHTNESS_MAX, "minStep": 1},
     "Hue": {"minValue": L_CHARACTERISTIC_MIN, "maxValue": L_HUE_MAX, "minStep": 1},
+    "Saturation": {"minValue": L_CHARACTERISTIC_MIN, "maxValue": L_SATURATION_MAX, "minStep": 1}
 }
 
 ANY_NAME = "test_any_gadget"
@@ -76,7 +78,10 @@ def lamp(characteristic_status):
                                             max_val=L_BRIGHTNESS_MAX),
                              Characteristic(c_type=CharacteristicIdentifier.hue,
                                             min_val=L_CHARACTERISTIC_MIN,
-                                            max_val=L_HUE_MAX)
+                                            max_val=L_HUE_MAX),
+                             Characteristic(c_type=CharacteristicIdentifier.saturation,
+                                            min_val=L_CHARACTERISTIC_MIN,
+                                            max_val=L_SATURATION_MAX)
                              )
     yield lamp
     lamp.__del__()

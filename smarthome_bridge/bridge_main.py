@@ -100,7 +100,7 @@ def main():
         gadget.set_event_mapping([
             GadgetEventMapping("ab09d8_", [(1, 1)])
         ])
-        bridge.get_gadget_manager().receive_update(gadget)
+        bridge.get_gadget_manager().receive_gadget(gadget)
         date = datetime.utcnow()
         client = Client(name="dummy_client",
                         runtime_id=18298931,

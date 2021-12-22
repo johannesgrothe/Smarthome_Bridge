@@ -19,6 +19,11 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
 #     "service": "Lightbulb",
 #     "Brightness": "default"
 # }
+#
+# homebridge/to/remove
+# {
+#     "name": "living_lamp",
+# }
 
 
 class GadgetEncodeError(Exception):
@@ -67,7 +72,8 @@ class HomebridgeEncoder(LoggingInterface):
 
         for characteristic_type in [CharacteristicIdentifier.status,
                                     CharacteristicIdentifier.brightness,
-                                    CharacteristicIdentifier.hue]:
+                                    CharacteristicIdentifier.hue,
+                                    CharacteristicIdentifier.saturation]:
             hb_name = HomebridgeCharacteristicTranslator.type_to_string(characteristic_type)
             out_dict[hb_name] = self._encode_characteristic(gadget, characteristic_type)
         return out_dict

@@ -1,5 +1,6 @@
 from typing import Optional, Callable
 
+from gadgets.any_gadget import AnyGadget
 from network.request import Request, NoClientResponseException
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
@@ -129,7 +130,6 @@ class ApiManager(Subscriber, LoggingInterface):
         switcher = {
             PATH_HEARTBEAT: self._handle_heartbeat,
             PATH_SYNC_CLIENT: self._handle_client_sync,
-            PATH_SYNC_GADGET: self._handle_gadget_sync,
             PATH_INFO_BRIDGE: self._handle_info_bridge,
             PATH_INFO_GADGETS: self._handle_info_gadgets,
             PATH_INFO_CLIENTS: self._handle_info_clients,
@@ -182,25 +182,7 @@ class ApiManager(Subscriber, LoggingInterface):
         for gadget in gadget_data:
             self._update_gadget(client_id, gadget)
 
-        self._delegate.handle_client_update(new_client)
-
-    def _handle_gadget_sync(self, req: Request):
-        """
-        Handles a gadget update request from any foreign source
-
-        :param req: Request containing the gadget update request
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_gadget_sync_request")
-        except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_SYNC_GADGET}'")
-            return
-        client_id = req.get_sender()
-
-        self._logger.info(f"Syncing gadget from '{client_id}'")
-        gadget_data = req.get_payload()["gadget"]
-        self._update_gadget(client_id, gadget_data)
+        self._delegate.handle_client_sync(new_client)
 
     def _handle_info_bridge(self, req: Request):
         data = self._delegate.get_bridge_info()
@@ -232,21 +214,37 @@ class ApiManager(Subscriber, LoggingInterface):
         except ValidationError:
             self._respond_with_error(req, "ValidationError", f"Request validation error at '{PATH_UPDATE_GADGET}'")
             return
+
+        try:
+            gadget_update_info = ApiDecoder().decode_gadget_update(req.get_payload())
+        except GadgetDecodeError:
+            self._respond_with_error(req,
+                                     "GadgetDecodeError",
+                                     f"Gadget update decode error at '{PATH_SYNC_CLIENT}'")
+            return
+
         client_id = req.get_sender()
 
         gadget_info = [x for x in self._delegate.get_gadget_info() if x.get_name() == req.get_payload()["id"]]
         if not gadget_info:
-            self._respond_with_error(req, "GagdetDoesNeeExist", "sadly no gagdet with the given id exists")
+            self._respond_with_error(req, "GagdetDoesNeeExist", "Sadly, no gadget with the given id exists")
             return
-        encoded_gadget = ApiEncoder().encode_gadget(gadget_info[0])
-        for characteristic in req.get_payload()["characteristics"]:
-            for characteristic_encoded_gadget in encoded_gadget["characteristics"]:
-                if characteristic["type"] == characteristic_encoded_gadget["type"]:
-                    characteristic_encoded_gadget["step_value"] = characteristic["step_value"]
-                    break
 
-        self._logger.info(f"Updating gadget from '{client_id}'")
-        self._update_gadget(gadget_info[0].get_host_client(), encoded_gadget)
+        gadget = gadget_info[0]
+
+        updated_characteristics = [x.id for x in gadget_update_info.characteristics]
+        buf_characteristics = [x for x in gadget.get_characteristics() if x.get_type() in updated_characteristics]
+
+        for c in buf_characteristics:
+            value = [x.step_value for x in gadget_update_info.characteristics if x.id == c.get_type()][0]
+            c.set_step_value(value)
+
+        out_gadget = AnyGadget(gadget_update_info.id,
+                               req.get_sender(),
+                               buf_characteristics)
+
+        self._logger.info(f"Updating {len(buf_characteristics)} gadget characteristics from '{client_id}'")
+        self._delegate.handle_gadget_update(out_gadget)
 
     def _handle_client_reboot(self, req: Request):
         """
@@ -315,7 +313,7 @@ class ApiManager(Subscriber, LoggingInterface):
 
         try:
             buf_gadget = decoder.decode_gadget(gadget_data, client_id)
-            self._delegate.handle_gadget_update(buf_gadget)
+            self._delegate.handle_gadget_sync(buf_gadget)
 
         except GadgetDecodeError as err:
             self._logger.error(err.args[0])

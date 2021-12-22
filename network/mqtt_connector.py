@@ -16,7 +16,7 @@ class MQTTConnector(NetworkClient):
             mqtt_client.username_pw_set(credentials.username, credentials.password)
 
         try:
-            mqtt_client.connect(credentials.ip, credentials.port, 10)
+            mqtt_client.connect(credentials.ip, credentials.port)
         except OSError:
             self._logger.error("Could not connect to MQTT Server.")
 

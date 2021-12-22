@@ -9,11 +9,13 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
     CharacteristicParsingError
 from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from gadget_publishers.homebridge_decoder import HomebridgeDecoder
+from copy import deepcopy
 
 
 # https://www.npmjs.com/package/homebridge-mqtt
 # https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/ServiceDefinitions.ts
 # https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/CharacteristicDefinitions.ts
+from smarthome_bridge.gadget_update_information import GadgetUpdateInformation
 
 
 class GadgetPublisherHomeBridge(GadgetPublisher):
@@ -36,7 +38,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
             raise GadgetDeletionError(gadget_name)
 
     def create_gadget(self, gadget: Gadget):
-        self._logger.info(f"Creating gadget '{gadget.get_name()}' from external source")
+        self._logger.info(f"Creating gadget '{gadget.get_name()}' on external source")
         adding_successful = self._network_connector.add_gadget(gadget)
         if not adding_successful:
             raise GadgetCreationError(gadget.get_name())
@@ -46,14 +48,31 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
     def _parse_characteristic_update(self, gadget_name: str, characteristic_name: str, value: int):
         self._logger.info(f"Received update for '{gadget_name}' on '{characteristic_name}': {value}")
         try:
-            characteristic = HomebridgeCharacteristicTranslator.str_to_type(characteristic_name)
+            c_type = HomebridgeCharacteristicTranslator.str_to_type(characteristic_name)
         except CharacteristicParsingError as err:
             self._logger.error(err.args[0])
             return
-        fetched_gadget = self._fetch_gadget_data(gadget_name)
-        if fetched_gadget is None:
+
+        buf_gadget = self._status_supplier.get_gadget(gadget_name)
+        if buf_gadget is None:
+            self._logger.error(f"Cannot apply status change to gadget '{gadget_name}' because it does not exist")
             return
-        self._publish_update(fetched_gadget)
+
+        characteristic = buf_gadget.get_characteristic(c_type)
+        if characteristic is None:
+            self._logger.error(f"Cannot apply status change to gadget '{gadget_name}' "
+                               f"because it does not have the required characteristic")
+            return
+
+        characteristic = deepcopy(characteristic)
+
+        characteristic.set_true_value(value)
+
+        out_gadget = AnyGadget(gadget_name,
+                               "any",
+                               [characteristic])
+
+        self._publish_gadget_update(out_gadget)
 
     @staticmethod
     def _gadget_needs_update(local_gadget: Gadget, fetched_gadget: Gadget):
@@ -82,13 +101,28 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         return None
 
     def _update_characteristic(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
+        """
+        Updates a specific characteristic on from the gadget on the remote storage
+
+        :param gadget: Gadget to get characteristic information from
+        :param characteristic: Characteristic to update
+        :return: None
+        :raises CharacteristicParsingError: If selected characteristic could not be parsed correctly
+        """
         characteristic_value = gadget.get_characteristic(characteristic).get_true_value()
         characteristic_str = HomebridgeCharacteristicTranslator.type_to_string(characteristic)
         self._network_connector.update_characteristic(gadget.get_name(),
                                                       characteristic_str,
                                                       characteristic_value)
 
-    def receive_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: Gadget):
+        for identifier in [x.get_type() for x in gadget.get_characteristics()]:
+            try:
+                self._update_characteristic(gadget, identifier)
+            except CharacteristicParsingError as err:
+                self._logger.info(err.args[0])
+
+    def receive_gadget(self, gadget: Gadget):
         if self._last_published_gadget is not None and self._last_published_gadget == gadget.get_name():
             return
         fetched_gadget = self._fetch_gadget_data(gadget.get_name())

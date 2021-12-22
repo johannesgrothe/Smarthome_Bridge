@@ -8,7 +8,8 @@ class LampNeopixelBasic(Lamp):
                  host_client: str,
                  status: Characteristic,
                  brightness: Characteristic,
-                 hue: Characteristic):
+                 hue: Characteristic,
+                 saturation: Characteristic):
         super().__init__(name,
                          host_client,
-                         [status, brightness, hue])
+                         [status, brightness, hue, saturation])

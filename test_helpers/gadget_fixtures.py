@@ -37,6 +37,14 @@ def f_characteristic_hue():
 
 
 @pytest.fixture()
+def f_characteristic_saturation():
+    characteristic = Characteristic(c_type=CharacteristicIdentifier.saturation,
+                                    min_val=0,
+                                    max_val=100)
+    yield characteristic
+
+
+@pytest.fixture()
 def f_any_gadget(f_characteristic_fan_speed):
     gadget = AnyGadget(name="any_gadget",
                        host_client="any_host",

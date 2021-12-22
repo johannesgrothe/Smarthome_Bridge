@@ -40,7 +40,6 @@ class MQTTServerClient(NetworkServerClient):
             topic = message.topic
 
             try:
-                # json_str = message.payload.decode("utf-8").replace("'", '"').replace("None", "null")
                 json_str = message.payload.decode("utf-8")
 
             except UnicodeDecodeError:
@@ -78,18 +77,14 @@ class MQTTServerClient(NetworkServerClient):
         return buf_callback
 
     def generate_connect_callback(self):
-        logger = self._logger
-
         def connect_callback(client, userdata, reasonCode, properties=None):
-            logger.info("MQTT connected.")
+            self._logger.info("MQTT connected.")
 
         return connect_callback
 
     def generate_disconnect_callback(self):
-        logger = self._logger
-
         def disconnect_callback(client, userdata, reasonCode, properties=None):
-            logger.info("MQTT disconnected.")
+            self._logger.info("MQTT disconnected.")
 
         return disconnect_callback
 
