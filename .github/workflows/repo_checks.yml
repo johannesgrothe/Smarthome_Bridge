@@ -36,8 +36,9 @@ jobs:
         with:
           path: "system"
           branch: "master"
+          pass_if_unchanged: true
 
-  submodule__most_recent_master_check:
+  submodule_most_recent_master_check:
 
     name: System Submodule is on most recent master
 
