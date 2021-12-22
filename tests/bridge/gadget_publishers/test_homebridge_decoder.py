@@ -41,7 +41,7 @@ HOMEBRIDGE_RESPONSE = {
 
 @pytest.fixture()
 def fan_speed_characteristic():
-    fan_speed = Characteristic(CharacteristicIdentifier.fanSpeed,
+    fan_speed = Characteristic(CharacteristicIdentifier.fan_speed,
                                0,
                                100,
                                3,

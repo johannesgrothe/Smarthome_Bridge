@@ -3,7 +3,7 @@ import pytest
 from smarthome_bridge.characteristic import *
 
 
-C_TYPE = CharacteristicIdentifier.fanSpeed
+C_TYPE = CharacteristicIdentifier.fan_speed
 C_MIN = 20
 C_MAX = 100
 C_STEPS = 4
@@ -48,18 +48,18 @@ def characteristic():
 @pytest.mark.bridge
 def test_characteristic_constructor():
     with pytest.raises(CharacteristicInitError):
-        _ = Characteristic(CharacteristicIdentifier.fanSpeed,
+        _ = Characteristic(CharacteristicIdentifier.fan_speed,
                            30,
                            25,
                            3)
 
     with pytest.raises(CharacteristicInitError):
-        _ = Characteristic(CharacteristicIdentifier.fanSpeed,
+        _ = Characteristic(CharacteristicIdentifier.fan_speed,
                            0,
                            100,
                            0)
 
-    c = Characteristic(CharacteristicIdentifier.fanSpeed,
+    c = Characteristic(CharacteristicIdentifier.fan_speed,
                        0,
                        100,
                        1)

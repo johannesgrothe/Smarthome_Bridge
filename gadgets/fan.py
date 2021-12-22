@@ -1,4 +1,5 @@
-from gadgets.gadget import Gadget, GadgetIdentifier, Characteristic
+from gadgets.gadget import Gadget, Characteristic
+from system.gadget_definitions import GadgetIdentifier
 
 
 class Fan(Gadget):

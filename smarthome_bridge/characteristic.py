@@ -1,6 +1,6 @@
 from typing import Optional
 
-from gadgetlib import CharacteristicIdentifier
+from system.gadget_definitions import CharacteristicIdentifier
 
 
 class CharacteristicUpdateError(Exception):

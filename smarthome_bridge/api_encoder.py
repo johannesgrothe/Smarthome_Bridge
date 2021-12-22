@@ -2,7 +2,8 @@ from logging_interface import LoggingInterface
 from datetime import datetime
 
 from smarthome_bridge.client import Client
-from gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget
+from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 
@@ -104,7 +105,7 @@ class ApiEncoder(LoggingInterface):
         switcher = {
             "AnyGadget": GadgetIdentifier.any_gadget,
             "FanWestinghouseIR": GadgetIdentifier.fan_westinghouse_ir,
-            "LampNeopixelBasic": GadgetIdentifier.lamp_neopixel_basic
+            "LampNeopixelBasic": GadgetIdentifier.lamp_neopixel_rgb_basic
         }
         identifier = switcher.get(gadget.__class__.__name__, None)
         if identifier is None:

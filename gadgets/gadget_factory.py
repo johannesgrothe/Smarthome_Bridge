@@ -1,4 +1,5 @@
-from gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget
+from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from logging_interface import LoggingInterface
 
@@ -102,7 +103,7 @@ class GadgetFactory(LoggingInterface):
         """
         if gadget_type == GadgetIdentifier.fan_westinghouse_ir:
             return self._create_fan_westinghouse_ir(name, host_client, characteristics)
-        elif gadget_type == GadgetIdentifier.lamp_neopixel_basic:
+        elif gadget_type == GadgetIdentifier.lamp_neopixel_rgb_basic:
             return self._create_lamp_neopixel_basic(name, host_client, characteristics)
         else:
             raise NotImplementedError()
@@ -113,7 +114,7 @@ class GadgetFactory(LoggingInterface):
                                     characteristics: list[Characteristic]) -> FanWestinghouseIR:
         try:
             status = self._get_characteristic_from_list(CharacteristicIdentifier.status, characteristics)
-            fan_speed = self._get_characteristic_from_list(CharacteristicIdentifier.fanSpeed, characteristics)
+            fan_speed = self._get_characteristic_from_list(CharacteristicIdentifier.fan_speed, characteristics)
             fan = FanWestinghouseIR(name,
                                     host_client,
                                     status,
@@ -141,4 +142,4 @@ class GadgetFactory(LoggingInterface):
             return lamp
         except CharacteristicNotFoundError as err:
             self._logger.error(err.args[0])
-            raise GadgetCreationError(name, GadgetIdentifier.lamp_neopixel_basic)
+            raise GadgetCreationError(name, GadgetIdentifier.lamp_neopixel_rgb_basic)
