@@ -75,7 +75,8 @@ class ClientConfigManager(LoggingInterface):
             if data is not None:
                 self._config_data[file_name] = data
 
-    def delete_config_file(self, filename: str):
+    def delete_config_file(self, name: str):
+        filename = self._get_filename_for_config(name)
         path = os.path.join(_config_path, filename)
         if os.path.isfile(path):
             os.remove(path)
@@ -98,7 +99,7 @@ class ClientConfigManager(LoggingInterface):
         existing_file = self._get_filename_for_config(config_name)
         if existing_file is not None:
             if overwrite:
-                self.delete_config_file(existing_file)
+                self.delete_config_file(config_name)
             else:
                 raise ConfigAlreadyExistsException
 

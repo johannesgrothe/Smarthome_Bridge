@@ -10,6 +10,8 @@ from smarthome_bridge.network_manager import NetworkManager
 
 from gadgets.gadget import Gadget
 
+from client_config_manager import ClientConfigManager
+
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
@@ -212,7 +214,8 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_gadget_update_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
 
         try:
@@ -256,7 +259,8 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_reboot_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
         try:
             self.send_client_reboot(req.get_payload()["id"])
@@ -282,7 +286,8 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_config_write")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
         # TODO: handle the request
 
@@ -295,7 +300,8 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_client_config_delete")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.update_gadget.value}'")
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
             return
         # TODO: handle the request
 
@@ -318,3 +324,57 @@ class ApiManager(Subscriber, LoggingInterface):
         except GadgetDecodeError as err:
             self._logger.error(err.args[0])
             return
+
+    def get_all_configs(self) -> dict:
+        """
+        Returns the names and descriptions of all available configs
+
+        :return: all_configs
+        """
+        manager = ClientConfigManager()
+        config_names = manager.get_config_names()
+        all_configs = {}
+        for config in config_names:
+            if not config == "Example":
+                conf = manager.get_config(config)
+                all_configs[config] = conf["description"]
+            else:
+                pass
+        return all_configs
+
+    def get_config(self, name: str) -> Optional[dict]:
+        """
+        Returns the config for a given name, if there is none an error is returned
+
+        :param name: name of the config
+        :return: config
+        """
+        manager = ClientConfigManager()
+        config = manager.get_config(name)
+        if config is None:
+            self._logger.error(f"No config found for given name: {name}")
+            return
+        return config
+
+    def save_config(self, config: dict):
+        """
+        Saves the given config
+
+        :param config: config received via request
+        :return: None
+        """
+        manager = ClientConfigManager()
+        if config["name"] in manager.get_config_names():
+            manager.write_config(config, overwrite=True)
+        else:
+            manager.write_config(config)
+
+    def delete_config(self, name: str):
+        """
+        Deletes the config for a given name, if there is no config, an error is returned
+
+        :param name: name of the config
+        :return: None
+        """
+        manager = ClientConfigManager()
+        manager.delete_config_file(name)

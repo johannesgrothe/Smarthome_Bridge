@@ -114,6 +114,35 @@ CLIENT_CONFIG_OK = {
     ]
 }
 
+CONFIG_SAVE = {
+  "$schema": "./../system/json_schemas/client_config.json",
+  "name": "Spongo",
+  "description": "Example config for testing",
+  "system": {
+    "id": "YoloChip14",
+    "wifi_ssid": "test_wifi",
+    "wifi_pw": "test_pw",
+    "mqtt_ip": "192.168.178.111",
+    "mqtt_port": 1883,
+    "mqtt_user": "null",
+    "mqtt_pw": "pw",
+    "irrecv_pin": 4,
+    "irsend_pin": 5,
+    "radio_recv_pin": 6,
+    "radio_send_pin": 7,
+    "network_mode": 2,
+    "gadget_remote": 1,
+    "code_remote": 1,
+    "event_remote": 1
+  },
+  "gadgets": {
+    "gadgets": []
+  },
+  "events": {
+    "events": []
+  }
+}
+
 
 @pytest.fixture()
 def gadget():
@@ -320,3 +349,25 @@ def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, de
     assert resp is not None
     assert resp.get_receiver() == REQ_SENDER
     f_validator.validate(resp.get_payload(), "api_get_all_clients_response")
+
+
+@pytest.mark.bridge
+def test_api_get_all_configs(api: ApiManager):
+    configs = api.get_all_configs()
+    assert configs.__len__() == 0
+
+
+@pytest.mark.bridge
+def test_api_get_config(api: ApiManager):
+    config = api.get_config("Example")
+    assert config["name"] == "Example"
+
+@pytest.mark.bridge
+def test_api_save_config(api: ApiManager):
+    api.save_config(CONFIG_SAVE)
+    assert api.get_config("Spongo") is not None
+
+@pytest.mark.bridge
+def test_api_delete_config(api: ApiManager):
+    api.delete_config("Spongo")
+    assert api.get_config("Spongo") is None
