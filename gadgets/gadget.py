@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 
 from gadgets.gadget_event_mapping import GadgetEventMapping
 from smarthome_bridge.characteristic import Characteristic
-from gadgetlib import GadgetIdentifier, CharacteristicIdentifier, CharacteristicUpdateStatus
+from system.gadget_definitions import CharacteristicIdentifier
 
 
 class CharacteristicAlreadyPresentError(Exception):

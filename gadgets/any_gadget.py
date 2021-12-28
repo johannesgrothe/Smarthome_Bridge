@@ -1,4 +1,5 @@
-from gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget
+from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 
 

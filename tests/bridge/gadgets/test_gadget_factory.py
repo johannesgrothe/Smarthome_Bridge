@@ -1,7 +1,7 @@
 import pytest
 
 from gadgets.gadget_factory import GadgetFactory, GadgetCreationError
-from gadgets.gadget import GadgetIdentifier
+from system.gadget_definitions import GadgetIdentifier
 
 from gadgets.any_gadget import AnyGadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
@@ -36,11 +36,11 @@ def test_gadget_factory_lamp_neopixel_basic(factory: GadgetFactory, f_characteri
                                             f_characteristic_brightness, f_characteristic_hue,
                                             f_characteristic_saturation):
     with pytest.raises(GadgetCreationError):
-        factory.create_gadget(GadgetIdentifier.lamp_neopixel_basic,
+        factory.create_gadget(GadgetIdentifier.lamp_neopixel_rgb_basic,
                               GADGET_NAME,
                               GADGET_HOST,
                               [])
-    factory_gadget = factory.create_gadget(GadgetIdentifier.lamp_neopixel_basic,
+    factory_gadget = factory.create_gadget(GadgetIdentifier.lamp_neopixel_rgb_basic,
                                            GADGET_NAME,
                                            GADGET_HOST,
                                            [f_characteristic_status,

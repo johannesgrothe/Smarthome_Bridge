@@ -13,7 +13,7 @@ def f_characteristic_status():
 
 @pytest.fixture()
 def f_characteristic_fan_speed():
-    characteristic = Characteristic(c_type=CharacteristicIdentifier.fanSpeed,
+    characteristic = Characteristic(c_type=CharacteristicIdentifier.fan_speed,
                                     min_val=0,
                                     max_val=100,
                                     steps=4)

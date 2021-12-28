@@ -92,7 +92,7 @@ def fan(characteristic_status):
     fan = FanWestinghouseIR(FAN_NAME,
                             TEST_CLIENT,
                             characteristic_status,
-                            Characteristic(c_type=CharacteristicIdentifier.fanSpeed,
+                            Characteristic(c_type=CharacteristicIdentifier.fan_speed,
                                            min_val=FAN_SPEED_MIN,
                                            max_val=FAN_SPEED_MAX,
                                            steps=FAN_SPEED_STEPS)

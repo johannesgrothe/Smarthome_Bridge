@@ -1,6 +1,6 @@
 from typing import Optional
 
-from gadgetlib import CharacteristicIdentifier
+from system.gadget_definitions import CharacteristicIdentifier
 from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
     GadgetUpdateError, GadgetCreationError
 from gadgets.gadget import Gadget

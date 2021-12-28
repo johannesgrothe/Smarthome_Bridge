@@ -6,7 +6,8 @@ from smarthome_bridge.api_decoder import ApiDecoder, ClientDecodeError, GadgetDe
 
 from json_validator import Validator, ValidationError
 from smarthome_bridge.client import Client
-from gadgets.gadget import Gadget, GadgetIdentifier
+from gadgets.gadget import Gadget
+from system.gadget_definitions import GadgetIdentifier
 
 from test_helpers.gadget_fixtures import *
 

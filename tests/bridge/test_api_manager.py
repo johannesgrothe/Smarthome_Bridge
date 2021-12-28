@@ -122,7 +122,7 @@ def gadget():
                                Characteristic(CharacteristicIdentifier.status,
                                               0,
                                               1),
-                               Characteristic(CharacteristicIdentifier.fanSpeed,
+                               Characteristic(CharacteristicIdentifier.fan_speed,
                                               0,
                                               100,
                                               4))

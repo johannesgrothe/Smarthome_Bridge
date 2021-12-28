@@ -1,5 +1,5 @@
 """Module for the gadget update information containers"""
-from gadgetlib import CharacteristicIdentifier
+from system.gadget_definitions import CharacteristicIdentifier
 
 
 class CharacteristicUpdateInformation:
