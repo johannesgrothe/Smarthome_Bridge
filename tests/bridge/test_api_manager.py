@@ -12,6 +12,7 @@ from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget import Gadget
 from system.api_definitions import ApiURIs
+from client_config_manager import ClientConfigManager, ConfigDoesNotExistException
 
 HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"
@@ -115,32 +116,32 @@ CLIENT_CONFIG_OK = {
 }
 
 CONFIG_SAVE = {
-  "$schema": "./../system/json_schemas/client_config.json",
-  "name": "Spongo",
-  "description": "Example config for testing",
-  "system": {
-    "id": "YoloChip14",
-    "wifi_ssid": "test_wifi",
-    "wifi_pw": "test_pw",
-    "mqtt_ip": "192.168.178.111",
-    "mqtt_port": 1883,
-    "mqtt_user": "null",
-    "mqtt_pw": "pw",
-    "irrecv_pin": 4,
-    "irsend_pin": 5,
-    "radio_recv_pin": 6,
-    "radio_send_pin": 7,
-    "network_mode": 2,
-    "gadget_remote": 1,
-    "code_remote": 1,
-    "event_remote": 1
-  },
-  "gadgets": {
-    "gadgets": []
-  },
-  "events": {
-    "events": []
-  }
+    "$schema": "./../system/json_schemas/client_config.json",
+    "name": "Spongo",
+    "description": "Example config for testing",
+    "system": {
+        "id": "YoloChip14",
+        "wifi_ssid": "test_wifi",
+        "wifi_pw": "test_pw",
+        "mqtt_ip": "192.168.178.111",
+        "mqtt_port": 1883,
+        "mqtt_user": "null",
+        "mqtt_pw": "pw",
+        "irrecv_pin": 4,
+        "irsend_pin": 5,
+        "radio_recv_pin": 6,
+        "radio_send_pin": 7,
+        "network_mode": 2,
+        "gadget_remote": 1,
+        "code_remote": 1,
+        "event_remote": 1
+    },
+    "gadgets": {
+        "gadgets": []
+    },
+    "events": {
+        "events": []
+    }
 }
 
 
@@ -199,6 +200,22 @@ def api(delegate: DummyApiDelegate, network_manager: NetworkManager):
     api = ApiManager(delegate, network_manager)
     yield api
     api.__del__()
+
+
+@pytest.fixture()
+def config_manager():
+    manager = ClientConfigManager()
+    yield manager
+
+
+@pytest.fixture()
+def debug_config(config_manager: ClientConfigManager):
+    config_manager.write_config(CONFIG_SAVE, overwrite=True)
+    yield CONFIG_SAVE
+    try:
+        config_manager.delete_config_file(CONFIG_SAVE["name"])
+    except ConfigDoesNotExistException:
+        pass
 
 
 @pytest.mark.bridge
@@ -353,21 +370,41 @@ def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, de
 
 @pytest.mark.bridge
 def test_api_get_all_configs(api: ApiManager):
-    configs = api.get_all_configs()
+    configs = api._handle_get_all_configs()
     assert configs.__len__() == 0
 
 
 @pytest.mark.bridge
 def test_api_get_config(api: ApiManager):
-    config = api.get_config("Example")
+    config = api._handle_get_config("Example")
     assert config["name"] == "Example"
+
 
 @pytest.mark.bridge
 def test_api_save_config(api: ApiManager):
-    api.save_config(CONFIG_SAVE)
-    assert api.get_config("Spongo") is not None
+    conf_payload = {
+        "config": CONFIG_SAVE,
+        "overwrite": True
+    }
+    api._handle_save_config(CONFIG_SAVE)
+    assert api._handle_get_config("Spongo") is not None
+
 
 @pytest.mark.bridge
-def test_api_delete_config(api: ApiManager):
-    api.delete_config("Spongo")
-    assert api.get_config("Spongo") is None
+def test_api_delete_config(api: ApiManager, network: DummyNetworkConnector, debug_config: dict):
+    conf_payload = {
+        "name": debug_config["name"]
+    }
+    network.mock_receive(ApiURIs.config_storage_delete.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_ack() is True
+    network.mock_receive(ApiURIs.config_storage_delete.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["error_type"] == "ConfigDoesNotExistException"
+

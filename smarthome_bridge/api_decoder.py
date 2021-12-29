@@ -151,3 +151,4 @@ class ApiDecoder(LoggingInterface):
         except (KeyError, CharacteristicDecodeError) as err:
             self._logger.error(err.args[0])
             raise GadgetDecodeError
+

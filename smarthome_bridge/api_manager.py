@@ -10,7 +10,7 @@ from smarthome_bridge.network_manager import NetworkManager
 
 from gadgets.gadget import Gadget
 
-from client_config_manager import ClientConfigManager
+from client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
 
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
@@ -54,6 +54,11 @@ class ApiManager(Subscriber, LoggingInterface):
         message = message.replace("\"", "'")
         req.respond({"error_type": err_type, "message": message})
         self._logger.error(f"{err_type}: {message}")
+
+    def _respond_with_status(self, req: Request, ack: bool, message: Optional[str] = None):
+        out_payload = {"ack": ack, "message": message}
+        req.respond(out_payload)
+        self._logger.info(f"responding with status: {ack} to request: {req.get_path()}")
 
     def send_gadget_update(self, gadget: Gadget):
         try:
@@ -138,7 +143,11 @@ class ApiManager(Subscriber, LoggingInterface):
             ApiURIs.update_gadget.value: self._handle_update_gadget,
             ApiURIs.client_reboot.value: self._handle_client_reboot,
             ApiURIs.client_config_write.value: self._handle_client_config_write,
-            ApiURIs.client_config_delete.value: self._handle_client_config_delete
+            ApiURIs.client_config_delete.value: self._handle_client_config_delete,
+            ApiURIs.config_storage_get_all.value: self._handle_get_all_configs,
+            ApiURIs.config_storage_get.value: self._handle_get_config,
+            ApiURIs.config_storage_save.value: self._handle_save_config,
+            ApiURIs.config_storage_delete.value: self._handle_delete_config
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -325,56 +334,99 @@ class ApiManager(Subscriber, LoggingInterface):
             self._logger.error(err.args[0])
             return
 
-    def get_all_configs(self) -> dict:
+    def _handle_get_all_configs(self, req: Request):
         """
-        Returns the names and descriptions of all available configs
+        Responds with the names and descriptions of all available configs
 
-        :return: all_configs
+        :return: None
         """
+        try:
+            self._validator.validate(req.get_payload(), "api_empty_request")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.config_storage_get_all.value}'")
+            return
+
         manager = ClientConfigManager()
         config_names = manager.get_config_names()
         all_configs = {}
+        self._logger.info("fetching all configs")
         for config in config_names:
             if not config == "Example":
-                conf = manager.get_config(config)
-                all_configs[config] = conf["description"]
+                try:
+                    conf = manager.get_config(config)
+                    all_configs[config] = conf["description"]
+                except ConfigDoesNotExistException:
+                    self._logger.error("congratz, something went wrong, abort, abort, return to the moon base")
+                    pass
             else:
                 pass
-        return all_configs
+        req.respond(all_configs)
 
-    def get_config(self, name: str) -> Optional[dict]:
+    def _handle_get_config(self, req: Request):
         """
-        Returns the config for a given name, if there is none an error is returned
+        Responds with the config for a given name, if there is none an error is returned
 
-        :param name: name of the config
-        :return: config
-        """
-        manager = ClientConfigManager()
-        config = manager.get_config(name)
-        if config is None:
-            self._logger.error(f"No config found for given name: {name}")
-            return
-        return config
-
-    def save_config(self, config: dict):
-        """
-        Saves the given config
-
-        :param config: config received via request
+        :param req: Request
         :return: None
         """
-        manager = ClientConfigManager()
-        if config["name"] in manager.get_config_names():
-            manager.write_config(config, overwrite=True)
-        else:
-            manager.write_config(config)
+        try:
+            self._validator.validate(req.get_payload(), "api_config_delete_get")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.config_storage_get.value}'")
+            return
 
-    def delete_config(self, name: str):
+        try:
+            name = req.get_payload()["name"]
+            config = ClientConfigManager().get_config(name)
+            req.respond(config)
+        except ConfigDoesNotExistException as err:
+            self._respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
+
+    def _handle_save_config(self, req: Request):
+        """
+        Saves the given config or overwrites an already existing config
+
+        :param req: Request containing the config
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_config_save")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.config_storage_save.value}'")
+            return
+
+        config = req.get_payload()["config"]
+        overwrite = req.get_payload()["overwrite"]
+        manager = ClientConfigManager()
+        try:
+            manager.write_config(config, overwrite=overwrite)
+        except ConfigAlreadyExistsException as err:
+            self._respond_with_error(req=req, err_type="ConfigAlreadyExistsException", message=err.args[0])
+            return
+        self._respond_with_status(req, True, "Config was saved successfully")
+
+    def _handle_delete_config(self, req: Request):
         """
         Deletes the config for a given name, if there is no config, an error is returned
 
         :param name: name of the config
         :return: None
         """
+        try:
+            self._validator.validate(req.get_payload(), "api_config_delete_get")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at '{ApiURIs.config_storage_delete.value}'")
+            return
+
+        name = req.get_payload()["name"]
         manager = ClientConfigManager()
-        manager.delete_config_file(name)
+        try:
+            manager.delete_config_file(name)
+        except ConfigDoesNotExistException as err:
+            self._respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
+            return
+        self._respond_with_status(req, True, "Config was deleted successfully")
