@@ -398,6 +398,14 @@ def test_api_get_config(api: ApiManager, network: DummyNetworkConnector, debug_c
     assert response.get_payload()["config"]["name"] == conf_name["name"]
     f_validator.validate(response.get_payload(), "api_config_get_response")
 
+    conf_name_illegal = {"name": "Unicorn"}
+    network.mock_receive(ApiURIs.config_storage_get.value,
+                         REQ_SENDER,
+                         conf_name_illegal)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["error_type"] == "ConfigDoesNotExistException"
+
 
 @pytest.mark.bridge
 def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_config_doesnt_exist: dict):
@@ -409,19 +417,24 @@ def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_
         "config": debug_config_doesnt_exist,
         "overwrite": False
     }
+
+    # save without overwrite (initial)
     network.mock_receive(ApiURIs.config_storage_save.value,
                          REQ_SENDER,
                          conf_payload)
     response = network.get_last_send_response()
     assert response is not None
     assert response.get_ack() is True
+
+    # save with overwrite
     network.mock_receive(ApiURIs.config_storage_save.value,
                          REQ_SENDER,
                          conf_payload_overwrite)
     response = network.get_last_send_response()
-
     assert response is not None
     assert response.get_ack() is True
+
+    # save without overwrite
     network.mock_receive(ApiURIs.config_storage_save.value,
                          REQ_SENDER,
                          conf_payload)
@@ -441,6 +454,7 @@ def test_api_delete_config(api: ApiManager, network: DummyNetworkConnector, debu
     response = network.get_last_send_response()
     assert response is not None
     assert response.get_ack() is True
+
     network.mock_receive(ApiURIs.config_storage_delete.value,
                          REQ_SENDER,
                          conf_payload)
