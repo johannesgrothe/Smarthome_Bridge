@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from logging_interface import LoggingInterface
+from system.utils.software_version import SoftwareVersion
 
 # Maximum timeout in seconds before the client is considered inactive
 from smarthome_bridge.client_event_mapping import ClientEventMapping
@@ -42,9 +43,13 @@ class Client(LoggingInterface):
     # Boot mode of the client
     _boot_mode: int
 
+    # API version the client is running on
+    _api_version: SoftwareVersion
+
     def __init__(self, name: str, runtime_id: int, flash_date: Optional[datetime],
                  software_commit: Optional[str], software_branch: Optional[str],
-                 port_mapping: dict, boot_mode: int, connection_timeout: int = DEFAULT_TIMEOUT):
+                 port_mapping: dict, boot_mode: int, api_version: SoftwareVersion,
+                 connection_timeout: int = DEFAULT_TIMEOUT):
         super().__init__()
         self._name = name
         self._last_connected = datetime(1900, 1, 1)
