@@ -12,6 +12,7 @@ from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget import Gadget
 from system.api_definitions import ApiURIs
+from client_config_manager import ClientConfigManager, ConfigDoesNotExistException
 
 HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"
@@ -114,6 +115,35 @@ CLIENT_CONFIG_OK = {
     ]
 }
 
+CONFIG_SAVE = {
+    "$schema": "./../system/json_schemas/client_config.json",
+    "name": "Spongo",
+    "description": "Example config for testing",
+    "system": {
+        "id": "YoloChip14",
+        "wifi_ssid": "test_wifi",
+        "wifi_pw": "test_pw",
+        "mqtt_ip": "192.168.178.111",
+        "mqtt_port": 1883,
+        "mqtt_user": "null",
+        "mqtt_pw": "pw",
+        "irrecv_pin": 4,
+        "irsend_pin": 5,
+        "radio_recv_pin": 6,
+        "radio_send_pin": 7,
+        "network_mode": 2,
+        "gadget_remote": 1,
+        "code_remote": 1,
+        "event_remote": 1
+    },
+    "gadgets": {
+        "gadgets": []
+    },
+    "events": {
+        "events": []
+    }
+}
+
 
 @pytest.fixture()
 def gadget():
@@ -170,6 +200,31 @@ def api(delegate: DummyApiDelegate, network_manager: NetworkManager):
     api = ApiManager(delegate, network_manager)
     yield api
     api.__del__()
+
+
+@pytest.fixture()
+def config_manager():
+    manager = ClientConfigManager()
+    yield manager
+
+
+@pytest.fixture()
+def debug_config_doesnt_exist(config_manager: ClientConfigManager):
+    try:
+        config_manager.delete_config_file(CONFIG_SAVE["name"])
+    except ConfigDoesNotExistException:
+        pass
+    yield CONFIG_SAVE
+    try:
+        config_manager.delete_config_file(CONFIG_SAVE["name"])
+    except ConfigDoesNotExistException:
+        pass
+
+
+@pytest.fixture()
+def debug_config(config_manager: ClientConfigManager, debug_config_doesnt_exist: dict):
+    config_manager.write_config(CONFIG_SAVE, overwrite=True)
+    yield CONFIG_SAVE
 
 
 @pytest.mark.bridge
@@ -320,3 +375,89 @@ def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, de
     assert resp is not None
     assert resp.get_receiver() == REQ_SENDER
     f_validator.validate(resp.get_payload(), "api_get_all_clients_response")
+
+
+@pytest.mark.bridge
+def test_api_get_all_configs(api: ApiManager, network: DummyNetworkConnector, debug_config: dict, f_validator):
+    network.mock_receive(ApiURIs.config_storage_get_all.value, REQ_SENDER, {})
+    response = network.get_last_send_response()
+    assert response is not None
+    assert debug_config["name"] in response.get_payload()["configs"]
+    assert response.get_payload()["configs"][debug_config["name"]] == debug_config["description"]
+    f_validator.validate(response.get_payload(), "api_config_get_all_response")
+
+
+@pytest.mark.bridge
+def test_api_get_config(api: ApiManager, network: DummyNetworkConnector, debug_config: dict, f_validator):
+    conf_name = {"name": debug_config["name"]}
+    network.mock_receive(ApiURIs.config_storage_get.value,
+                         REQ_SENDER,
+                         conf_name)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["config"]["name"] == conf_name["name"]
+    f_validator.validate(response.get_payload(), "api_config_get_response")
+
+    conf_name_illegal = {"name": "Unicorn"}
+    network.mock_receive(ApiURIs.config_storage_get.value,
+                         REQ_SENDER,
+                         conf_name_illegal)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["error_type"] == "ConfigDoesNotExistException"
+
+
+@pytest.mark.bridge
+def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_config_doesnt_exist: dict):
+    conf_payload_overwrite = {
+        "config": debug_config_doesnt_exist,
+        "overwrite": True
+    }
+    conf_payload = {
+        "config": debug_config_doesnt_exist,
+        "overwrite": False
+    }
+
+    # save without overwrite (initial)
+    network.mock_receive(ApiURIs.config_storage_save.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_ack() is True
+
+    # save with overwrite
+    network.mock_receive(ApiURIs.config_storage_save.value,
+                         REQ_SENDER,
+                         conf_payload_overwrite)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_ack() is True
+
+    # save without overwrite
+    network.mock_receive(ApiURIs.config_storage_save.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["error_type"] == "ConfigAlreadyExistsException"
+
+
+@pytest.mark.bridge
+def test_api_delete_config(api: ApiManager, network: DummyNetworkConnector, debug_config: dict):
+    conf_payload = {
+        "name": debug_config["name"]
+    }
+    network.mock_receive(ApiURIs.config_storage_delete.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_ack() is True
+
+    network.mock_receive(ApiURIs.config_storage_delete.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["error_type"] == "ConfigDoesNotExistException"
