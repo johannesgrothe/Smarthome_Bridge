@@ -63,22 +63,17 @@ def remove_test_configs():
 
 def test_client_config_manager(dummy_files, config_manager: ClientConfigManager, test_config: dict):
     assert TEST_CONFIG_NAME not in config_manager.get_config_names()
-    assert config_manager.get_config(TEST_CONFIG_NAME) is None
+    with pytest.raises(ConfigDoesNotExistException):
+        config_manager.get_config(TEST_CONFIG_NAME)
 
-    try:
+    with pytest.raises(ConfigNotValidException):
         config_manager.write_config(INVALID_CONFIG)
-    except ConfigNotValidException:
-        pass
-    else:
-        assert False
 
     assert TEST_CONFIG_NAME not in config_manager.get_config_names()
-    assert config_manager.get_config(TEST_CONFIG_NAME) is None
+    with pytest.raises(ConfigDoesNotExistException):
+        config_manager.get_config(TEST_CONFIG_NAME)
 
-    try:
-        config_manager.write_config(test_config, overwrite=False)
-    except ConfigAlreadyExistsException:
-        assert False
+    config_manager.write_config(test_config, overwrite=False)
 
     assert TEST_CONFIG_NAME in config_manager.get_config_names()
     assert TEST_CONFIG_NAME + ".json" in config_manager.get_config_filenames()
@@ -86,14 +81,7 @@ def test_client_config_manager(dummy_files, config_manager: ClientConfigManager,
     assert buf_config is not None
     assert buf_config["name"] == TEST_CONFIG_NAME
 
-    try:
+    with pytest.raises(ConfigAlreadyExistsException):
         config_manager.write_config(test_config, overwrite=False)
-    except ConfigAlreadyExistsException:
-        pass
-    else:
-        assert False
 
-    try:
-        config_manager.write_config(test_config, overwrite=True)
-    except ConfigAlreadyExistsException:
-        assert False
+    config_manager.write_config(test_config, overwrite=True)

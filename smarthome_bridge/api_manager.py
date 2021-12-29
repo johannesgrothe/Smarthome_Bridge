@@ -338,6 +338,7 @@ class ApiManager(Subscriber, LoggingInterface):
         """
         Responds with the names and descriptions of all available configs
 
+        :param req: empty Request
         :return: None
         """
         try:
@@ -361,13 +362,14 @@ class ApiManager(Subscriber, LoggingInterface):
                     pass
             else:
                 pass
-        req.respond(all_configs)
+        payload = {"configs": all_configs}
+        req.respond(payload)
 
     def _handle_get_config(self, req: Request):
         """
         Responds with the config for a given name, if there is none an error is returned
 
-        :param req: Request
+        :param req: Request containing the name of the requested config
         :return: None
         """
         try:
@@ -380,7 +382,8 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             name = req.get_payload()["name"]
             config = ClientConfigManager().get_config(name)
-            req.respond(config)
+            payload = {"config": config}
+            req.respond(payload)
         except ConfigDoesNotExistException as err:
             self._respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
 
@@ -412,7 +415,7 @@ class ApiManager(Subscriber, LoggingInterface):
         """
         Deletes the config for a given name, if there is no config, an error is returned
 
-        :param name: name of the config
+        :param req: Request containing name of the config
         :return: None
         """
         try:

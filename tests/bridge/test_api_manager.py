@@ -209,13 +209,22 @@ def config_manager():
 
 
 @pytest.fixture()
-def debug_config(config_manager: ClientConfigManager):
-    config_manager.write_config(CONFIG_SAVE, overwrite=True)
+def debug_config_doesnt_exist(config_manager: ClientConfigManager):
+    try:
+        config_manager.delete_config_file(CONFIG_SAVE["name"])
+    except ConfigDoesNotExistException:
+        pass
     yield CONFIG_SAVE
     try:
         config_manager.delete_config_file(CONFIG_SAVE["name"])
     except ConfigDoesNotExistException:
         pass
+
+
+@pytest.fixture()
+def debug_config(config_manager: ClientConfigManager, debug_config_doesnt_exist: dict):
+    config_manager.write_config(CONFIG_SAVE, overwrite=True)
+    yield CONFIG_SAVE
 
 
 @pytest.mark.bridge
@@ -369,25 +378,56 @@ def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, de
 
 
 @pytest.mark.bridge
-def test_api_get_all_configs(api: ApiManager):
-    configs = api._handle_get_all_configs()
-    assert configs.__len__() == 0
+def test_api_get_all_configs(api: ApiManager, network: DummyNetworkConnector, debug_config: dict, f_validator):
+    network.mock_receive(ApiURIs.config_storage_get_all.value, REQ_SENDER, {})
+    response = network.get_last_send_response()
+    assert response is not None
+    assert debug_config["name"] in response.get_payload()["configs"]
+    assert response.get_payload()["configs"][debug_config["name"]] == debug_config["description"]
+    f_validator.validate(response.get_payload(), "api_config_get_all_response")
 
 
 @pytest.mark.bridge
-def test_api_get_config(api: ApiManager):
-    config = api._handle_get_config("Example")
-    assert config["name"] == "Example"
+def test_api_get_config(api: ApiManager, network: DummyNetworkConnector, debug_config: dict, f_validator):
+    conf_name = {"name": debug_config["name"]}
+    network.mock_receive(ApiURIs.config_storage_get.value,
+                         REQ_SENDER,
+                         conf_name)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["config"]["name"] == conf_name["name"]
+    f_validator.validate(response.get_payload(), "api_config_get_response")
 
 
 @pytest.mark.bridge
-def test_api_save_config(api: ApiManager):
-    conf_payload = {
-        "config": CONFIG_SAVE,
+def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_config_doesnt_exist: dict):
+    conf_payload_overwrite = {
+        "config": debug_config_doesnt_exist,
         "overwrite": True
     }
-    api._handle_save_config(CONFIG_SAVE)
-    assert api._handle_get_config("Spongo") is not None
+    conf_payload = {
+        "config": debug_config_doesnt_exist,
+        "overwrite": False
+    }
+    network.mock_receive(ApiURIs.config_storage_save.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_ack() is True
+    network.mock_receive(ApiURIs.config_storage_save.value,
+                         REQ_SENDER,
+                         conf_payload_overwrite)
+    response = network.get_last_send_response()
+
+    assert response is not None
+    assert response.get_ack() is True
+    network.mock_receive(ApiURIs.config_storage_save.value,
+                         REQ_SENDER,
+                         conf_payload)
+    response = network.get_last_send_response()
+    assert response is not None
+    assert response.get_payload()["error_type"] == "ConfigAlreadyExistsException"
 
 
 @pytest.mark.bridge
@@ -407,4 +447,3 @@ def test_api_delete_config(api: ApiManager, network: DummyNetworkConnector, debu
     response = network.get_last_send_response()
     assert response is not None
     assert response.get_payload()["error_type"] == "ConfigDoesNotExistException"
-
