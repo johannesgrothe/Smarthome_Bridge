@@ -1,6 +1,5 @@
 name: Bug Report
 description: File a bug report
-title: ""
 labels: [ "bug" ]
 body:
   - type: markdown
@@ -34,7 +33,7 @@ body:
         - Kinda Irrelevant
         - Annoying (Default)
         - Pretty Severe
-        - Critical
+        - Perror das Errortier
     validations:
       required: true
   - type: textarea
