@@ -4,7 +4,7 @@ on: [ pull_request ]
 
 jobs:
   semi_linear_history_check:
-    uses: johannesgrothe/Smarthome_System/.github/workflows/repo_checks.yml@master
+    uses: ./system/.github/actions/repo_checks.yml@master
 
   submodule_master_check:
 
