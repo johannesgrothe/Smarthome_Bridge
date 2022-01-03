@@ -40,28 +40,9 @@ jobs:
       - name: Check history to master
         run: git merge-base --is-ancestor origin/master HEAD
 
-  submodule_master_check:
-
-    name: System Submodule is on master
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: Check if submodule is on master
-        uses: jtmullen/submodule-branch-check-action@v1
-        with:
-          path: "system"
-          branch: "master"
-          pass_if_unchanged: true
-
   submodule_most_recent_master_check:
 
-    name: System Submodule is on most recent master
+    name: System Submodule is on most recent master or unchanged
 
     runs-on: ubuntu-latest
 
@@ -77,3 +58,4 @@ jobs:
           path: "system"
           branch: "master"
           require_head: true
+          pass_if_unchanged: true
