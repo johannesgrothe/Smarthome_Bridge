@@ -46,7 +46,8 @@ class ApiEncoder(LoggingInterface):
                 "sw_uploaded": out_date,
                 "sw_commit": client.get_sw_commit(),
                 "sw_branch": client.get_sw_branch(),
-                "port_mapping": client.get_port_mapping()}
+                "port_mapping": client.get_port_mapping(),
+                "api_version": str(client.get_api_version())}
 
     def encode_gadget(self, gadget: Gadget) -> dict:
         """

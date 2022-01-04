@@ -12,6 +12,7 @@ from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget import Gadget
 from system.api_definitions import ApiURIs
+from system.utils.software_version import SoftwareVersion
 from client_config_manager import ClientConfigManager, ConfigDoesNotExistException
 
 HOSTNAME = "unittest_host"
@@ -168,7 +169,8 @@ def client():
                     None,
                     None,
                     {},
-                    1)
+                    1,
+                    SoftwareVersion(1, 3, 6))
     yield client
 
 

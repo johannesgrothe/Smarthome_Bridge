@@ -1,12 +1,12 @@
 """Module for the SmarthomeClient Class"""
 from datetime import datetime, timedelta
 from typing import Optional
+
 from logging_interface import LoggingInterface
 from system.utils.software_version import SoftwareVersion
-
-# Maximum timeout in seconds before the client is considered inactive
 from smarthome_bridge.client_event_mapping import ClientEventMapping
 
+# Maximum timeout in seconds before the client is considered inactive
 DEFAULT_TIMEOUT = 17
 
 
@@ -57,6 +57,7 @@ class Client(LoggingInterface):
         self._runtime_id = runtime_id
         self._timeout = connection_timeout
         self._event_mapping = []
+        self._api_version = api_version
 
         if flash_date:
             self._flash_time = flash_date - timedelta(microseconds=flash_date.microsecond)
@@ -82,13 +83,17 @@ class Client(LoggingInterface):
                    self.get_sw_commit() == other.get_sw_commit() and \
                    self.get_sw_branch() == other.get_sw_branch() and \
                    self.get_boot_mode() == other.get_boot_mode() and \
-                   self.get_port_mapping() == other.get_port_mapping()
+                   self.get_port_mapping() == other.get_port_mapping() and \
+                   self.get_api_version() == other.get_api_version()
         return NotImplemented
 
     def _filter_mapping(self, in_map: dict) -> (bool, dict):
-        """Filters a port mapping dict to not contain any non-int or negative keys and no double values.
+        """
+        Filters a port mapping dict to not contain any non-int or negative keys and no double values.
 
-        Returns has_error, filtered_dict"""
+        :param in_map: Mapping dict to filter
+        :return: has_error, filtered_dict
+        """
         out_ports: dict = {}
         has_err: bool = False
 
@@ -118,6 +123,7 @@ class Client(LoggingInterface):
         return self._last_connected
 
     def get_runtime_id(self) -> int:
+        """Returns the runtime if this client was using when last connected"""
         return self._runtime_id
 
     def trigger_activity(self):
@@ -152,7 +158,12 @@ class Client(LoggingInterface):
         """Returns the boot mode of the chip"""
         return self._boot_mode
 
+    def get_api_version(self) -> SoftwareVersion:
+        """Returns the api version the client is running on"""
+        return self._api_version
+
     def set_timeout(self, seconds: int):
+        """Sets the timeout for this client, after which it will register as 'offline'"""
         self._timeout = seconds
 
     def get_event_mapping(self) -> list[ClientEventMapping]:
@@ -160,6 +171,9 @@ class Client(LoggingInterface):
         return self._event_mapping
 
     def set_event_mapping(self, e_mapping: list[ClientEventMapping]):
+        """
+        Sets the event mapping for the client. The event mapping is initialized as empty list and needs to be set if wanted.
+        :param e_mapping: List of event maps this client is using
+        :return: None
+        """
         self._event_mapping = e_mapping
-
-

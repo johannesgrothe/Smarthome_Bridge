@@ -8,6 +8,7 @@ from json_validator import Validator, ValidationError
 from smarthome_bridge.client import Client
 from gadgets.gadget import Gadget
 from system.gadget_definitions import GadgetIdentifier
+from system.utils.software_version import SoftwareVersion
 
 from test_helpers.gadget_fixtures import *
 
@@ -42,7 +43,8 @@ def test_client():
                     software_commit=C_COMMIT,
                     software_branch=C_BRANCH,
                     port_mapping=C_PORT_MAPPING,
-                    boot_mode=C_BOOT_MODE)
+                    boot_mode=C_BOOT_MODE,
+                    api_version=SoftwareVersion(1, 3, 6))
     yield client
     # client.__del__()
 
