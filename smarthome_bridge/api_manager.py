@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Callable
 
 from gadgets.any_gadget import AnyGadget
@@ -18,6 +19,8 @@ from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from system.api_definitions import ApiURIs
 from clients.client_controller import ClientController, ClientRebootError
 
+from bridge_update_manager import BridgeUpdateManager
+
 
 class UnknownClientException(Exception):
     def __init__(self, name: str):
@@ -33,6 +36,8 @@ class ApiManager(Subscriber, LoggingInterface):
 
     _gadget_sync_connection: Optional[str]
 
+    _bridge_update: BridgeUpdateManager
+
     def __init__(self, delegate: ApiManagerDelegate, network: NetworkManager):
         super().__init__()
         self._delegate = delegate
@@ -40,6 +45,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._network.subscribe(self)
         self._validator = Validator()
         self._gadget_sync_connection = None
+        self._bridge_update = BridgeUpdateManager(os.getcwd())
 
     def __del__(self):
         pass
@@ -147,7 +153,9 @@ class ApiManager(Subscriber, LoggingInterface):
             ApiURIs.config_storage_get_all.value: self._handle_get_all_configs,
             ApiURIs.config_storage_get.value: self._handle_get_config,
             ApiURIs.config_storage_save.value: self._handle_save_config,
-            ApiURIs.config_storage_delete.value: self._handle_delete_config
+            ApiURIs.config_storage_delete.value: self._handle_delete_config,
+            ApiURIs.bridge_update_check.value: self._handle_check_bridge_for_update,
+            ApiURIs.bridge_update_execute.value: self._handle_bridge_update
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
@@ -433,3 +441,41 @@ class ApiManager(Subscriber, LoggingInterface):
             self._respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
             return
         self._respond_with_status(req, True, "Config was deleted successfully")
+
+    def _handle_check_bridge_for_update(self, req: Request):
+        """
+        Checks whether the remote, the bridge is currently running on, is an older version
+
+        :param req: empty request
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_empty_request")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at {ApiURIs.bridge_update_check.value}")
+            return
+
+        encoder = ApiEncoder()
+        bridge_meta = self._bridge_update.check_for_update()
+        if bridge_meta[0] is not None:
+            payload = encoder.encode_bridge_update_info(bridge_meta)
+            req.respond(payload)
+            return
+        self._respond_with_status(req, True, "Bridge is up to date")
+
+    def _handle_bridge_update(self, req: Request):
+        """
+        Updates the Bridge to a newer version or another remote, remote has to be specified in request
+
+        :param req: empty Request
+        :return: None
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_empty_request")
+        except ValidationError:
+            self._respond_with_error(req, "ValidationError",
+                                     f"Request validation error at {ApiURIs.bridge_update_execute.value}")
+            return
+
+        self._bridge_update.execute_update()
