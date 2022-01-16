@@ -109,7 +109,8 @@ CLIENT_CONFIG_OK = {
         "boot_mode": 1,
         "sw_uploaded": None,
         "sw_commit": None,
-        "sw_branch": None
+        "sw_branch": None,
+        "api_version": "1.3.7",
     },
     "gadgets": [
         GADGET_CONFIG_OK["gadget"]
@@ -316,7 +317,8 @@ def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, dele
                                "213132",
                                "fb_420",
                                {},
-                               1))
+                               1,
+                               SoftwareVersion(3, 4, 12)))
 
     network.mock_receive(ApiURIs.client_reboot.value,
                          REQ_SENDER,

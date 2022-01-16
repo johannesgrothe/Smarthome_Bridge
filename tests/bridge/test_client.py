@@ -3,6 +3,7 @@ import time
 import datetime
 from smarthome_bridge.client import Client
 from smarthome_bridge.client_event_mapping import ClientEventMapping
+from system.utils.software_version import SoftwareVersion
 
 CLIENT_NAME = "test_client"
 RUNTIME_ID = 1776
@@ -25,7 +26,8 @@ def client():
                     software_commit=CLIENT_SW_COMMIT,
                     software_branch=CLIENT_BRANCH_NAME,
                     port_mapping=CLIENT_FAULTY_PORT_MAPPING,
-                    boot_mode=CLIENT_BOOT_MODE)
+                    boot_mode=CLIENT_BOOT_MODE,
+                    api_version=SoftwareVersion(1, 2, 12))
     client.set_timeout(CONNECTION_TIMEOUT)
     yield client
 

@@ -3,7 +3,7 @@ import random
 
 from smarthome_bridge.client_manager import *
 from smarthome_bridge.client import Client
-
+from system.utils.software_version import SoftwareVersion
 
 TEST_CLIENT_NAME = "test_client"
 WRONG_CLIENT_NAME = "wrong_client"
@@ -24,7 +24,8 @@ def test_client():
                     None,
                     None,
                     {},
-                    1)
+                    1,
+                    SoftwareVersion(3, 4, 12))
     yield client
     # client.__del__()
 
