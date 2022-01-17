@@ -6,6 +6,7 @@ from smarthome_bridge.characteristic import Characteristic, CharacteristicIdenti
 from gadgets.gadget_factory import GadgetFactory
 from smarthome_bridge.client import Client
 from smarthome_bridge.gadget_update_information import GadgetUpdateInformation, CharacteristicUpdateInformation
+from system.utils.software_version import SoftwareVersion
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -102,6 +103,7 @@ class ApiDecoder(LoggingInterface):
             software_branch = client_data["sw_branch"]
             port_mapping = client_data["port_mapping"]
             boot_mode = client_data["boot_mode"]
+            api_version = SoftwareVersion.from_string(client_data["api_version"])
 
             out_client = Client(client_name,
                                 runtime_id,
@@ -109,7 +111,8 @@ class ApiDecoder(LoggingInterface):
                                 software_commit,
                                 software_branch,
                                 port_mapping,
-                                boot_mode)
+                                boot_mode,
+                                api_version)
             return out_client
         except KeyError as err:
             raise ClientDecodeError(f"Key Error at '{err.args[0]}'")
