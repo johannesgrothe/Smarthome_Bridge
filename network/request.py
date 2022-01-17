@@ -1,7 +1,7 @@
 """Module to contain the request class"""
 from __future__ import annotations
 import random
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
 
 
 class NoClientResponseException(Exception):
@@ -25,6 +25,7 @@ class Request:
 
     _path: str
     _session_id: int
+    _credentials: Optional[Tuple[str, str]]
     _sender: str
     _receiver: Optional[str]
     _payload: dict
@@ -45,6 +46,7 @@ class Request:
             self._session_id = session_id
 
         self._path = path
+        self._credentials = None
         self._sender = sender
         self._receiver = receiver
         self._payload = payload
@@ -92,6 +94,7 @@ class Request:
         """Return the body"""
 
         return {"session_id": self._session_id,
+                "credentials": self._credentials,
                 "sender": self._sender,
                 "receiver": self._receiver,
                 "payload": self._payload}
@@ -116,6 +119,14 @@ class Request:
     def get_connection_type(self) -> Optional[str]:
         """Returns the connection type of the request (the gadget that received this request)"""
         return self._connection_type
+
+    def get_credentials(self) -> Optional[Tuple[str, str]]:
+        """Returns the credentials contained in the request"""
+        return self._credentials
+
+    def set_credentials(self, username: str, password: str):
+        """Sets credentials of the request"""
+        self._credentials = (username, password)
 
 
 response_callback_type = Callable[[Request, dict, Optional[str]], None]
