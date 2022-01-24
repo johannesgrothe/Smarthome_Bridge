@@ -36,7 +36,8 @@ class BridgeUpdateManager:
         self._repo_manager = RepositoryManager(self._current_remote, None)
         try:
             self._current_branch_name = self._repo_manager.get_branch()
-        except (RepositoryFetchException, RepositoryStatusException, RepositoryCloneException):
+            self._repo_manager.init_repository(force_reset=False, reclone_on_error=False)
+        except (RepositoryFetchException, RepositoryStatusException):
             raise UpdateNotPossibleException
         self._current_commit_date = self._repo_manager.get_branch_date()
         self._current_commit_hash = self._repo_manager.get_commit_hash()

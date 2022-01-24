@@ -103,10 +103,11 @@ class RepositoryManager:
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
-    def init_repository(self, force_reset: bool):
+    def init_repository(self, force_reset: bool = False, reclone_on_error: bool = True):
         """
         Checks if the repository exists and works. Clones the repository if it does not exist at the given path.
         :param force_reset: Whether repository should be deleted and re-clone
+        :param reclone_on_error: Whether repository should be recloned if an error occurs
         :raises RepositoryCloneException: When cloning the repository fails
         """
         repo_works = False
@@ -122,6 +123,9 @@ class RepositoryManager:
         if not repo_works:
             self._logger.info(f"Repo doesn't exist or is broken, deleting dir"
                               f"and cloning repository from '{self._remote_url}'")
+            if not reclone_on_error:
+                raise RepositoryStatusException
+
             if os.path.isdir(self._path):
                 self.delete_folder()
 
