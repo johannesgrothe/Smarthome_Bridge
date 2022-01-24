@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Optional, Tuple, Union
 
 from logging_interface import LoggingInterface
@@ -33,6 +34,7 @@ class BridgeUpdateManager(LoggingInterface):
         Initializes the BridgeUpdateManager
 
         :param base_path: The path to the bridge software to update
+        :raises UpdateNotPossibleException: If no updates can be performed on this bridge instance
         """
         super().__init__()
         self._bridge_path = base_path
@@ -51,6 +53,8 @@ class BridgeUpdateManager(LoggingInterface):
         Checks specified remote for newer version, returns information about remote if newer version exists
 
         :return: info about the remote, if newer version found, otherwise None
+        :raises UpdateNotPossibleException: If no updates can be performed on this bridge instance
+        :raises NoUpdateAvailableException: If no updates is available
         """
         try:
             self._repo_manager.fetch_from()
@@ -75,6 +79,7 @@ class BridgeUpdateManager(LoggingInterface):
         Updates the bridge
 
         :return: None
+        :raises UpdateNotSuccessfulException: If the updating process failed for any reason
         """
         update_successful = self._repo_manager.pull()
         if not update_successful:
@@ -87,4 +92,4 @@ class BridgeUpdateManager(LoggingInterface):
 
         :return: None
         """
-        os.system("sys.exit(0)")
+        sys.exit(0)

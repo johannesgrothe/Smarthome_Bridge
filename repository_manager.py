@@ -99,7 +99,7 @@ class RepositoryManager(LoggingInterface):
         :raises RepositoryUnsafeToDeleteException: When the repository folder is not safe to delete
         """
         if not self._dir_is_safe_to_delete():
-            raise RepositoryUnsafeToDeleteException()
+            raise RepositoryUnsafeToDeleteException(self._path)
 
         for root, dirs, files in os.walk(self._path, topdown=False):
             for name in files:
