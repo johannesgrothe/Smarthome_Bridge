@@ -148,6 +148,19 @@ class RepositoryManager:
         else:
             self._logger.info("Fetching repository was successful.")
 
+    def fetch_from(self):
+        """
+        Fetches from specified configured remote.
+        :raises RepositoryFetchException: When fetching from remote fails for any reason
+        """
+        self._logger.info(f"Fetching from specified remote...")
+        fetch_ok = self._exec_git_command(f"git fetch {self._remote_url} --quiet")
+        if not fetch_ok:
+            self._logger.error("Fetching repository failed.")
+            raise RepositoryFetchException()
+        else:
+            self._logger.info("Fetching repository was successful.")
+
     def checkout(self, branch: str):
         """
         Checks out the selected branch.
@@ -178,6 +191,20 @@ class RepositoryManager:
         :return: The current commit hash.
         """
         return os.popen(f"cd {self._path};git rev-parse HEAD").read().strip("\n")
+
+    def get_branch_date(self) -> str:
+        """
+        Gets the date of the current branch commit
+        :return: The date of the current branch commit
+        """
+        return os.popen(f"cd {self._path};git show -s --format=%cd --date=iso").read().strip("\n")
+
+    def get_num_commits_between_commits(self, old_commit: str, new_commit: str) -> int:
+        """
+        Gets the number of commits between two commit hashes
+        :return: Number of commits between two commit hashes
+        """
+        return os.system(f"cd {self._path};git rev-list --ancestry-path {old_commit}..{new_commit}")
 
     def get_branch(self) -> str:
         """
