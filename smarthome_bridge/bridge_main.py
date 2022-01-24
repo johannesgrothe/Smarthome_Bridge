@@ -1,6 +1,8 @@
 import os
 import sys
 
+from system.utils.software_version import SoftwareVersion
+
 sys.path.append(os.getcwd())
 import logging
 import argparse
@@ -93,7 +95,7 @@ def main():
                                                   0,
                                                   1,
                                                   1),
-                                   Characteristic(CharacteristicIdentifier.fanSpeed,
+                                   Characteristic(CharacteristicIdentifier.fan_speed,
                                                   0,
                                                   100,
                                                   4))
@@ -108,7 +110,8 @@ def main():
                         software_commit="2938479384",
                         software_branch="spongo",
                         port_mapping={},
-                        boot_mode=1)
+                        boot_mode=1,
+                        api_version=SoftwareVersion(0, 0, 1))
         bridge.get_client_manager().add_client(client)
 
     while True:
