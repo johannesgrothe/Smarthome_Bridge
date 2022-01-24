@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from logging_interface import LoggingInterface
 from datetime import datetime
 
@@ -156,21 +158,20 @@ class ApiEncoder(LoggingInterface):
                 "pipenv_version": None}
 
     @staticmethod
-    def encode_bridge_update_info(update_info=(bool, str, str, str, str, str, str, int)) -> dict:
+    def encode_bridge_update_info(update_info: Tuple[str, str, str, str, str, int]) -> dict:
         """
         Serializes bridge information according to api specification
 
         :param update_info: bridge update information
         :return:
         """
-        return {"update_available": update_info[0],
-                "current_commit_hash": update_info[1],
-                "new_commit_hash": update_info[2],
-                "current_branch_name": update_info[3],
-                "new_branch_name": update_info[4],
-                "current_branch_release_date": update_info[5],
-                "new_branch_release_date": update_info[6],
-                "num_commits_between_branches": update_info[7]}
+        curr_hash, new_hash, branch_name, curr_date, new_date, num_commits = update_info
+        return {"current_commit_hash": curr_hash,
+                "new_commit_hash": new_hash,
+                "current_branch_name": branch_name,
+                "current_branch_release_date": curr_date,
+                "new_branch_release_date": new_date,
+                "num_commits_between_branches": num_commits}
 
     def encode_all_gadgets_info(self, gadget_info: list[Gadget]) -> dict:
         gadget_data = []

@@ -87,7 +87,7 @@ class RepositoryManager(LoggingInterface):
 
     def set_safety(self, safe_mode: bool):
         """
-        By default, the manager can only delete repositories inside of its parent scripts working directory.\n
+        By default, the manager can only delete repositories in its parent scripts working directory.\n
         Setting this to 'False' allows the Manager to delete Folders everywhere on the disk.\n
         Beware you could delete your whole hard disk by messing this up.
         """
@@ -194,12 +194,13 @@ class RepositoryManager(LoggingInterface):
             raise RepositoryPullException()
         self._logger.info("Pulling from remote repository was successful")
 
-    def get_commit_hash(self) -> str:
+    def get_commit_hash(self, branch: str = "HEAD") -> str:
         """
         Gets the current git commit hash.
+        :param branch: The branch to get the commit hash for. defaults to HEAD
         :return: The current commit hash.
         """
-        return os.popen(f"cd {self._path};git rev-parse HEAD").read().strip("\n")
+        return os.popen(f"cd {self._path};git rev-parse {branch}").read().strip("\n")
 
     def get_branch_date(self) -> str:
         """
@@ -227,3 +228,17 @@ class RepositoryManager(LoggingInterface):
         if len(branch_list) != 1:
             raise RepositoryStatusException()
         return branch_list[0]
+
+    def get_remote_branch(self) -> str:
+        """
+        Gets the remote branch associated with the current local branch.
+        :return: The current remote branch.
+        """
+        branch_list = [x.strip().strip("*").strip()
+                       for x
+                       in os.popen(f"cd {self._path};git branch -vv").read().strip("\n").split("\n")
+                       if x.strip().startswith("*")]
+        if len(branch_list) != 1:
+            raise RepositoryStatusException()
+        data = [x for x in branch_list[0].split(" ") if x]
+        return data[2].split(": ")[0]

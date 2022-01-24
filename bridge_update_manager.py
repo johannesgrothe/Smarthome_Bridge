@@ -1,10 +1,8 @@
-import os
 import sys
-from typing import Optional, Tuple, Union
+from typing import Tuple
 
 from logging_interface import LoggingInterface
-from repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException, \
-    RepositoryCloneException
+from repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException
 
 
 class UpdateNotSuccessfulException(Exception):
@@ -25,9 +23,6 @@ class UpdateNotPossibleException(Exception):
 class BridgeUpdateManager(LoggingInterface):
     _repo_manager: RepositoryManager
     _bridge_path: str
-    _current_commit_hash: str
-    _current_branch_name: str
-    _current_commit_date: str
 
     def __init__(self, base_path: str):
         """
@@ -45,10 +40,8 @@ class BridgeUpdateManager(LoggingInterface):
             self._repo_manager.init_repository(force_reset=False, reclone_on_error=False)
         except (RepositoryFetchException, RepositoryStatusException):
             raise UpdateNotPossibleException
-        self._current_commit_date = self._repo_manager.get_branch_date()
-        self._current_commit_hash = self._repo_manager.get_commit_hash()
 
-    def check_for_update(self) -> Union[None, tuple[bool, str, str, str, str, str, str, int]]:
+    def check_for_update(self) -> Tuple[str, str, str, str, str, int]:
         """
         Checks specified remote for newer version, returns information about remote if newer version exists
 
@@ -56,23 +49,21 @@ class BridgeUpdateManager(LoggingInterface):
         :raises UpdateNotPossibleException: If no updates can be performed on this bridge instance
         :raises NoUpdateAvailableException: If no updates is available
         """
+        current_hash = self._repo_manager.get_commit_hash()
+        current_date = self._repo_manager.get_branch_date()
         try:
             self._repo_manager.fetch_from()
+            remote_hash = self._repo_manager.get_commit_hash(self._repo_manager.get_remote_branch())
         except RepositoryFetchException:
             raise UpdateNotPossibleException
-        if self._current_commit_hash == self._repo_manager.get_commit_hash():
+        if current_hash == remote_hash:
             raise NoUpdateAvailableException
-        return self._get_update_info(True)
-
-    def _get_update_info(self, update_available: bool) -> tuple[bool, str, str, str, str, str, str, int]:
-        return update_available, \
-               self._current_commit_hash, \
-               self._repo_manager.get_commit_hash(), \
-               self._current_branch_name, \
-               self._repo_manager.get_branch(), \
-               self._current_commit_date, \
-               self._repo_manager.get_branch_date(), \
-               self._repo_manager.get_num_commits_between_commits()
+        return (current_hash,
+                remote_hash,
+                self._repo_manager.get_branch(),
+                current_date,
+                current_date,  # TODO: doesn't work
+                self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash))
 
     def execute_update(self):
         """
