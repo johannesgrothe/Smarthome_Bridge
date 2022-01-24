@@ -3,6 +3,8 @@ import os
 import logging
 from typing import Optional
 
+from logging_interface import LoggingInterface
+
 
 class RepositoryUnsafeToDeleteException(Exception):
     def __init__(self, path):
@@ -34,7 +36,7 @@ class RepositoryPullException(Exception):
         super().__init__(f"Pulling repository failed.")
 
 
-class RepositoryManager:
+class RepositoryManager(LoggingInterface):
     """
     Class that allows for management of a git repository
     """
@@ -52,6 +54,7 @@ class RepositoryManager:
         :param repository_name: The name of the folder the repository exists or should be created in
         :param remote_url: The remote url the repository should be cloned from if needed
         """
+        super().__init__()
         self._safe_mode = False
         self._base_path = os.path.abspath(base_path)
         self._repo_name = repository_name
@@ -60,7 +63,6 @@ class RepositoryManager:
         else:
             self._path = self._base_path
         self._remote_url = remote_url
-        self._logger = logging.getLogger("RepositoryManager")
 
     def _exec_git_command(self, command: str) -> bool:
         """
@@ -68,7 +70,9 @@ class RepositoryManager:
         :param command: The command to execute
         :return: True if return code of command is 0
         """
-        return os.system(f"cd {self._path};{command}") == 0
+        command = f"cd {self._path};{command}"
+        self._logger.debug(f"Executing '{command}'")
+        return os.system(command) == 0
 
     def _dir_is_safe_to_delete(self) -> bool:
         """
@@ -117,14 +121,15 @@ class RepositoryManager:
                 self.delete_folder()
         else:
             if os.path.isdir(self._path):
-                repo_clean = os.system(f"cd {self._path};git diff --quiet") == 0
+                repo_clean = self._exec_git_command("git diff --quiet")
                 repo_works = repo_clean
 
         if not repo_works:
-            self._logger.info(f"Repo doesn't exist or is broken, deleting dir"
-                              f"and cloning repository from '{self._remote_url}'")
             if not reclone_on_error:
                 raise RepositoryStatusException
+
+            self._logger.info(f"Repo doesn't exist or is broken, deleting dir"
+                              f"and cloning repository from '{self._remote_url}'")
 
             if os.path.isdir(self._path):
                 self.delete_folder()

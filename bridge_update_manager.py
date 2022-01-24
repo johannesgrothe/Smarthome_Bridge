@@ -1,5 +1,7 @@
 import os
 from typing import Optional, Tuple, Union
+
+from logging_interface import LoggingInterface
 from repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException, \
     RepositoryCloneException
 
@@ -19,21 +21,23 @@ class UpdateNotPossibleException(Exception):
         super().__init__("Update not possible")
 
 
-class BridgeUpdateManager:
+class BridgeUpdateManager(LoggingInterface):
     _repo_manager: RepositoryManager
-    _current_remote: str
+    _bridge_path: str
     _current_commit_hash: str
     _current_branch_name: str
     _current_commit_date: str
 
-    def __init__(self, remote: str):
+    def __init__(self, base_path: str):
         """
         Initializes the BridgeUpdateManager
 
-        :param remote: The currently configured remote the bridge is running on
+        :param base_path: The path to the bridge software to update
         """
-        self._current_remote = remote
-        self._repo_manager = RepositoryManager(self._current_remote, None)
+        super().__init__()
+        self._bridge_path = base_path
+        self._logger.info(f"Creating Bridge update manager for bridge at '{self._bridge_path}'")
+        self._repo_manager = RepositoryManager(self._bridge_path, None)
         try:
             self._current_branch_name = self._repo_manager.get_branch()
             self._repo_manager.init_repository(force_reset=False, reclone_on_error=False)
