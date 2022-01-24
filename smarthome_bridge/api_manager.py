@@ -19,7 +19,8 @@ from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from system.api_definitions import ApiURIs
 from clients.client_controller import ClientController, ClientRebootError
 
-from bridge_update_manager import BridgeUpdateManager
+from bridge_update_manager import BridgeUpdateManager, UpdateNotPossibleException, NoUpdateAvailableException, \
+    UpdateNotSuccessfulException
 
 
 class UnknownClientException(Exception):
@@ -457,12 +458,16 @@ class ApiManager(Subscriber, LoggingInterface):
             return
 
         encoder = ApiEncoder()
-        bridge_meta = self._bridge_update.check_for_update()
-        if bridge_meta[0] is not None:
+        try:
+            bridge_meta = self._bridge_update.check_for_update()
+        except UpdateNotPossibleException:
+            self._respond_with_error(req, "UpdateNotPossibleException", "bridge could not be updated")
+        except NoUpdateAvailableException:
+            self._respond_with_status(req, True, "Bridge is up to date")
+        else:
             payload = encoder.encode_bridge_update_info(bridge_meta)
             req.respond(payload)
             return
-        self._respond_with_status(req, True, "Bridge is up to date")
 
     def _handle_bridge_update(self, req: Request):
         """
@@ -478,4 +483,10 @@ class ApiManager(Subscriber, LoggingInterface):
                                      f"Request validation error at {ApiURIs.bridge_update_execute.value}")
             return
 
-        self._bridge_update.execute_update()
+        try:
+            self._bridge_update.execute_update()
+        except UpdateNotSuccessfulException:
+            self._respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")
+            return
+        self._respond_with_status(req, True, "Update was successful, rebooting system now...")
+        self._bridge_update.reboot()
