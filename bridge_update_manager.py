@@ -35,7 +35,6 @@ class BridgeUpdateManager:
         self._current_remote = remote
         self._repo_manager = RepositoryManager(self._current_remote, None)
         try:
-            self._repo_manager.init_repository(force_reset=False)
             self._current_branch_name = self._repo_manager.get_branch()
         except (RepositoryFetchException, RepositoryStatusException, RepositoryCloneException):
             raise UpdateNotPossibleException
