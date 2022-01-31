@@ -139,13 +139,20 @@ def test_characteristic_set_step_value(characteristic: Characteristic):
     assert characteristic.get_true_value() == C_STEP_VAL_OK1_TRUE
     assert characteristic.get_percentage_value() == C_STEP_VAL_OK1_PERCENTAGE
 
-    characteristic.set_step_value(C_STEP_VAL_OK2)
+    # Test maximal step value
+    characteristic.set_step_value(C_STEPS)
+    assert characteristic.get_step_value() == C_STEPS
+    assert characteristic.get_true_value() == C_MAX
+    assert characteristic.get_percentage_value() == 100
 
-    assert characteristic.get_step_value() == C_STEP_VAL_OK2
-
-    status = characteristic.set_step_value(C_STEP_VAL_OK2)
-
+    status = characteristic.set_step_value(C_STEPS)
     assert status is False
+
+    # Test minimal step value
+    characteristic.set_step_value(0)
+    assert characteristic.get_step_value() == 0
+    assert characteristic.get_true_value() == C_MIN
+    assert characteristic.get_percentage_value() == 0
 
 
 @pytest.mark.bridge

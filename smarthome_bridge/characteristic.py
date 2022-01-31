@@ -52,7 +52,7 @@ class Characteristic(object):
         if value is not None:
             self._val = value
         else:
-            self._val = self._min
+            self._val = 0
 
     def __eq__(self, other):
         """
@@ -161,7 +161,7 @@ class Characteristic(object):
         :return: The true value of the characteristic between {min} and {max}
         """
         step_size = (self._max - self._min) // self._steps
-        return self._val * step_size
+        return self._min + self._val * step_size
 
     def get_step_value(self) -> int:
         """
