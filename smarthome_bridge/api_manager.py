@@ -37,8 +37,6 @@ class ApiManager(Subscriber, LoggingInterface):
 
     _gadget_sync_connection: Optional[str]
 
-    _bridge_update: BridgeUpdateManager
-
     def __init__(self, delegate: ApiManagerDelegate, network: NetworkManager):
         super().__init__()
         self._delegate = delegate
@@ -46,7 +44,6 @@ class ApiManager(Subscriber, LoggingInterface):
         self._network.subscribe(self)
         self._validator = Validator()
         self._gadget_sync_connection = None
-        self._bridge_update = BridgeUpdateManager(os.getcwd())
 
     def __del__(self):
         pass
@@ -459,7 +456,8 @@ class ApiManager(Subscriber, LoggingInterface):
 
         encoder = ApiEncoder()
         try:
-            bridge_meta = self._bridge_update.check_for_update()
+            updater = BridgeUpdateManager(os.getcwd())
+            bridge_meta = updater.check_for_update()
         except UpdateNotPossibleException:
             self._respond_with_error(req, "UpdateNotPossibleException", "bridge could not be updated")
         except NoUpdateAvailableException:
@@ -484,9 +482,9 @@ class ApiManager(Subscriber, LoggingInterface):
             return
 
         try:
-            self._bridge_update.execute_update()
+            updater = BridgeUpdateManager(os.getcwd())
+            updater.execute_update()
+            self._respond_with_status(req, True, "Update was successful, rebooting system now...")
+            updater.reboot()
         except UpdateNotSuccessfulException:
             self._respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")
-            return
-        self._respond_with_status(req, True, "Update was successful, rebooting system now...")
-        self._bridge_update.reboot()

@@ -1,7 +1,8 @@
-import os
-from typing import Optional, Tuple, Union
-from repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException, \
-    RepositoryCloneException
+import sys
+from typing import Tuple
+
+from logging_interface import LoggingInterface
+from repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException
 
 
 class UpdateNotSuccessfulException(Exception):
@@ -19,57 +20,57 @@ class UpdateNotPossibleException(Exception):
         super().__init__("Update not possible")
 
 
-class BridgeUpdateManager:
+class BridgeUpdateManager(LoggingInterface):
     _repo_manager: RepositoryManager
-    _current_remote: str
-    _current_commit_hash: str
-    _current_branch_name: str
-    _current_commit_date: str
+    _bridge_path: str
 
-    def __init__(self, remote: str):
+    def __init__(self, base_path: str):
         """
         Initializes the BridgeUpdateManager
 
-        :param remote: The currently configured remote the bridge is running on
+        :param base_path: The path to the bridge software to update
+        :raises UpdateNotPossibleException: If no updates can be performed on this bridge instance
         """
-        self._current_remote = remote
-        self._repo_manager = RepositoryManager(self._current_remote, None)
+        super().__init__()
+        self._bridge_path = base_path
+        self._logger.info(f"Creating Bridge update manager for bridge at '{self._bridge_path}'")
+        self._repo_manager = RepositoryManager(self._bridge_path, None)
         try:
             self._current_branch_name = self._repo_manager.get_branch()
-        except (RepositoryFetchException, RepositoryStatusException, RepositoryCloneException):
+            self._repo_manager.init_repository(force_reset=False, reclone_on_error=False)
+        except (RepositoryFetchException, RepositoryStatusException):
             raise UpdateNotPossibleException
-        self._current_commit_date = self._repo_manager.get_branch_date()
-        self._current_commit_hash = self._repo_manager.get_commit_hash()
 
-    def check_for_update(self) -> Union[None, tuple[bool, str, str, str, str, str, str, int]]:
+    def check_for_update(self) -> Tuple[str, str, str, str, str, int]:
         """
         Checks specified remote for newer version, returns information about remote if newer version exists
 
         :return: info about the remote, if newer version found, otherwise None
+        :raises UpdateNotPossibleException: If no updates can be performed on this bridge instance
+        :raises NoUpdateAvailableException: If no updates is available
         """
+        current_hash = self._repo_manager.get_commit_hash()
+        current_date = self._repo_manager.get_branch_date()
         try:
             self._repo_manager.fetch_from()
+            remote_hash = self._repo_manager.get_commit_hash(self._repo_manager.get_remote_branch())
         except RepositoryFetchException:
             raise UpdateNotPossibleException
-        if self._current_commit_hash == self._repo_manager.get_commit_hash():
+        if current_hash == remote_hash:
             raise NoUpdateAvailableException
-        return self._get_update_info(True)
-
-    def _get_update_info(self, update_available: bool) -> tuple[bool, str, str, str, str, str, str, int]:
-        return update_available, \
-               self._current_commit_hash, \
-               self._repo_manager.get_commit_hash(), \
-               self._current_branch_name, \
-               self._repo_manager.get_branch(), \
-               self._current_commit_date, \
-               self._repo_manager.get_branch_date(), \
-               self._repo_manager.get_num_commits_between_commits()
+        return (current_hash,
+                remote_hash,
+                self._repo_manager.get_branch(),
+                current_date,
+                current_date,  # TODO: doesn't work
+                self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash))
 
     def execute_update(self):
         """
         Updates the bridge
 
         :return: None
+        :raises UpdateNotSuccessfulException: If the updating process failed for any reason
         """
         update_successful = self._repo_manager.pull()
         if not update_successful:
@@ -82,4 +83,4 @@ class BridgeUpdateManager:
 
         :return: None
         """
-        os.system("sys.exit(0)")
+        sys.exit(0)

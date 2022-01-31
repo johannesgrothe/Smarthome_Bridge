@@ -46,12 +46,17 @@ class ChipFlasher:
         self._max_delay = max_delay
         self._logger = logging.getLogger("ChipFlasher")
         self._locker = None
+        if not os.path.isdir(_repo_base_path):
+            if os.path.isfile(_repo_base_path):
+                raise Exception("Repository target path is a file")
+            self._logger.info(f"Creating directory '{_repo_base_path}' in '{os.getcwd()}'")
+            os.mkdir(_repo_base_path)
 
     def upload_software(self, branch: str, upload_port: Optional[str] = None, clone_new_repository: bool = False):
         with RepoLocker(_repo_base_path, self._max_delay) as self._locker:
             repo_manager = repository_manager.RepositoryManager(_repo_base_path, repo_name, repo_url)
             try:
-                repo_manager.init_repository(force_reset=clone_new_repository)
+                repo_manager.init_repository(force_reset=clone_new_repository, reclone_on_error=True)
                 self._callback(_cloning_ok_code, "Cloning ok.")
             except repository_manager.RepositoryCloneException:
                 self._callback(_cloning_fail_code, "Cloning failed.")

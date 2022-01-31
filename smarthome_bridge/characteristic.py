@@ -52,7 +52,7 @@ class Characteristic(object):
         if value is not None:
             self._val = value
         else:
-            self._val = self._min
+            self._val = 0
 
     def __eq__(self, other):
         """
@@ -107,8 +107,7 @@ class Characteristic(object):
             raise CharacteristicUpdateError(f"Could not set characteristic: value {value} is"
                                             f"not between {self._min} and {self._max}")
 
-        percentage_value = self._get_percentage_value(value)
-        step_value = self._get_step_from_percentage(percentage_value)
+        step_value = self._get_step_from_true(value)
 
         if self._val == step_value:
             return False
@@ -130,6 +129,11 @@ class Characteristic(object):
         for index, step in enumerate(step_list):
             if step == closest_step:
                 return index
+
+    def _get_step_from_true(self, true_value: int) -> int:
+        step_size = (self._max - self._min) // self._steps
+        n_val = true_value - self._min
+        return n_val // step_size
 
     def _get_true_value_from_percentage(self, percentage: int) -> int:
         return self._min + round((self._max - self._min) / 100 * percentage)
@@ -156,7 +160,8 @@ class Characteristic(object):
         """
         :return: The true value of the characteristic between {min} and {max}
         """
-        return self._get_true_value_from_percentage(self.get_percentage_value())
+        step_size = (self._max - self._min) // self._steps
+        return self._min + self._val * step_size
 
     def get_step_value(self) -> int:
         """
