@@ -1,7 +1,10 @@
+import datetime
+import threading
 from typing import Optional
+from copy import deepcopy
 
 from system.gadget_definitions import CharacteristicIdentifier
-from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
+from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError, \
     GadgetUpdateError, GadgetCreationError
 from gadgets.gadget import Gadget
 from gadgets.any_gadget import AnyGadget
@@ -9,27 +12,70 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
     CharacteristicParsingError
 from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from gadget_publishers.homebridge_decoder import HomebridgeDecoder
-from copy import deepcopy
-
+from thread_manager import ThreadManager
 
 # https://www.npmjs.com/package/homebridge-mqtt
 # https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/ServiceDefinitions.ts
 # https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/CharacteristicDefinitions.ts
-from smarthome_bridge.gadget_update_information import GadgetUpdateInformation
+
+
+# Time to store updated before forwarding them in ms
+_send_delay = 50
+
+
+class QueuedGadgetUpdate:
+    timestamp: datetime.datetime
+    gadget: Gadget
+
+    def __init__(self, timestamp: datetime.datetime, gadget: AnyGadget):
+        self.timestamp = timestamp
+        self.gadget = gadget
 
 
 class GadgetPublisherHomeBridge(GadgetPublisher):
-
     _network_connector: HomebridgeNetworkConnector
+    _queued_updates: list[QueuedGadgetUpdate]
+    _update_lock: threading.Lock
+    _thread_manager: ThreadManager
 
     def __init__(self, network_connector: HomebridgeNetworkConnector):
         super().__init__()
         self._network_connector = network_connector
+        self._queued_updates = []
+        self._update_lock = threading.Lock()
+        self._thread_manager = ThreadManager()
         self._network_connector.attach_characteristic_update_callback(self._parse_characteristic_update)
+        self._thread_manager.add_thread("Gadget Update Management", self._manage_queued_updates)
+        self._thread_manager.start_threads()
 
     def __del__(self):
         super().__del__()
         self._network_connector.__del__()
+        self._thread_manager.__del__()
+
+    def _manage_queued_updates(self):
+        now = datetime.datetime.now()
+        with self._update_lock:
+            for update in self._queued_updates:
+                if update.timestamp + datetime.timedelta(milliseconds=_send_delay) > now:
+                    self._publish_gadget_update(update.gadget)
+                    self._queued_updates.remove(update)
+                    return
+
+    def _add_update_to_queue(self, gadget: AnyGadget):
+        with self._update_lock:
+            new_gadget = gadget
+            for update in self._queued_updates:
+                if update.gadget.get_name() == gadget.get_name():
+                    gadget_cs = gadget.get_characteristics()
+                    new_c_types = [x.get_type() for x in gadget_cs]
+                    update_cs = update.gadget.get_characteristics()
+                    joined_characteristics = gadget_cs + [x for x in update_cs if x.get_type() not in new_c_types]
+                    new_gadget = AnyGadget(gadget.get_name(), gadget.get_host_client(), joined_characteristics)
+                    self._queued_updates.remove(update)
+                    break
+            new_entry = QueuedGadgetUpdate(datetime.datetime.now(), new_gadget)
+            self._queued_updates.append(new_entry)
 
     def remove_gadget(self, gadget_name: str):
         self._logger.info(f"Removing gadget '{gadget_name}' from external source")
@@ -72,7 +118,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                                "any",
                                [characteristic])
 
-        self._publish_gadget_update(out_gadget)
+        self._add_update_to_queue(out_gadget)
 
     @staticmethod
     def _gadget_needs_update(local_gadget: Gadget, fetched_gadget: Gadget):
