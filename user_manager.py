@@ -21,7 +21,7 @@ class NoPersistentUsersException(Exception):
         super().__init__("Congratz, you somehow managed to brick the with open statement.")
 
 
-def _create_user_dict(password: str, access_level: ApiAccessLevel) -> dict:
+def _create_user_dict(password: str, access_level: ApiAccessLevel, persistent: bool = False) -> dict:
     """
     Returns a usable dict consisting of user data and credentials
 
@@ -31,7 +31,8 @@ def _create_user_dict(password: str, access_level: ApiAccessLevel) -> dict:
     """
     return {
         "password": password,
-        "access_level": access_level.value
+        "access_level": access_level.value,
+        "persistent": persistent
     }
 
 
@@ -41,10 +42,10 @@ class UserManager(LoggingInterface):
 
     def __init__(self):
         super().__init__()
-        self._users = {}
         if not os.path.exists(f"{os.getcwd()}/bridge_data"):
             os.system("mkdir bridge_data")
-            self._persistent_user_path = f"{os.getcwd()}/bridge_data/"
+        self._persistent_user_path = f"{os.getcwd()}/bridge_data/persistent_users.json"
+        self._users = self.load_persistent_users()
 
     def add_user(self, username: str, password: str, access_level: ApiAccessLevel, persistent_user: bool):
         """
@@ -57,46 +58,51 @@ class UserManager(LoggingInterface):
         :raises UserAlreadyExistsException: if user already exists
         """
         # TODO: add hashing of password
-        if self.check_if_user_exists(username):
+        if persistent_user and self.check_if_user_exists(username):
             raise UserAlreadyExistsException(username)
 
-        if not persistent_user:
-            if len(self._users) == 0:
-                user = _create_user_dict(password, access_level)
-                self._users[username] = user
-            else:
-                new_user = _create_user_dict(password, access_level)
-                self._users[username] = new_user
-        else:
-            pers_user = _create_user_dict(password, access_level)
-            self._create_persistent_user(pers_user)
-            self._logger.info(f"Persistent user {username} was added successfully")
-        self._logger.info(f"User {username} added successfully, with access level {access_level.to_string()}")
+        user = _create_user_dict(password, access_level, persistent_user)
+        self._users[username] = user
+        self.save_persistent_users()
 
-    def _create_persistent_user(self, users: dict):
+        p = "Persistent" if persistent_user else "Non persistent"
+        self._logger.info(f"{p} user '{username}' added successfully, with access level {access_level.to_string()}")
+
+    def save_persistent_users(self):
         """
-        Adds a persistent user to persistent_users.json file
+        Saves users with the persistent flag set to true
 
         :return: None
         """
-        if not os.path.exists(self._persistent_user_path):
-            os.mkdir("bridge_data")
-        for file in os.listdir(self._persistent_user_path):
-            file_path = os.path.join(self._persistent_user_path, file)
-            if os.path.exists(file_path):
-                file_name = os.path.basename(file_path)
-                with open(file_name, 'r+') as f:
-                    file_data = json.load(f)
-                    file_data["users"].append(users)
-                    f.seek(0)
-                    json.dump(file_data, f, indent=2)
-            else:
-                with open(f"{self._persistent_user_path}/persistent_users.json", 'x') as f:
-                    json.dump(users, f, indent=2)
+        save = {"users": []}
+        for x, data in self._users.items():
+            if data["persistent"]:
+                user_meta = {"username": x, "password": data["password"], "access_level": data["access_level"]}
+                save["users"].append(user_meta)
+        with open(self._persistent_user_path, 'w') as f:
+            json.dump(save, f, indent=2)
+
+    def load_persistent_users(self) -> dict:
+        """
+        Loads persistent users from persistent_users.json into users dict
+
+        :return: Loaded user data
+        """
+        load = {}
+        try:
+            with open(self._persistent_user_path, 'r') as f:
+                pers_users = json.load(f)
+        except FileNotFoundError:
+            return load
+        for data in pers_users["users"]:
+            info = {"password": data["password"], "access_level": data["access_level"], "persistent": True}
+            load[data["username"]] = info
+        return load
 
     def delete_user(self, username: str):
         """
         Deletes a user from the system
+
         :param username: Username to be deleted
         :return: None
         """
@@ -105,6 +111,7 @@ class UserManager(LoggingInterface):
     def check_if_user_exists(self, username: str) -> bool:
         """
         Checks whether the specified user already exists
+
         :param username: Username to be checked
         :return: Whether user already exists or not
         """
@@ -120,6 +127,7 @@ class UserManager(LoggingInterface):
     def validate_credentials(self, username: str, password: str) -> bool:
         """
         Checks if given password is valid, for given username
+
         :param username: Username to check
         :param password: Password to validate
         :return: True, if password is valid

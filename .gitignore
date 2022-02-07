@@ -43,3 +43,4 @@ temp
 /tests_manual/
 /test_reports/
 .env
+bridge_data
