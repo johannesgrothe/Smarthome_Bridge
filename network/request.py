@@ -2,6 +2,7 @@
 from __future__ import annotations
 import random
 from typing import Optional, Callable, Tuple
+from network.auth_container import AuthContainer
 
 
 class NoClientResponseException(Exception):
@@ -25,7 +26,7 @@ class Request:
 
     _path: str
     _session_id: int
-    _credentials: Optional[Tuple[str, str]]
+    _auth: Optional[AuthContainer]
     _sender: str
     _receiver: Optional[str]
     _payload: dict
@@ -46,7 +47,7 @@ class Request:
             self._session_id = session_id
 
         self._path = path
-        self._credentials = None
+        self._auth = None
         self._sender = sender
         self._receiver = receiver
         self._payload = payload
@@ -120,13 +121,13 @@ class Request:
         """Returns the connection type of the request (the gadget that received this request)"""
         return self._connection_type
 
-    def get_credentials(self) -> Optional[Tuple[str, str]]:
+    def get_auth(self) -> Optional[AuthContainer]:
         """Returns the credentials contained in the request"""
-        return self._credentials
+        return self._auth
 
-    def set_credentials(self, username: str, password: str):
+    def set_auth(self, auth: AuthContainer):
         """Sets credentials of the request"""
-        self._credentials = (username, password)
+        self._auth = auth
 
 
 response_callback_type = Callable[[Request, dict, Optional[str]], None]

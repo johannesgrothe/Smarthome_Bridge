@@ -2,6 +2,7 @@ import os
 from typing import Optional, Callable
 
 from gadgets.any_gadget import AnyGadget
+from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
 from network.request import Request, NoClientResponseException
 from pubsub import Subscriber
 from json_validator import Validator, ValidationError
@@ -48,6 +49,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._network.subscribe(self)
         self._validator = Validator()
         self._gadget_sync_connection = None
+        self._auth_manager = None
 
     def __del__(self):
         pass
@@ -146,19 +148,34 @@ class ApiManager(Subscriber, LoggingInterface):
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
         if self._auth_manager is not None:
-            if req.get_credentials() is None:
+            if req.get_auth() is None:
                 self._respond_with_error(req, "NeAuthError", "The bridge only accepts requests based on privileges")
-            user, pwd = req.get_credentials()
+                return
+            auth = req.get_auth()
             try:
-                self._auth_manager.authenticate((user, pwd))
-                # TODO: handle illegal paths
-                self._auth_manager.check_path_access_level(user, ApiURIs.from_string(req.get_path()))
+                if isinstance(auth, CredentialsAuthContainer):
+                    self._auth_manager.authenticate(auth.username, auth.password)
+                    # TODO: handle illegal paths
+                    self._auth_manager.check_path_access_level_for_user(auth.username,
+                                                                        ApiURIs.from_string(req.get_path()))
+                elif isinstance(auth, SerialAuthContainer):
+                    self._auth_manager.check_path_access_level(ApiAccessLevel.admin,
+                                                               ApiURIs.from_string(req.get_path()))
+                elif isinstance(auth, MqttAuthContainer):
+                    self._auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
+                                                               ApiURIs.from_string(req.get_path()))
+                else:
+                    self._respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
+                    return
             except AuthenticationFailedException:
                 self._respond_with_error(req, "WrongAuthError", "illegal combination of username and password")
+                return
             except UserDoesNotExistException:
                 self._respond_with_error(req, "UserDoesntExistError", "User does not exist")
+                return
             except InsufficientAccessPrivilegeException:
                 self._respond_with_error(req, "AccessLevelError", "Insufficient privileges")
+                return
 
         switcher = {
             ApiURIs.heartbeat.value: self._handle_heartbeat,

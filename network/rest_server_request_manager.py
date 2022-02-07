@@ -1,8 +1,9 @@
 import random
 import time
-from typing import Optional
+from typing import Optional, Tuple
 from datetime import datetime, timedelta
 
+from network.auth_container import CredentialsAuthContainer, AuthContainer
 from network.request import Request, response_callback_type
 
 
@@ -20,14 +21,14 @@ class RestServerRequestManager:
     _request: Request
     _response: Optional[Request]
 
-    def __init__(self, hostname: str, path: str, payload: dict):
+    def __init__(self, hostname: str, path: str, payload: dict, auth: Optional[AuthContainer]):
         self._response = None
-        self._create_incoming_request(hostname, path, payload)
+        self._create_incoming_request(hostname, path, payload, auth)
 
     def __del__(self):
         pass
 
-    def _create_incoming_request(self, hostname: str, path: str, payload: dict):
+    def _create_incoming_request(self, hostname: str, path: str, payload: dict, auth: Optional[AuthContainer]):
         session_id = random.randint(0, 30000)
         sender = f"rest_client_{session_id}"
         self._request = Request(path=path,
@@ -35,6 +36,8 @@ class RestServerRequestManager:
                                 sender=sender,
                                 receiver=hostname,
                                 payload=payload)
+        if auth is not None:
+            self._request.set_auth(auth)
         self._request.set_callback_method(self._get_response_function())
 
     def _get_response_function(self) -> response_callback_type:
