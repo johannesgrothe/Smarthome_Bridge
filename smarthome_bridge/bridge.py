@@ -3,6 +3,7 @@ import os
 import threading
 from datetime import datetime
 
+from auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 from smarthome_bridge.network_manager import NetworkManager
@@ -15,6 +16,7 @@ from gadgets.gadget import Gadget
 from smarthome_bridge.client import Client
 from repository_manager import RepositoryManager
 from system_info_tools import SystemInfoTools
+from user_manager import UserManager
 
 
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
@@ -41,7 +43,8 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._gadget_manager = GadgetManager()
         self._gadget_sync_lock = threading.Lock()
         self._api = ApiManager(self, self._network_manager)
-
+        auth_manager = AuthManager(UserManager())
+        self._api.set_auth_manager(auth_manager)
         self._gadget_manager.subscribe(self)
 
     def __del__(self):

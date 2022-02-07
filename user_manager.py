@@ -121,7 +121,7 @@ class UserManager(LoggingInterface):
 
     def get_access_level(self, username: str) -> ApiAccessLevel:
         if not self.check_if_user_exists(username):
-            raise UserDoesNotExistException
+            raise UserDoesNotExistException(username)
         return self._users[username]["access_level"]
 
     def validate_credentials(self, username: str, password: str) -> bool:
@@ -133,5 +133,5 @@ class UserManager(LoggingInterface):
         :raises UserDoesNotExistException: if user does not exist
         """
         if not self.check_if_user_exists(username):
-            raise UserDoesNotExistException
+            raise UserDoesNotExistException(username)
         return self._users[username] == password

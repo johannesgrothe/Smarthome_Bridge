@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument('--api_port', help='Port for the REST-API', type=int)
     parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
     parser.add_argument('--serial_baudrate', help='Baudrate of the Serial Server', type=int)
+    parser.add_argument('--default_pw', help='create admin with default pw', type=str)
     args = parser.parse_args()
     return args
 
