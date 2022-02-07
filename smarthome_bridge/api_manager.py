@@ -40,7 +40,7 @@ class ApiManager(Subscriber, LoggingInterface):
 
     _gadget_sync_connection: Optional[str]
 
-    _auth_manager: Optional[AuthManager]
+    auth_manager: Optional[AuthManager]
 
     def __init__(self, delegate: ApiManagerDelegate, network: NetworkManager):
         super().__init__()
@@ -49,7 +49,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._network.subscribe(self)
         self._validator = Validator()
         self._gadget_sync_connection = None
-        self._auth_manager = None
+        self.auth_manager = None
 
     def __del__(self):
         pass
@@ -58,7 +58,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self._handle_request(req)
 
     def set_auth_manager(self, auth_manager: AuthManager):
-        self._auth_manager = auth_manager
+        self.auth_manager = auth_manager
 
     def request_sync(self, name: str):
         self._network.send_request(ApiURIs.sync_request.value, name, {}, 0)
@@ -147,23 +147,23 @@ class ApiManager(Subscriber, LoggingInterface):
 
     def _handle_request(self, req: Request):
         self._logger.info(f"Received Request at {req.get_path()}")
-        if self._auth_manager is not None:
+        if self.auth_manager is not None:
             if req.get_auth() is None:
                 self._respond_with_error(req, "NeAuthError", "The bridge only accepts requests based on privileges")
                 return
             auth = req.get_auth()
             try:
                 if isinstance(auth, CredentialsAuthContainer):
-                    self._auth_manager.authenticate(auth.username, auth.password)
+                    self.auth_manager.authenticate(auth.username, auth.password)
                     # TODO: handle illegal paths
-                    self._auth_manager.check_path_access_level_for_user(auth.username,
-                                                                        ApiURIs.from_string(req.get_path()))
+                    self.auth_manager.check_path_access_level_for_user(auth.username,
+                                                                       ApiURIs(req.get_path()))
                 elif isinstance(auth, SerialAuthContainer):
-                    self._auth_manager.check_path_access_level(ApiAccessLevel.admin,
-                                                               ApiURIs.from_string(req.get_path()))
+                    self.auth_manager.check_path_access_level(ApiAccessLevel.admin,
+                                                              ApiURIs(req.get_path()))
                 elif isinstance(auth, MqttAuthContainer):
-                    self._auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
-                                                               ApiURIs.from_string(req.get_path()))
+                    self.auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
+                                                              ApiURIs(req.get_path()))
                 else:
                     self._respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
                     return

@@ -21,24 +21,17 @@ class NoPersistentUsersException(Exception):
         super().__init__("Congratz, you somehow managed to brick the with open statement.")
 
 
-def _create_user_dict(username: str, password: str, access_level: ApiAccessLevel) \
-        -> set[list[dict[str, Union[ApiAccessLevel, str]]]]:
+def _create_user_dict(password: str, access_level: ApiAccessLevel) -> dict:
     """
     Returns a usable dict consisting of user data and credentials
 
-    :param username: Name of the user
     :param password: Password of the user
     :param access_level: Access level of the user
     :return: Dict containing user info
     """
     return {
-        [
-            {
-                "username": username,
-                "password": password,
-                "access_level": access_level
-            }
-        ]
+        "password": password,
+        "access_level": access_level.value
     }
 
 
@@ -69,18 +62,18 @@ class UserManager(LoggingInterface):
 
         if not persistent_user:
             if len(self._users) == 0:
-                user = _create_user_dict(username, password, access_level)
-                self._users["users"] = user
+                user = _create_user_dict(password, access_level)
+                self._users[username] = user
             else:
-                new_user = _create_user_dict(username, password, access_level)
-                self._users["users"].append(new_user)
+                new_user = _create_user_dict(password, access_level)
+                self._users[username] = new_user
         else:
-            pers_user = _create_user_dict(username, password, access_level)
+            pers_user = _create_user_dict(password, access_level)
             self._create_persistent_user(pers_user)
             self._logger.info(f"Persistent user {username} was added successfully")
         self._logger.info(f"User {username} added successfully, with access level {access_level.to_string()}")
 
-    def _create_persistent_user(self, users: set[list[dict[str, Union[ApiAccessLevel, str]]]]):
+    def _create_persistent_user(self, users: dict):
         """
         Adds a persistent user to persistent_users.json file
 
@@ -134,4 +127,4 @@ class UserManager(LoggingInterface):
         """
         if not self.check_if_user_exists(username):
             raise UserDoesNotExistException(username)
-        return self._users[username] == password
+        return self._users[username]["password"] == password

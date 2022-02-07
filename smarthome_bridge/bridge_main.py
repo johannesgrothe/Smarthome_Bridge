@@ -1,6 +1,7 @@
 import os
 import sys
 
+from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 
 sys.path.append(os.getcwd())
@@ -81,6 +82,12 @@ def main():
         hb_network = HomebridgeNetworkConnector(bridge_name, mqtt_credentials, 3)
         hb_publisher = GadgetPublisherHomeBridge(hb_network)
         bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
+
+    if args.default_pw:
+        bridge.api.auth_manager.user_manager.add_user(username="admin",
+                                                      password=args.default_pw,
+                                                      access_level=ApiAccessLevel.admin,
+                                                      persistent_user=False)
 
     # Insert dummy data if wanted
     if args.dummy_data:
