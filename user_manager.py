@@ -1,6 +1,5 @@
-from typing import Tuple, Set, List, Dict, Union
 from logging_interface import LoggingInterface
-from system.api_definitions import ApiAccessLevel, ApiAccessLevelMapping
+from system.api_definitions import ApiAccessLevel
 import json
 
 import os
@@ -19,6 +18,11 @@ class UserDoesNotExistException(Exception):
 class NoPersistentUsersException(Exception):
     def __init__(self):
         super().__init__("Congratz, you somehow managed to brick the with open statement.")
+
+
+class DeletionNotPossibleException:
+    def __init__(self, username):
+        super().__init__(f"User {username}, could not be deleted.")
 
 
 def _create_user_dict(password: str, access_level: ApiAccessLevel, persistent: bool = False) -> dict:
@@ -45,7 +49,7 @@ class UserManager(LoggingInterface):
         if not os.path.exists(f"{os.getcwd()}/bridge_data"):
             os.system("mkdir bridge_data")
         self._persistent_user_path = f"{os.getcwd()}/bridge_data/persistent_users.json"
-        self._users = self.load_persistent_users()
+        self._users = self._load_persistent_users()
 
     def add_user(self, username: str, password: str, access_level: ApiAccessLevel, persistent_user: bool):
         """
@@ -82,7 +86,7 @@ class UserManager(LoggingInterface):
         with open(self._persistent_user_path, 'w') as f:
             json.dump(save, f, indent=2)
 
-    def load_persistent_users(self) -> dict:
+    def _load_persistent_users(self) -> dict:
         """
         Loads persistent users from persistent_users.json into users dict
 
@@ -106,7 +110,13 @@ class UserManager(LoggingInterface):
         :param username: Username to be deleted
         :return: None
         """
-        # TODO: delete user and credentials
+        persistent = self._users[username]["persistent"]
+        if username not in self._users:
+            raise UserDoesNotExistException
+        if not persistent:
+            raise DeletionNotPossibleException
+        del self._users[username]
+        self.save_persistent_users()
 
     def check_if_user_exists(self, username: str) -> bool:
         """
