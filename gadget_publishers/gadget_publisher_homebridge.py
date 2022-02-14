@@ -20,12 +20,12 @@ from thread_manager import ThreadManager
 
 
 # Time to store updated before forwarding them in ms
-_send_delay = 50
+_send_delay = 100
 
 
 class QueuedGadgetUpdate:
     timestamp: datetime.datetime
-    gadget: Gadget
+    gadget: AnyGadget
 
     def __init__(self, timestamp: datetime.datetime, gadget: AnyGadget):
         self.timestamp = timestamp
@@ -55,12 +55,15 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
 
     def _manage_queued_updates(self):
         now = datetime.datetime.now()
+        outgoing_update = None
         with self._update_lock:
             for update in self._queued_updates:
                 if update.timestamp + datetime.timedelta(milliseconds=_send_delay) > now:
-                    self._publish_gadget_update(update.gadget)
+                    outgoing_update = update.gadget
                     self._queued_updates.remove(update)
-                    return
+                    break
+        if outgoing_update is not None:
+            self._publish_gadget_update(outgoing_update)
 
     def _add_update_to_queue(self, gadget: AnyGadget):
         with self._update_lock:

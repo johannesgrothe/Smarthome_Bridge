@@ -53,6 +53,7 @@ def publisher_network(homebridge_network: HomebridgeNetworkConnector, gadget: Fa
         connector.remove_gadget(gadget.get_name())
     except GadgetDeletionError:
         pass
+    connector.__del__()
 
 
 @pytest.mark.network
