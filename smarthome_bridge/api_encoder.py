@@ -152,10 +152,10 @@ class ApiEncoder(LoggingInterface):
                 "software_commit": bridge_info.git_commit,
                 "software_branch": bridge_info.git_branch,
                 "running_since": datetime.strftime(bridge_info.running_since, DATETIME_FORMAT),
-                "platformio_version": None,
-                "git_version": None,
-                "python_version": None,
-                "pipenv_version": None}
+                "platformio_version": bridge_info.pio_version,
+                "git_version": bridge_info.git_version,
+                "python_version": bridge_info.python_version,
+                "pipenv_version": bridge_info.pipenv_version}
 
     @staticmethod
     def encode_bridge_update_info(update_info: Tuple[str, str, str, str, str, int]) -> dict:
