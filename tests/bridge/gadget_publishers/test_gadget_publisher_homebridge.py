@@ -21,7 +21,7 @@ def gadget():
                                               0,
                                               1,
                                               1),
-                               Characteristic(CharacteristicIdentifier.fanSpeed,
+                               Characteristic(CharacteristicIdentifier.fan_speed,
                                               0,
                                               100,
                                               4))
@@ -68,7 +68,7 @@ def test_gadget_publisher_homebridge_network(publisher_network: GadgetPublisherH
 
     publisher_network.remove_gadget(gadget.get_name())
 
-    fan_speed = gadget.get_characteristic(CharacteristicIdentifier.fanSpeed)
+    fan_speed = gadget.get_characteristic(CharacteristicIdentifier.fan_speed)
     fan_speed.set_step_value(2)
 
     publisher_network.receive_gadget(gadget)
