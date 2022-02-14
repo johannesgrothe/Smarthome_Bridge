@@ -1,7 +1,8 @@
 """Module to contain the request class"""
 from __future__ import annotations
 import random
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
+from network.auth_container import AuthContainer
 
 
 class NoClientResponseException(Exception):
@@ -25,6 +26,7 @@ class Request:
 
     _path: str
     _session_id: int
+    _auth: Optional[AuthContainer]
     _sender: str
     _receiver: Optional[str]
     _payload: dict
@@ -45,6 +47,7 @@ class Request:
             self._session_id = session_id
 
         self._path = path
+        self._auth = None
         self._sender = sender
         self._receiver = receiver
         self._payload = payload
@@ -92,6 +95,7 @@ class Request:
         """Return the body"""
 
         return {"session_id": self._session_id,
+                "credentials": self._credentials,
                 "sender": self._sender,
                 "receiver": self._receiver,
                 "payload": self._payload}
@@ -116,6 +120,14 @@ class Request:
     def get_connection_type(self) -> Optional[str]:
         """Returns the connection type of the request (the gadget that received this request)"""
         return self._connection_type
+
+    def get_auth(self) -> Optional[AuthContainer]:
+        """Returns the credentials contained in the request"""
+        return self._auth
+
+    def set_auth(self, auth: AuthContainer):
+        """Sets credentials of the request"""
+        self._auth = auth
 
 
 response_callback_type = Callable[[Request, dict, Optional[str]], None]

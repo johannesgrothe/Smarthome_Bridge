@@ -1,6 +1,7 @@
 import os
 import sys
 
+from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 
 sys.path.append(os.getcwd())
@@ -36,6 +37,7 @@ def parse_args():
     parser.add_argument('--api_port', help='Port for the REST-API', type=int)
     parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
     parser.add_argument('--serial_baudrate', help='Baudrate of the Serial Server', type=int)
+    parser.add_argument('--default_pw', help='create admin with default pw', type=str)
     args = parser.parse_args()
     return args
 
@@ -80,6 +82,12 @@ def main():
         hb_network = HomebridgeNetworkConnector(bridge_name, mqtt_credentials, 3)
         hb_publisher = GadgetPublisherHomeBridge(hb_network)
         bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
+
+    if args.default_pw:
+        bridge.api.auth_manager.user_manager.add_user(username="admin",
+                                                      password=args.default_pw,
+                                                      access_level=ApiAccessLevel.admin,
+                                                      persistent_user=False)
 
     # Insert dummy data if wanted
     if args.dummy_data:

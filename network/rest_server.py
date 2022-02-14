@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
@@ -6,6 +6,7 @@ from multiprocessing import Process
 from werkzeug.serving import make_server
 import threading
 
+from network.auth_container import CredentialsAuthContainer
 from network.network_server import NetworkServer
 from network.rest_server_request_manager import RestServerRequestManager, NoResponseReceivedError
 
@@ -70,7 +71,8 @@ class RestServer(NetworkServer):
 
     def _generate_get_method(self, path: str) -> Callable[[], Response]:
         def method():
-            response_manager = RestServerRequestManager(self.get_hostname(), path, {})
+            auth = self._extract_credentials_method()
+            response_manager = RestServerRequestManager(self.get_hostname(), path, {}, auth)
             self._publish(response_manager.get_request())
             try:
                 response_req = response_manager.await_response()
@@ -82,12 +84,24 @@ class RestServer(NetworkServer):
 
     def _generate_update_method(self, path: str) -> Callable[[], Response]:
         def method():
+            auth = self._extract_credentials_method()
             payload = request.json
-            response_manager = RestServerRequestManager(self.get_hostname(), path, payload)
+            response_manager = RestServerRequestManager(self.get_hostname(), path, payload, auth)
             self._publish(response_manager.get_request())
             return self._generate_response({}, 200)
 
         return method
+
+    @staticmethod
+    def _extract_credentials_method() -> Optional[CredentialsAuthContainer]:
+        auth = request.authorization
+        if not auth:
+            return None
+        user = auth.get("username")
+        pw = auth.get("password")
+        if not user or not pw:
+            return None
+        return CredentialsAuthContainer(user, pw)
 
     def _create_api(self):
         self._logger.info("Launching API")
