@@ -58,7 +58,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
         Returns information about all the clients
 
-        :return: All of the saved clients
+        :return: All the saved clients
         """
 
     @abstractmethod
@@ -66,5 +66,5 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
         Returns information about all the gadgets
 
-        :return: All of the saved gadgets
+        :return: All the saved gadgets
         """

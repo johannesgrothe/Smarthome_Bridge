@@ -22,8 +22,6 @@ from user_manager import UserManager
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     _logger: logging.Logger
-    _name: str
-    _running_since: datetime
 
     _network_manager: NetworkManager
     _client_manager: ClientManager
@@ -31,12 +29,11 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     api: ApiManager
 
     _gadget_sync_lock: threading.Lock
+    _bridge_info: BridgeInformationContainer
 
     def __init__(self, name: str):
         super().__init__()
-        self._name = name
-        self._running_since = datetime.now()
-        self._logger = logging.getLogger(f"Bridge[{self._name}]")
+        self._logger = logging.getLogger(f"{self.__class__.__name__}[{name}]")
         self._logger.info("Starting bridge")
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
@@ -47,11 +44,18 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self.api.set_auth_manager(auth_manager)
         self._gadget_manager.subscribe(self)
 
+        repo_manager = RepositoryManager(os.getcwd(), None)
+        self._bridge_info = BridgeInformationContainer(name,
+                                                       repo_manager.get_branch(),
+                                                       repo_manager.get_commit_hash(),
+                                                       datetime.now(),
+                                                       SystemInfoTools.read_pio_version(),
+                                                       SystemInfoTools.read_pipenv_version(),
+                                                       SystemInfoTools.read_git_version(),
+                                                       SystemInfoTools.read_python_version())
+
     def __del__(self):
         self._logger.info("Shutting down bridge")
-
-    def get_name(self):
-        return self._name
 
     def get_network_manager(self):
         return self._network_manager
@@ -97,15 +101,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._client_manager.add_client(client)
 
     def get_bridge_info(self) -> BridgeInformationContainer:
-        repo_manager = RepositoryManager(os.getcwd(), None)
-        return BridgeInformationContainer(self._name,
-                                          repo_manager.get_branch(),
-                                          repo_manager.get_commit_hash(),
-                                          self._running_since,
-                                          SystemInfoTools.read_pio_version(),
-                                          SystemInfoTools.read_pipenv_version(),
-                                          SystemInfoTools.read_git_version(),
-                                          SystemInfoTools.read_python_version())
+        return self._bridge_info
 
     def get_client_info(self) -> list[Client]:
         return [self._client_manager.get_client(x)
