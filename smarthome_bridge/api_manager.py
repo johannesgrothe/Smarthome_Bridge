@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Optional, Callable
 
@@ -32,6 +33,10 @@ class UnknownClientException(Exception):
         super(UnknownClientException, self).__init__(f"client with name: {name} does nee exist")
 
 
+class AuthError(Exception):
+    """Error raised if anything failed checking the authentication of an incoming request"""
+
+
 class ApiManager(Subscriber, LoggingInterface):
     _validator: Validator
 
@@ -62,6 +67,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self.auth_manager = auth_manager
 
     def request_sync(self, name: str):
+        self._logger.info(f"Requesting client sync information from '{name}'")
         self._network.send_request(ApiURIs.sync_request.uri, name, {}, 0)
 
     def _respond_with_error(self, req: Request, err_type: str, message: str):
@@ -72,9 +78,10 @@ class ApiManager(Subscriber, LoggingInterface):
     def _respond_with_status(self, req: Request, ack: bool, message: Optional[str] = None):
         out_payload = {"ack": ack, "message": message}
         req.respond(out_payload)
-        self._logger.info(f"responding with status: {ack} to request: {req.get_path()}")
+        self._logger.info(f"Responding with status: {ack} to request: {req.get_path()}")
 
     def send_gadget_update(self, gadget: Gadget):
+        self._logger.info(f"Broadcasting gadget update information for '{gadget.get_name()}'")
         try:
             gadget_data = ApiEncoder().encode_gadget_update(gadget)
             self._network.send_broadcast(ApiURIs.update_gadget.uri,
@@ -146,39 +153,57 @@ class ApiManager(Subscriber, LoggingInterface):
         writer = ClientController(client_id, self._network)
         writer.write_gadget_config(config)
 
+    def _log_request(self, req: Request):
+        short_json = json.dumps(req.get_payload())
+        if len(short_json) > 35:
+            short_json = short_json[:35] + f"... + {len(short_json) - 35} bytes"
+        auth_type = "No Auth" if req.get_auth() is None else req.get_auth().__class__.__name__[:-13]
+        self._logger.info(f"Received request from '{req.get_sender()}' at '{req.get_path()}' "
+                          f"(Auth type: '{auth_type}'): {short_json}")
+
+    def _check_auth(self, req: Request):
+        if self.auth_manager is None:
+            return
+
+        if req.get_auth() is None:
+            self._respond_with_error(req, "NeAuthError", "The bridge only accepts requests based on privileges")
+            raise AuthError()
+
+        auth = req.get_auth()
+        try:
+            if isinstance(auth, CredentialsAuthContainer):
+                self.auth_manager.authenticate(auth.username, auth.password)
+                self.auth_manager.check_path_access_level_for_user(auth.username,
+                                                                   req.get_path())
+            elif isinstance(auth, SerialAuthContainer):
+                self.auth_manager.check_path_access_level(ApiAccessLevel.admin,
+                                                          req.get_path())
+            elif isinstance(auth, MqttAuthContainer):
+                self.auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
+                                                          req.get_path())
+            else:
+                self._respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
+                raise AuthError()
+        except AuthenticationFailedException:
+            self._respond_with_error(req, "WrongAuthError", "illegal combination of username and password")
+            raise AuthError()
+        except UserDoesNotExistException:
+            self._respond_with_error(req, "UserDoesntExistError", "User does not exist")
+            raise AuthError()
+        except InsufficientAccessPrivilegeException:
+            self._respond_with_error(req, "AccessLevelError", "Insufficient privileges")
+            raise AuthError()
+        except UnknownUriException:
+            self._handle_unknown(req)
+            raise AuthError()
+
     def _handle_request(self, req: Request):
-        self._logger.info(f"Received Request at {req.get_path()}")
-        if self.auth_manager is not None:
-            if req.get_auth() is None:
-                self._respond_with_error(req, "NeAuthError", "The bridge only accepts requests based on privileges")
-                return
-            auth = req.get_auth()
-            try:
-                if isinstance(auth, CredentialsAuthContainer):
-                    self.auth_manager.authenticate(auth.username, auth.password)
-                    self.auth_manager.check_path_access_level_for_user(auth.username,
-                                                                       req.get_path())
-                elif isinstance(auth, SerialAuthContainer):
-                    self.auth_manager.check_path_access_level(ApiAccessLevel.admin,
-                                                              req.get_path())
-                elif isinstance(auth, MqttAuthContainer):
-                    self.auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
-                                                              req.get_path())
-                else:
-                    self._respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
-                    return
-            except AuthenticationFailedException:
-                self._respond_with_error(req, "WrongAuthError", "illegal combination of username and password")
-                return
-            except UserDoesNotExistException:
-                self._respond_with_error(req, "UserDoesntExistError", "User does not exist")
-                return
-            except InsufficientAccessPrivilegeException:
-                self._respond_with_error(req, "AccessLevelError", "Insufficient privileges")
-                return
-            except UnknownUriException:
-                self._handle_unknown(req)
-                return
+        self._log_request(req)
+
+        try:
+            self._check_auth(req)
+        except AuthError:
+            return
 
         switcher = {
             ApiURIs.heartbeat.uri: self._handle_heartbeat,
