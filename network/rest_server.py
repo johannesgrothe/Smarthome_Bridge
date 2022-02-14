@@ -9,16 +9,13 @@ import threading
 from network.auth_container import CredentialsAuthContainer
 from network.network_server import NetworkServer
 from network.rest_server_request_manager import RestServerRequestManager, NoResponseReceivedError
+from system.api_definitions import ApiURIs
+from system.utils.api_endpoint_definition import ApiAccessType
 
 
-GET_ROUTES = ["info/bridge",
-              "info/gadgets",
-              "info/clients"]
-
-UPDATE_ROUTES = ["sync/gadget",
-                 "config/write",
-                 "config/delete",
-                 "update/gadget"]
+# TODO: make get_endpoints() public
+GET_ROUTES = [x.uri for x in ApiURIs._get_endpoints() if x.access_type == ApiAccessType.read]
+UPDATE_ROUTES = [x.uri for x in ApiURIs._get_endpoints() if x.access_type == ApiAccessType.write]
 
 
 class RestServerThread(threading.Thread):
