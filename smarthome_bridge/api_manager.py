@@ -18,7 +18,8 @@ from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from system.api_definitions import ApiURIs, ApiAccessLevel, ApiAccessLevelMapping
-from auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException
+from auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
+    UnknownUriException
 from clients.client_controller import ClientController, ClientRebootError
 from user_manager import UserDoesNotExistException
 
@@ -61,7 +62,7 @@ class ApiManager(Subscriber, LoggingInterface):
         self.auth_manager = auth_manager
 
     def request_sync(self, name: str):
-        self._network.send_request(ApiURIs.sync_request.value, name, {}, 0)
+        self._network.send_request(ApiURIs.sync_request.uri, name, {}, 0)
 
     def _respond_with_error(self, req: Request, err_type: str, message: str):
         message = message.replace("\"", "'")
@@ -76,7 +77,7 @@ class ApiManager(Subscriber, LoggingInterface):
     def send_gadget_update(self, gadget: Gadget):
         try:
             gadget_data = ApiEncoder().encode_gadget_update(gadget)
-            self._network.send_broadcast(ApiURIs.update_gadget.value,
+            self._network.send_broadcast(ApiURIs.update_gadget.uri,
                                          gadget_data,
                                          0)
         except GadgetEncodeError as err:
@@ -155,15 +156,14 @@ class ApiManager(Subscriber, LoggingInterface):
             try:
                 if isinstance(auth, CredentialsAuthContainer):
                     self.auth_manager.authenticate(auth.username, auth.password)
-                    # TODO: handle illegal paths
                     self.auth_manager.check_path_access_level_for_user(auth.username,
-                                                                       ApiURIs(req.get_path()))
+                                                                       req.get_path())
                 elif isinstance(auth, SerialAuthContainer):
                     self.auth_manager.check_path_access_level(ApiAccessLevel.admin,
-                                                              ApiURIs(req.get_path()))
+                                                              req.get_path())
                 elif isinstance(auth, MqttAuthContainer):
                     self.auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
-                                                              ApiURIs(req.get_path()))
+                                                              req.get_path())
                 else:
                     self._respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
                     return
@@ -176,35 +176,38 @@ class ApiManager(Subscriber, LoggingInterface):
             except InsufficientAccessPrivilegeException:
                 self._respond_with_error(req, "AccessLevelError", "Insufficient privileges")
                 return
+            except UnknownUriException:
+                self._handle_unknown(req)
+                return
 
         switcher = {
-            ApiURIs.heartbeat.value: self._handle_heartbeat,
-            ApiURIs.sync_client.value: self._handle_client_sync,
-            ApiURIs.info_bridge.value: self._handle_info_bridge,
-            ApiURIs.info_gadgets.value: self._handle_info_gadgets,
-            ApiURIs.info_clients.value: self._handle_info_clients,
-            ApiURIs.update_gadget.value: self._handle_update_gadget,
-            ApiURIs.client_reboot.value: self._handle_client_reboot,
-            ApiURIs.client_config_write.value: self._handle_client_config_write,
-            ApiURIs.client_config_delete.value: self._handle_client_config_delete,
-            ApiURIs.config_storage_get_all.value: self._handle_get_all_configs,
-            ApiURIs.config_storage_get.value: self._handle_get_config,
-            ApiURIs.config_storage_save.value: self._handle_save_config,
-            ApiURIs.config_storage_delete.value: self._handle_delete_config,
-            ApiURIs.bridge_update_check.value: self._handle_check_bridge_for_update,
-            ApiURIs.bridge_update_execute.value: self._handle_bridge_update
+            ApiURIs.heartbeat.uri: self._handle_heartbeat,
+            ApiURIs.sync_client.uri: self._handle_client_sync,
+            ApiURIs.info_bridge.uri: self._handle_info_bridge,
+            ApiURIs.info_gadgets.uri: self._handle_info_gadgets,
+            ApiURIs.info_clients.uri: self._handle_info_clients,
+            ApiURIs.update_gadget.uri: self._handle_update_gadget,
+            ApiURIs.client_reboot.uri: self._handle_client_reboot,
+            ApiURIs.client_config_write.uri: self._handle_client_config_write,
+            ApiURIs.client_config_delete.uri: self._handle_client_config_delete,
+            ApiURIs.config_storage_get_all.uri: self._handle_get_all_configs,
+            ApiURIs.config_storage_get.uri: self._handle_get_config,
+            ApiURIs.config_storage_save.uri: self._handle_save_config,
+            ApiURIs.config_storage_delete.uri: self._handle_delete_config,
+            ApiURIs.bridge_update_check.uri: self._handle_check_bridge_for_update,
+            ApiURIs.bridge_update_execute.uri: self._handle_bridge_update
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)
 
     def _handle_unknown(self, req: Request):
-        self._logger.error(f"Received request at undefined path '{req.get_path()}'")
+        self._respond_with_error(req, "UnknownUriError", f"The URI requested ({req.get_path()}) does not exist")
 
     def _handle_heartbeat(self, req: Request):
         try:
             self._validator.validate(req.get_payload(), "bridge_heartbeat_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.heartbeat.value}'")
+            self._respond_with_error(req, "ValidationError", f"Request validation error at '{ApiURIs.heartbeat.uri}'")
             return
 
         rt_id = req.get_payload()["runtime_id"]
@@ -222,7 +225,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except ValidationError as err:
             self._respond_with_error(req,
                                      "ValidationError",
-                                     f"Request validation error at '{ApiURIs.sync_client.value}': '{err.message}'")
+                                     f"Request validation error at '{ApiURIs.sync_client.uri}': '{err.message}'")
             return
 
         client_id = req.get_sender()
@@ -269,7 +272,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_gadget_update_request")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
+                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
 
         try:
@@ -277,7 +280,7 @@ class ApiManager(Subscriber, LoggingInterface):
         except GadgetDecodeError:
             self._respond_with_error(req,
                                      "GadgetDecodeError",
-                                     f"Gadget update decode error at '{ApiURIs.sync_client.value}'")
+                                     f"Gadget update decode error at '{ApiURIs.sync_client.uri}'")
             return
 
         client_id = req.get_sender()
@@ -314,7 +317,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_client_reboot_request")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
+                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
         try:
             self.send_client_reboot(req.get_payload()["id"])
@@ -341,7 +344,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_client_config_write")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
+                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
         # TODO: handle the request
 
@@ -355,7 +358,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_client_config_delete")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.value}'")
+                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
         # TODO: handle the request
 
@@ -390,7 +393,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_empty_request")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_get_all.value}'")
+                                     f"Request validation error at '{ApiURIs.config_storage_get_all.uri}'")
             return
 
         manager = ClientConfigManager()
@@ -421,7 +424,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_config_delete_get")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_get.value}'")
+                                     f"Request validation error at '{ApiURIs.config_storage_get.uri}'")
             return
 
         try:
@@ -443,7 +446,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_config_save")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_save.value}'")
+                                     f"Request validation error at '{ApiURIs.config_storage_save.uri}'")
             return
 
         config = req.get_payload()["config"]
@@ -467,7 +470,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_config_delete_get")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_delete.value}'")
+                                     f"Request validation error at '{ApiURIs.config_storage_delete.uri}'")
             return
 
         name = req.get_payload()["name"]
@@ -490,7 +493,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_empty_request")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at {ApiURIs.bridge_update_check.value}")
+                                     f"Request validation error at {ApiURIs.bridge_update_check.uri}")
             return
 
         encoder = ApiEncoder()
@@ -517,7 +520,7 @@ class ApiManager(Subscriber, LoggingInterface):
             self._validator.validate(req.get_payload(), "api_empty_request")
         except ValidationError:
             self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at {ApiURIs.bridge_update_execute.value}")
+                                     f"Request validation error at {ApiURIs.bridge_update_execute.uri}")
             return
 
         try:
