@@ -8,6 +8,7 @@ from network.network_connector import REQ_VALIDATION_SCHEME_NAME
 from network.request import Request
 from network.network_server import NetworkServerClient
 import paho.mqtt.client as mqtt
+from network.auth_container import MqttAuthContainer
 
 
 class MQTTServerClient(NetworkServerClient):
@@ -66,6 +67,7 @@ class MQTTServerClient(NetworkServerClient):
                                   body["receiver"],
                                   body["payload"],
                                   connection_type=f"MQTT")
+                inc_req.set_auth(MqttAuthContainer())
                 inc_req.set_callback_method(self._respond_to)
 
                 self._add_req_to_queue(inc_req)
