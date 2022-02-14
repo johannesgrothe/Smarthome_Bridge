@@ -3,17 +3,16 @@ import re
 from typing import Optional
 
 import serial
-import threading
 from jsonschema import ValidationError
 
 from network.network_connector import REQ_VALIDATION_SCHEME_NAME
 from network.network_server_client import NetworkServerClient
 from network.request import Request
+from network.auth_container import SerialAuthContainer
 
 
 class SerialConnectionFailedException(Exception):
-    def __init__(self):
-        super().__init__()
+    pass
 
 
 class SerialServerClient(NetworkServerClient):
@@ -82,6 +81,7 @@ class SerialServerClient(NetworkServerClient):
                                   receiver=json_body["receiver"],
                                   payload=json_body["payload"],
                                   connection_type=f"Serial[{self._address}]")
+                out_req.set_auth(SerialAuthContainer())
 
                 return out_req
             except ValueError:
