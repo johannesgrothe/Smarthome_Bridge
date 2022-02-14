@@ -15,9 +15,9 @@ from gadgets.gadget import Gadget
 from client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
 
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
-from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError, ClientDecodeError
+from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from system.api_definitions import ApiURIs, ApiAccessLevel, ApiAccessLevelMapping
+from system.api_definitions import ApiURIs, ApiAccessLevel
 from auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
 from clients.client_controller import ClientController, ClientRebootError

@@ -27,6 +27,6 @@ def test_authenticate(manager: AuthManager):
 
 def test_check_path_access_level_for_user(manager: AuthManager):
     try:
-        manager.check_path_access_level_for_user("test2", ApiURIs.info_bridge)
+        manager.check_path_access_level_for_user("test2", ApiURIs.info_bridge.uri)
     except InsufficientAccessPrivilegeException:
         assert False

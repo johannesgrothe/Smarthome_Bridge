@@ -6,12 +6,12 @@ import os
 
 
 class UserAlreadyExistsException(Exception):
-    def __init__(self, username):
+    def __init__(self, username: str):
         super().__init__(f"User with username: {username} already exists, please choose another username")
 
 
 class UserDoesNotExistException(Exception):
-    def __init__(self, username):
+    def __init__(self, username: str):
         super().__init__(f"No user with username: {username} found")
 
 
@@ -20,7 +20,7 @@ class NoPersistentUsersException(Exception):
         super().__init__("Congratz, you somehow managed to brick the with open statement.")
 
 
-class DeletionNotPossibleException:
+class DeletionNotPossibleException(Exception):
     def __init__(self, username):
         super().__init__(f"User {username}, could not be deleted.")
 
@@ -70,7 +70,7 @@ class UserManager(LoggingInterface):
         self.save_persistent_users()
 
         p = "Persistent" if persistent_user else "Non persistent"
-        self._logger.info(f"{p} user '{username}' added successfully, with access level {access_level.to_string()}")
+        self._logger.info(f"{p} user '{username}' added successfully, with access level {str(access_level)}")
 
     def save_persistent_users(self):
         """
@@ -109,12 +109,14 @@ class UserManager(LoggingInterface):
 
         :param username: Username to be deleted
         :return: None
+        :raises UserDoesNotExistException: If user does not exist
+        :raises DeletionNotPossibleException: If user cannot be deleted
         """
-        persistent = self._users[username]["persistent"]
         if username not in self._users:
-            raise UserDoesNotExistException
+            raise UserDoesNotExistException(username)
+        persistent = self._users[username]["persistent"]
         if not persistent:
-            raise DeletionNotPossibleException
+            raise DeletionNotPossibleException(username)
         del self._users[username]
         self.save_persistent_users()
 

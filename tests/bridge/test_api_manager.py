@@ -239,13 +239,13 @@ def test_api_unknown(api: ApiManager, network: DummyNetworkConnector):
 
 @pytest.mark.bridge
 def test_api_heartbeat(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    network.mock_receive(ApiURIs.heartbeat.value,
+    network.mock_receive(ApiURIs.heartbeat.uri,
                          REQ_SENDER,
                          {"test": 0x01})
     assert delegate.get_last_heartbeat_name() is None
     assert delegate.get_last_heartbeat_runtime() is None
 
-    network.mock_receive(ApiURIs.heartbeat.value,
+    network.mock_receive(ApiURIs.heartbeat.uri,
                          REQ_SENDER,
                          {"runtime_id": REQ_RUNTIME})
     assert delegate.get_last_heartbeat_name() == REQ_SENDER
@@ -265,22 +265,22 @@ def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnecto
             1
         )]))
 
-    network.mock_receive(ApiURIs.update_gadget.value,
+    network.mock_receive(ApiURIs.update_gadget.uri,
                          REQ_SENDER,
                          {"gadget": {"yolo": "blub"}})
     assert delegate.get_last_gadget_update() is None
 
-    network.mock_receive(ApiURIs.update_gadget.value,
+    network.mock_receive(ApiURIs.update_gadget.uri,
                          REQ_SENDER,
                          GADGET_UPDATE_ERR)
     assert delegate.get_last_gadget_update() is None
 
-    network.mock_receive(ApiURIs.update_gadget.value,
+    network.mock_receive(ApiURIs.update_gadget.uri,
                          REQ_SENDER,
                          GADGET_UPDATE_ERR_UNKNOWN)
     assert delegate.get_last_gadget_update() is None
 
-    network.mock_receive(ApiURIs.update_gadget.value,
+    network.mock_receive(ApiURIs.update_gadget.uri,
                          REQ_SENDER,
                          GADGET_UPDATE_OK)
     assert delegate.get_last_gadget_update() is not None
@@ -289,7 +289,7 @@ def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnecto
 
 @pytest.mark.bridge
 def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    network.mock_receive(ApiURIs.sync_client.value,
+    network.mock_receive(ApiURIs.sync_client.uri,
                          REQ_SENDER,
                          {"client":
                              {
@@ -298,7 +298,7 @@ def test_api_client_sync(api: ApiManager, network: DummyNetworkConnector, delega
                          })
     assert delegate.get_last_client() is None
 
-    network.mock_receive(ApiURIs.sync_client.value,
+    network.mock_receive(ApiURIs.sync_client.uri,
                          REQ_SENDER,
                          payload=CLIENT_CONFIG_OK)
     assert delegate.get_last_client() is not None
@@ -320,11 +320,11 @@ def test_api_client_reboot(api: ApiManager, network: DummyNetworkConnector, dele
                                1,
                                SoftwareVersion(3, 4, 12)))
 
-    network.mock_receive(ApiURIs.client_reboot.value,
+    network.mock_receive(ApiURIs.client_reboot.uri,
                          REQ_SENDER,
                          {"client": "spongo"})
 
-    network.mock_receive(ApiURIs.client_reboot.value,
+    network.mock_receive(ApiURIs.client_reboot.uri,
                          REQ_SENDER,
                          {"id": "spongo"})
 
@@ -348,7 +348,7 @@ def test_api_send_gadget_update(api: ApiManager, network: DummyNetworkConnector,
 @pytest.mark.bridge
 def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
     assert network.get_last_send_response() is None
-    network.mock_receive(ApiURIs.info_bridge.value,
+    network.mock_receive(ApiURIs.info_bridge.uri,
                          REQ_SENDER,
                          {})
     resp = network.get_last_send_response()
@@ -360,7 +360,7 @@ def test_api_get_bridge_info(api: ApiManager, network: DummyNetworkConnector, de
 @pytest.mark.bridge
 def test_api_get_gadget_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
     assert network.get_last_send_response() is None
-    network.mock_receive(ApiURIs.info_gadgets.value,
+    network.mock_receive(ApiURIs.info_gadgets.uri,
                          REQ_SENDER,
                          {})
     resp = network.get_last_send_response()
@@ -372,7 +372,7 @@ def test_api_get_gadget_info(api: ApiManager, network: DummyNetworkConnector, de
 @pytest.mark.bridge
 def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate, f_validator):
     assert network.get_last_send_response() is None
-    network.mock_receive(ApiURIs.info_clients.value,
+    network.mock_receive(ApiURIs.info_clients.uri,
                          REQ_SENDER,
                          {})
     resp = network.get_last_send_response()
@@ -383,7 +383,7 @@ def test_api_get_client_info(api: ApiManager, network: DummyNetworkConnector, de
 
 @pytest.mark.bridge
 def test_api_get_all_configs(api: ApiManager, network: DummyNetworkConnector, debug_config: dict, f_validator):
-    network.mock_receive(ApiURIs.config_storage_get_all.value, REQ_SENDER, {})
+    network.mock_receive(ApiURIs.config_storage_get_all.uri, REQ_SENDER, {})
     response = network.get_last_send_response()
     assert response is not None
     assert debug_config["name"] in response.get_payload()["configs"]
@@ -394,7 +394,7 @@ def test_api_get_all_configs(api: ApiManager, network: DummyNetworkConnector, de
 @pytest.mark.bridge
 def test_api_get_config(api: ApiManager, network: DummyNetworkConnector, debug_config: dict, f_validator):
     conf_name = {"name": debug_config["name"]}
-    network.mock_receive(ApiURIs.config_storage_get.value,
+    network.mock_receive(ApiURIs.config_storage_get.uri,
                          REQ_SENDER,
                          conf_name)
     response = network.get_last_send_response()
@@ -403,7 +403,7 @@ def test_api_get_config(api: ApiManager, network: DummyNetworkConnector, debug_c
     f_validator.validate(response.get_payload(), "api_config_get_response")
 
     conf_name_illegal = {"name": "Unicorn"}
-    network.mock_receive(ApiURIs.config_storage_get.value,
+    network.mock_receive(ApiURIs.config_storage_get.uri,
                          REQ_SENDER,
                          conf_name_illegal)
     response = network.get_last_send_response()
@@ -423,7 +423,7 @@ def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_
     }
 
     # save without overwrite (initial)
-    network.mock_receive(ApiURIs.config_storage_save.value,
+    network.mock_receive(ApiURIs.config_storage_save.uri,
                          REQ_SENDER,
                          conf_payload)
     response = network.get_last_send_response()
@@ -431,7 +431,7 @@ def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_
     assert response.get_ack() is True
 
     # save with overwrite
-    network.mock_receive(ApiURIs.config_storage_save.value,
+    network.mock_receive(ApiURIs.config_storage_save.uri,
                          REQ_SENDER,
                          conf_payload_overwrite)
     response = network.get_last_send_response()
@@ -439,7 +439,7 @@ def test_api_save_config(api: ApiManager, network: DummyNetworkConnector, debug_
     assert response.get_ack() is True
 
     # save without overwrite
-    network.mock_receive(ApiURIs.config_storage_save.value,
+    network.mock_receive(ApiURIs.config_storage_save.uri,
                          REQ_SENDER,
                          conf_payload)
     response = network.get_last_send_response()
@@ -452,14 +452,14 @@ def test_api_delete_config(api: ApiManager, network: DummyNetworkConnector, debu
     conf_payload = {
         "name": debug_config["name"]
     }
-    network.mock_receive(ApiURIs.config_storage_delete.value,
+    network.mock_receive(ApiURIs.config_storage_delete.uri,
                          REQ_SENDER,
                          conf_payload)
     response = network.get_last_send_response()
     assert response is not None
     assert response.get_ack() is True
 
-    network.mock_receive(ApiURIs.config_storage_delete.value,
+    network.mock_receive(ApiURIs.config_storage_delete.uri,
                          REQ_SENDER,
                          conf_payload)
     response = network.get_last_send_response()
