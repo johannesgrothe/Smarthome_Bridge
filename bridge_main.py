@@ -46,7 +46,6 @@ def parse_args():
                         type=int)
     parser.add_argument('--serial',
                         help='Whether serial connector should be active',
-                        type=bool,
                         action="store_true")
 
     parser.add_argument('--static_user_name',
@@ -59,7 +58,6 @@ def parse_args():
 
     parser.add_argument('--dummy_data',
                         help='Adds dummy data for debugging.',
-                        type=bool,
                         action="store_true")
 
     parser.add_argument('--logging', help='Log-Level to be set', type=str, default="INFO",
