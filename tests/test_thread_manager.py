@@ -1,6 +1,5 @@
 import pytest
-from thread_manager import ThreadManager, ThreadController, ThreadIdAlreadyInUseException
-from typing import Optional
+from utils.thread_manager import ThreadManager, ThreadIdAlreadyInUseException
 import time
 
 

@@ -1,10 +1,10 @@
 """Module to contain the ClientController and its exceptions"""
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from network.request import NoClientResponseException
 
 from system.api_definitions import ApiURIs
 from smarthome_bridge.network_manager import NetworkManager
-from json_validator import Validator
+from utils.json_validator import Validator
 
 
 class ClientRebootError(Exception):

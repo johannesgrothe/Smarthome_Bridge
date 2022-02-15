@@ -2,7 +2,7 @@
 import time
 
 from network.request import Request
-from pubsub import Subscriber
+from lib.pubsub import Subscriber
 from smarthome_bridge.network_manager import NetworkManager
 
 

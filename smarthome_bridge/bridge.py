@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime
 
-from auth_manager import AuthManager
+from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 from smarthome_bridge.network_manager import NetworkManager
@@ -14,9 +14,9 @@ from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from gadgets.gadget import Gadget
 from smarthome_bridge.client import Client
-from repository_manager import RepositoryManager
-from system_info_tools import SystemInfoTools
-from user_manager import UserManager
+from utils.repository_manager import RepositoryManager
+from utils.system_info_tools import SystemInfoTools
+from utils.user_manager import UserManager
 
 
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):

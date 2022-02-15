@@ -1,7 +1,7 @@
 import pytest
 import os
 from datetime import datetime, timedelta
-from repo_locker import RepoLocker, RepositoryAccessTimeout
+from utils.repo_locker import RepoLocker, RepositoryAccessTimeout
 
 
 @pytest.fixture

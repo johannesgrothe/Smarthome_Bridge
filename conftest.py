@@ -4,7 +4,7 @@ from test_helpers.gadget_fixtures import *
 from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
-from json_validator import Validator
+from utils.json_validator import Validator
 from test_helpers.dummy_gadget import DummyGadget
 
 

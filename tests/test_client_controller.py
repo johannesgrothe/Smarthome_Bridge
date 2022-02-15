@@ -1,12 +1,12 @@
 from typing import Callable
 
 import pytest
+from jsonschema import ValidationError
 
 from clients.client_controller import ClientController, NoClientResponseException, ClientRebootError, \
     ConfigEraseError, ConfigWriteError
 from test_helpers.dummy_network_connector import DummyNetworkConnector
-from client_config_manager import ClientConfigManager
-from json_validator import ValidationError
+from utils.client_config_manager import ClientConfigManager
 from smarthome_bridge.network_manager import NetworkManager
 
 TEST_SENDER_NAME = "pytest_sender"

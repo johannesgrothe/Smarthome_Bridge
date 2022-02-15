@@ -1,5 +1,5 @@
 import pytest
-from client_config_manager import *
+from utils.client_config_manager import *
 
 CONFIG_PATH = "configs"
 VALID_CONFIG_NAME = "example"

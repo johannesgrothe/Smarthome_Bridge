@@ -8,7 +8,7 @@ from queue import Queue
 
 from network.socket_connector import SocketConnector
 
-from pubsub import Subscriber, Request
+from lib.pubsub import Subscriber, Request
 
 
 class SerialPortAdapterState(enum.IntEnum):

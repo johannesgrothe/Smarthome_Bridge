@@ -1,18 +1,19 @@
 import os
 import argparse
 import logging
-import repository_manager
 from typing import Optional, Callable
-from pio_uploader import PioUploader, PioUploadException, PioNoProjectFoundException
 
-from repo_locker import RepoLocker, RepositoryAccessTimeout
+from utils.repository_manager import RepositoryManager, RepositoryCloneException, RepositoryFetchException, \
+    RepositoryCheckoutException, RepositoryPullException
+from utils.pio_uploader import PioUploader, PioUploadException
+from utils.repo_locker import RepoLocker
 
 # Declare Type of callback function for hinting
 CallbackFunction = Optional[Callable[[str, int, str], None]]
 
 repo_name = "Smarthome_ESP32"
 repo_url = "https://github.com/johannesgrothe/{}.git".format(repo_name)
-_repo_base_path = "temp"
+_repo_base_path = "../temp"
 
 _general_exit_code = 0
 
@@ -54,32 +55,32 @@ class ChipFlasher:
 
     def upload_software(self, branch: str, upload_port: Optional[str] = None, clone_new_repository: bool = False):
         with RepoLocker(_repo_base_path, self._max_delay) as self._locker:
-            repo_manager = repository_manager.RepositoryManager(_repo_base_path, repo_name, repo_url)
+            repo_manager = RepositoryManager(_repo_base_path, repo_name, repo_url)
             try:
                 repo_manager.init_repository(force_reset=clone_new_repository, reclone_on_error=True)
                 self._callback(_cloning_ok_code, "Cloning ok.")
-            except repository_manager.RepositoryCloneException:
+            except RepositoryCloneException:
                 self._callback(_cloning_fail_code, "Cloning failed.")
                 raise UploadFailedException
 
             try:
                 repo_manager.fetch()
                 self._callback(_fetch_ok_code, "Fetching OK.")
-            except repository_manager.RepositoryFetchException:
+            except RepositoryFetchException:
                 self._callback(_fetch_fail_code, "Fetching failed.")
                 raise UploadFailedException
 
             try:
                 repo_manager.checkout(branch)
                 self._callback(_checkout_ok_code, f"Checking out '{branch}' OK.")
-            except repository_manager.RepositoryCheckoutException:
+            except RepositoryCheckoutException:
                 self._callback(_checkout_fail_code, f"Checking out '{branch}' failed.")
                 raise UploadFailedException
 
             try:
                 repo_manager.pull()
                 self._callback(_pull_ok_code, "Pulling was successful")
-            except repository_manager.RepositoryPullException:
+            except RepositoryPullException:
                 self._callback(_pull_fail_code, f"Pulling failed.")
                 raise UploadFailedException
 

@@ -1,8 +1,8 @@
 import pytest
-from pio_uploader import PioUploader, PioUploadException, PioNoProjectFoundException
+from utils.pio_uploader import PioUploader, PioUploadException, PioNoProjectFoundException
 import os
 import time
-from repository_manager import RepositoryManager
+from utils.repository_manager import RepositoryManager
 
 _repo_base_path = "temp"
 _repo_name = "Smarthome_ESP32"

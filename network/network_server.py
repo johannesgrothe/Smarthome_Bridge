@@ -2,16 +2,12 @@ import time
 import threading
 from abc import ABC
 
-from network.network_server_client import NetworkServerClient
-from thread_manager import ThreadManager
+from utils.thread_manager import ThreadManager
 from network.network_connector import NetworkConnector
-
-from pubsub import Subscriber, Publisher
 
 from network.request import Request
 from network.network_server_client import NetworkServerClient, ClientDisconnectedError
-from logging_interface import LoggingInterface
-from json_validator import Validator, ValidationError
+from utils.json_validator import Validator
 
 
 class NetworkServer(NetworkConnector, ABC):

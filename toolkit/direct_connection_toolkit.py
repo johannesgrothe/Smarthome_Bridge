@@ -1,6 +1,6 @@
 from clients.client_controller import ClientController, ConfigEraseError, ConfigWriteError, ClientRebootError
-from client_config_manager import ClientConfigManager
-from loading_indicator import LoadingIndicator
+from utils.client_config_manager import ClientConfigManager
+from utils.loading_indicator import LoadingIndicator
 
 from network.request import NoClientResponseException
 from smarthome_bridge.network_manager import NetworkManager

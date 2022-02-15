@@ -1,6 +1,6 @@
 import pytest
 import time
-from loading_indicator import LoadingIndicator
+from utils.loading_indicator import LoadingIndicator
 
 
 @pytest.fixture

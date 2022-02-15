@@ -1,4 +1,4 @@
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 
 from gadgets.gadget import Gadget
 from system.gadget_definitions import CharacteristicIdentifier

@@ -1,11 +1,9 @@
-from typing import Optional
 from abc import abstractmethod
 
 from network.request import Request
-from pubsub import Publisher, Subscriber
-from json_validator import Validator
-from network.network_receiver import NetworkReceiver
-from logging_interface import LoggingInterface
+from lib.pubsub import Publisher, Subscriber
+from utils.json_validator import Validator
+from lib.logging_interface import LoggingInterface
 
 REQ_VALIDATION_SCHEME_NAME = "request_basic_structure"
 

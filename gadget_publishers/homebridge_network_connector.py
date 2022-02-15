@@ -6,12 +6,12 @@ from queue import Queue
 from datetime import timedelta, datetime
 from typing import Optional, Callable
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from gadget_publishers.homebridge_request import HomeBridgeRequest
 from gadgets.gadget import Gadget
 from gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
-from thread_manager import ThreadManager
+from utils.thread_manager import ThreadManager
 
 
 class MqttConnectionError(Exception):

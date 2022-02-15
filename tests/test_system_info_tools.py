@@ -1,4 +1,4 @@
-from system_info_tools import SystemInfoTools
+from utils.system_info_tools import SystemInfoTools
 
 
 def test_system_info_tools_git():

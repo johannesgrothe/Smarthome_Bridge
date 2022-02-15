@@ -1,5 +1,5 @@
 import pytest
-from chip_flasher import ChipFlasher, UploadFailedException
+from utils.chip_flasher import ChipFlasher, UploadFailedException
 
 _software_branch = "develop"
 _broken_branch = "no.branch"

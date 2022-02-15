@@ -1,4 +1,4 @@
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from abc import ABCMeta, abstractmethod
 from typing import Optional
 import threading

@@ -3,7 +3,7 @@ import os
 import logging
 from typing import Optional
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 
 
 class RepositoryUnsafeToDeleteException(Exception):

@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from system.utils.software_version import SoftwareVersion
 from smarthome_bridge.client_event_mapping import ClientEventMapping
 

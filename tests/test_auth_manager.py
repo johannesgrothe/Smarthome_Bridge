@@ -1,6 +1,6 @@
 import pytest
-from auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException
-from user_manager import UserManager, ApiAccessLevel
+from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException
+from utils.user_manager import UserManager, ApiAccessLevel
 from system.api_definitions import ApiURIs
 
 
