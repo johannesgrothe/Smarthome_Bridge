@@ -1,23 +1,13 @@
-import os
-import sys
-
-from system.api_definitions import ApiAccessLevel
-from system.utils.software_version import SoftwareVersion
-
-sys.path.append(os.getcwd())
 import logging
 import argparse
 import socket
 from typing import Optional
 
-from smarthome_bridge.bridge import Bridge
-
+from smarthome_bridge.bridge_launcher import BridgeLauncher
 from network.mqtt_credentials_container import MqttCredentialsContainer
-from network.mqtt_connector import MQTTConnector
-from network.rest_server import RestServer
 
-from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
-from gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBridge
+
+_default_user_default_username = "debug_admin"
 
 
 def get_sender() -> str:
@@ -28,16 +18,50 @@ def get_sender() -> str:
 def parse_args():
     # Argument-parser
     parser = argparse.ArgumentParser(description='Smarthome Bridge')
-    parser.add_argument('--bridge_name', help='Network Name for the Bridge', type=str)
-    parser.add_argument('--mqtt_ip', help='IP of the MQTT Broker', type=str)
-    parser.add_argument('--mqtt_port', help='Port of the MQTT Broker', type=int)
-    parser.add_argument('--mqtt_user', help='Username for the MQTT Broker', type=Optional[str], default=None)
-    parser.add_argument('--mqtt_pw', help='Password for the MQTT Broker', type=Optional[str], default=None)
-    parser.add_argument('--dummy_data', help='Adds dummy data for debugging.', action="store_true")
-    parser.add_argument('--api_port', help='Port for the REST-API', type=int)
-    parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
-    parser.add_argument('--serial_baudrate', help='Baudrate of the Serial Server', type=int)
-    parser.add_argument('--default_pw', help='Create user "admin" with set pw', type=str)
+    parser.add_argument('--bridge_name',
+                        help='Network Name for the Bridge',
+                        type=str,
+                        default=get_sender())
+
+    parser.add_argument('--mqtt_ip',
+                        help='IP of the MQTT Broker',
+                        type=str)
+    parser.add_argument('--mqtt_port',
+                        help='Port of the MQTT Broker',
+                        type=int)
+    parser.add_argument('--mqtt_user',
+                        help='Username for the MQTT Broker',
+                        type=Optional[str],
+                        default=None)
+    parser.add_argument('--mqtt_pw',
+                        help='Password for the MQTT Broker',
+                        type=Optional[str],
+                        default=None)
+
+    parser.add_argument('--api_port',
+                        help='Port for the REST-API',
+                        type=int)
+    parser.add_argument('--socket_port',
+                        help='Port for the Socket Server',
+                        type=int)
+    parser.add_argument('--serial',
+                        help='Whether serial connector should be active',
+                        type=bool,
+                        action="store_true")
+
+    parser.add_argument('--static_user_name',
+                        help='Sets the username for the default user',
+                        type=str,
+                        default=_default_user_default_username)
+    parser.add_argument('--static_user_password',
+                        help=f'Create user (default name: "{_default_user_default_username}") with set pw',
+                        type=str)
+
+    parser.add_argument('--dummy_data',
+                        help='Adds dummy data for debugging.',
+                        type=bool,
+                        action="store_true")
+
     parser.add_argument('--logging', help='Log-Level to be set', type=str, default="INFO",
                         choices=["DEBUG", "INFO", "ERROR"])
     args = parser.parse_args()
@@ -55,82 +79,25 @@ def main():
         log = logging.ERROR
     logging.basicConfig(level=log, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    if args.bridge_name:
-        bridge_name = args.bridge_name
-    else:
-        bridge_name = get_sender()
-
-    # Create Bridge
-    bridge = Bridge(bridge_name)
-
     # MQTT
     mqtt_credentials = None
     if args.mqtt_ip and args.mqtt_port:
         mqtt_credentials = MqttCredentialsContainer(args.mqtt_ip, args.mqtt_port, args.mqtt_user, args.mqtt_pw)
-        mqtt = MQTTConnector(bridge_name, mqtt_credentials, "smarthome")
-        bridge.get_network_manager().add_connector(mqtt)
 
-    # REST
-    if args.api_port:
-        rest_server = RestServer(bridge_name, args.api_port)
-        bridge.get_network_manager().add_connector(rest_server)
+    # DEFAULT USER
+    user_data = None
+    if args.static_user_password:
+        user_data = (args.static_user_name, args.static_user_password)
 
-    # SOCKET
-    if args.socket_port:
-        pass
-        # socket_connector = SocketServer(bridge_name, args.socket_port)
-        # bridge.get_network_manager().add_connector(socket_connector)
+    launcher = BridgeLauncher()
 
-    # SERIAL
-    if args.serial_baudrate:
-        pass
-        # serial = SerialServer(bridge_name, args.serial_baudrate)
-        # bridge.get_network_manager().add_connector(serial)
-
-    # HOMEBRIDGE GADGET PUBLISHER
-    if mqtt_credentials:
-        hb_network = HomebridgeNetworkConnector(bridge_name, mqtt_credentials, 3)
-        hb_publisher = GadgetPublisherHomeBridge(hb_network)
-        bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
-
-    if args.default_pw:
-        bridge.api.auth_manager.user_manager.add_user(username="admin",
-                                                      password=args.default_pw,
-                                                      access_level=ApiAccessLevel.admin,
-                                                      persistent_user=False)
-
-    # Insert dummy data if wanted
-    if args.dummy_data:
-        from gadgets.fan_westinghouse_ir import FanWestinghouseIR
-        from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-        from smarthome_bridge.client import Client
-        from gadgets.gadget_event_mapping import GadgetEventMapping
-        from datetime import datetime
-
-        gadget = FanWestinghouseIR("dummy_fan",
-                                   "bridge",
-                                   Characteristic(CharacteristicIdentifier.status,
-                                                  0,
-                                                  1,
-                                                  1),
-                                   Characteristic(CharacteristicIdentifier.fan_speed,
-                                                  0,
-                                                  100,
-                                                  4))
-        gadget.set_event_mapping([
-            GadgetEventMapping("ab09d8_", [(1, 1)])
-        ])
-        bridge.get_gadget_manager().receive_gadget(gadget)
-        date = datetime.utcnow()
-        client = Client(name="dummy_client",
-                        runtime_id=18298931,
-                        flash_date=date,
-                        software_commit="2938479384",
-                        software_branch="spongo",
-                        port_mapping={},
-                        boot_mode=1,
-                        api_version=SoftwareVersion(0, 0, 1))
-        bridge.get_client_manager().add_client(client)
+    launcher.launch(name=args.bridge_name,
+                    mqtt=mqtt_credentials,
+                    api_port=args.api_port,
+                    socket_port=args.socket_port,
+                    serial_active=args.serial,
+                    static_user_data=user_data,
+                    add_dummy_data=args.dummy_data)
 
     while True:
         pass
