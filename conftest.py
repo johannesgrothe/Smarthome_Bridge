@@ -9,17 +9,35 @@ from test_helpers.dummy_gadget import DummyGadget
 
 
 def pytest_addoption(parser):
-    pass
-    # parser.addoption("--serial_client_name", type=str, help="Name of the echo-test-client for the serial server test")
+    parser.addoption("--mqtt_ip", type=str, help="IP of the mqtt broker", default=None)
+    parser.addoption("--mqtt_port", type=int, help="Port of the mqtt broker", default=None)
+    parser.addoption("--mqtt_username", type=str, help="Username to connect to the mqtt broker", default=None)
+    parser.addoption("--mqtt_password", type=str, help="Password to connect to the mqtt broker", default=None)
     # # name = request.config.getoption("serial_client_name")
 
 
 @pytest.fixture()
-def f_mqtt_credentials(pytestconfig):
-    ip = os.getenv('MQTT_IP')
-    port = int(os.getenv('MQTT_PORT', default='1883'))
-    username = os.getenv('MQTT_USERNAME')
-    password = os.getenv('MQTT_PASSWORD')
+def f_mqtt_credentials(pytestconfig, request):
+    if request.config.getoption("mqtt_ip"):
+        ip = request.config.getoption("mqtt_ip")
+    else:
+        ip = os.getenv('MQTT_IP', default=None)
+
+    if request.config.getoption("mqtt_port"):
+        port = request.config.getoption("mqtt_port")
+    else:
+        port = int(os.getenv('MQTT_PORT', default='1883'))
+
+    if request.config.getoption("mqtt_username"):
+        username = request.config.getoption("mqtt_username")
+    else:
+        username = os.getenv('MQTT_USERNAME', default=None)
+
+    if request.config.getoption("mqtt_password"):
+        password = request.config.getoption("mqtt_password")
+    else:
+        password = os.getenv('MQTT_PASSWORD', default=None)
+
     return MqttCredentialsContainer(ip,
                                     port,
                                     username,
