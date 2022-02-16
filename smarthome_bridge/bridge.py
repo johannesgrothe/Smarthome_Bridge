@@ -56,6 +56,10 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     def __del__(self):
         self._logger.info("Shutting down bridge")
+        self.api.__del__()
+        self._network_manager.__del__()
+        self._client_manager.__del__()
+        self._gadget_manager.__del__()
 
     def get_network_manager(self):
         return self._network_manager
