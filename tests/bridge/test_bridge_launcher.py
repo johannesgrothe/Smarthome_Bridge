@@ -2,6 +2,7 @@ import pytest
 import time
 
 from smarthome_bridge.bridge_launcher import BridgeLauncher
+from test_helpers.timing_organizer import TimingOrganizer
 
 BRIDGE_NAME = "test_bridge"
 BRIDGE_API_PORT = 6000
@@ -27,8 +28,6 @@ def test_bridge_launcher(launcher: BridgeLauncher):
                              (BRIDGE_DEFAULT_USER_NAME, BRIDGE_DEFAULT_USER_PW),
                              True)
 
-    print("Sleeping for 30 seconds")
-    time.sleep(30)
-    print("Noice")
+    TimingOrganizer.delay(30000)
 
     bridge.__del__()
