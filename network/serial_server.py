@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import serial
 
@@ -11,6 +12,7 @@ class SerialServer(NetworkServer):
 
     _baud_rate: int
     _blocked_addresses: list[str]
+    _logging_callback: Optional[callable]
 
     def __init__(self, hostname: str, baud_rate: int):
         super().__init__(hostname)
@@ -22,6 +24,12 @@ class SerialServer(NetworkServer):
 
     def __del__(self):
         super().__del__()
+
+    def set_logging_callback(self, func: Optional[callable]):
+        self._logging_callback = func
+        for client in self._clients:
+            if isinstance(client, SerialServerClient):
+                client.set_logging_callback(func)
 
     @staticmethod
     def get_serial_ports() -> [str]:
@@ -50,9 +58,8 @@ class SerialServer(NetworkServer):
         for port in open_ports:
             try:
                 new_client = serial.Serial(port, self._baud_rate)
-
                 buf_client = SerialServerClient(self._hostname, port, new_client)
-
+                buf_client.set_logging_callback(self._logging_callback)
                 self._add_client(buf_client)
             except (serial.serialutil.SerialException, OSError):
                 pass

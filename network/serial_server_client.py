@@ -18,16 +18,21 @@ class SerialConnectionFailedException(Exception):
 class SerialServerClient(NetworkServerClient):
     _serial_client: serial.Serial
     _is_closed: bool
+    _logging_callback: Optional[callable]
 
     def __init__(self, host_name: str, address: str, client: serial.Serial):
         super().__init__(host_name, address)
         self._serial_client = client
         self._is_closed = False
+        self._logging_callback = None
         self._thread_manager.start_threads()
 
     def __del__(self):
         super().__del__()
         self._serial_client.close()
+
+    def set_logging_callback(self, func: Optional[callable]):
+        self._logging_callback = func
 
     @staticmethod
     def _format_request(req: Request) -> str:
@@ -94,6 +99,8 @@ class SerialServerClient(NetworkServerClient):
             message = ser_bytes[:-1]
             if not message:
                 return None
+            if self._logging_callback is not None:
+                self._logging_callback(message)
             if message.startswith("Backtrace: 0x"):
                 self._logger.info("Client crashed with {}".format(message))
                 return None
