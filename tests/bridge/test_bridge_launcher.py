@@ -1,5 +1,4 @@
 import pytest
-import time
 
 from smarthome_bridge.bridge_launcher import BridgeLauncher
 from test_helpers.timing_organizer import TimingOrganizer
