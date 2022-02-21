@@ -37,13 +37,23 @@ def parse_args():
     parser.add_argument('--api_port', help='Port for the REST-API', type=int)
     parser.add_argument('--socket_port', help='Port for the Socket Server', type=int)
     parser.add_argument('--serial_baudrate', help='Baudrate of the Serial Server', type=int)
-    parser.add_argument('--default_pw', help='create admin with default pw', type=str)
+    parser.add_argument('--default_pw', help='Create user "admin" with set pw', type=str)
+    parser.add_argument('--logging', help='Log-Level to be set', type=str, default="INFO",
+                        choices=["DEBUG", "INFO", "ERROR"])
     args = parser.parse_args()
     return args
 
 
 def main():
     args = parse_args()
+
+    if args.logging == "DEBUG":
+        log = logging.DEBUG
+    elif args.logging == "INFO":
+        log = logging.INFO
+    else:
+        log = logging.ERROR
+    logging.basicConfig(level=log, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     if args.bridge_name:
         bridge_name = args.bridge_name
@@ -127,5 +137,4 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     main()

@@ -60,10 +60,7 @@ class NetworkManager(Publisher, Subscriber):
         return len(self._connectors)
 
     def receive(self, req: Request):
-        short_json = json.dumps(req.get_payload())
-        if len(short_json) > 35:
-            short_json = short_json[:35] + f"... + {len(short_json) - 35} bytes"
-        self._logger.info(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}': {short_json}")
+        self._logger.debug(f"Forwarding request from '{req.get_sender()}' at '{req.get_path()}'")
         self._publish(req)
 
     @staticmethod
@@ -82,7 +79,7 @@ class NetworkManager(Publisher, Subscriber):
         """
         if not self._connectors:
             raise NoConnectorsException()
-        self._logger.info(f"Sending Request at '{path}'")
+        self._logger.debug(f"Sending Request at '{path}'")
         out_req = Request(path,
                           None,
                           self._hostname,

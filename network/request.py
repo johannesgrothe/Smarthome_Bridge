@@ -1,7 +1,7 @@
 """Module to contain the request class"""
 from __future__ import annotations
 import random
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable
 from network.auth_container import AuthContainer
 
 
@@ -95,7 +95,6 @@ class Request:
         """Return the body"""
 
         return {"session_id": self._session_id,
-                "credentials": self._credentials,
                 "sender": self._sender,
                 "receiver": self._receiver,
                 "payload": self._payload}
