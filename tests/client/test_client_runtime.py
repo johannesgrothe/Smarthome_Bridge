@@ -11,6 +11,7 @@ from test_helpers.backtrace_detector import BacktraceDetector
 from test_helpers.log_saver import LogSaver
 from test_helpers.runtime_test_manager import RuntimeTestManager
 
+CLIENT_NAME = "TestClient"
 SERIAL_HOSTNAME = "Client_Runtime_Test"
 SERIAL_BAUDRATE = 115200
 LOG_OUTPUT_FILE = os.path.join("test_reports", "client_runtime_trace.csv")
@@ -32,7 +33,7 @@ def backtrace_logger():
 
 
 @pytest.fixture
-def serial(log_saver, backtrace_logger):
+def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector):
     server = SerialServer(SERIAL_HOSTNAME,
                           SERIAL_BAUDRATE)
 
@@ -48,25 +49,33 @@ def serial(log_saver, backtrace_logger):
     server.__del__()
 
 
-@pytest.mark.client
-@pytest.mark.runtime
-def test_client_runtime(serial, backtrace_logger):
+@pytest.fixture
+def client_connected(serial: SerialServer) -> str:
+    logger = logging.getLogger("Client Setup")
+    logger.info("Waiting for Client to connect")
     time.sleep(3)
     assert serial.get_client_count() == 1, "Either more or less than 1 Client is connected to the network"
+    logger.info("Client Connected")
     time.sleep(5)
+    return CLIENT_NAME
+
+
+@pytest.mark.client
+@pytest.mark.runtime
+def test_client_runtime(serial: SerialServer, backtrace_logger: BacktraceDetector, client_connected: str):
 
     test_manager = RuntimeTestManager()
 
     illegal_request = Request("broken",
                               None,
                               "self",
-                              None,
+                              client_connected,
                               {"yolo": 3})
 
     sync_request = Request(ApiURIs.sync_request,
                            None,
                            "self",
-                           None,
+                           client_connected,
                            {})
 
     test_manager.add_task(0, serial.send_request, [illegal_request])
