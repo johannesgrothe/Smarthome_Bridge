@@ -3,13 +3,12 @@ import os
 
 import pytest
 
-from network.request import Request
 from network.serial_server import SerialServer
 from smarthome_bridge.network_manager import NetworkManager
 from system.api_definitions import ApiURIs
 from test_helpers.backtrace_detector import BacktraceDetector
 from test_helpers.log_saver import LogSaver, LogLevel
-from test_helpers.runtime_test_manager import RuntimeTestManager
+from test_helpers.runtime_test_manager import RuntimeTestManager, TaskManagementContainer
 from toolkit.client_detector import ClientDetector
 
 CLIENT_NAME = "TestClient"
@@ -74,46 +73,18 @@ def client_connected(network: NetworkManager) -> str:
 def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDetector, client_connected: str):
     test_manager = RuntimeTestManager()
 
-    illegal_request = Request("broken",
-                              None,
-                              "self",
-                              client_connected,
-                              {"yolo": 3})
-
-    sync_request = Request(ApiURIs.sync_request.uri,
-                           None,
-                           "self",
-                           client_connected,
-                           {})
-
-    def task_sync():
-        res = network.send_request(ApiURIs.sync_request.uri,
-                                   client_connected,
-                                   {})
-
     def task_echo():
         payload = {"test": 123123,
                    "message": "string"}
         res = network.send_request(ApiURIs.test_echo.uri,
                                    client_connected,
                                    payload)
-        print(res)
-        assert res is not None
-        assert res.get_payload() == payload
+        assert res is not None, "Received no response to echo"
+        assert res.get_payload() == payload, "Echo response payload does not equal the sent one"
 
-    test_manager.add_task(1, task_sync, [])
-    test_manager.add_task(2, task_echo, [])
-    # test_manager.add_task(2, serial.send_request, [sync_request])
+    task_echo_container = TaskManagementContainer(task_echo, [])
+    test_manager.add_task(1, task_echo_container)
 
-    # test_manager.run(60)
-
-    payload = {"test": 123123,
-               "message": "string"}
-    res = network.send_request(ApiURIs.test_echo.uri,
-                               client_connected,
-                               payload)
-    print(res)
-    assert res is not None
-    assert res.get_payload() == payload
+    test_manager.run(60)
 
     assert backtrace_logger.get_backtrace_count() == 0, f"Client crashed '{backtrace_logger.get_backtrace_count()}' times"
