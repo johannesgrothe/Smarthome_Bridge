@@ -12,7 +12,7 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
     CharacteristicParsingError
 from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
 from gadget_publishers.homebridge_decoder import HomebridgeDecoder
-from thread_manager import ThreadManager
+from utils.thread_manager import ThreadManager
 
 # https://www.npmjs.com/package/homebridge-mqtt
 # https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/ServiceDefinitions.ts
