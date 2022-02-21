@@ -1,15 +1,16 @@
 import logging
 import os
-import time
 
 import pytest
 
 from network.request import Request
 from network.serial_server import SerialServer
+from smarthome_bridge.network_manager import NetworkManager
 from system.api_definitions import ApiURIs
 from test_helpers.backtrace_detector import BacktraceDetector
-from test_helpers.log_saver import LogSaver
+from test_helpers.log_saver import LogSaver, LogLevel
 from test_helpers.runtime_test_manager import RuntimeTestManager
+from toolkit.client_detector import ClientDetector
 
 CLIENT_NAME = "TestClient"
 SERIAL_HOSTNAME = "Client_Runtime_Test"
@@ -20,7 +21,7 @@ BACKTRACE_OUTPUT_FILE = os.path.join("test_reports", "client_backtraces.csv")
 
 @pytest.fixture
 def log_saver():
-    log_saver = LogSaver()
+    log_saver = LogSaver(announced_messages=[LogLevel.error])
     yield log_saver
     log_saver.save(LOG_OUTPUT_FILE)
 
@@ -37,12 +38,9 @@ def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector):
     server = SerialServer(SERIAL_HOSTNAME,
                           SERIAL_BAUDRATE)
 
-    logger = logging.getLogger("Client Serial Out")
-
     def log_func(msg: str):
         log_saver.add_log_string(msg)
         backtrace_logger.check_line(msg)
-        logger.info(msg)
 
     server.set_logging_callback(log_func)
     yield server
@@ -50,20 +48,28 @@ def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector):
 
 
 @pytest.fixture
-def client_connected(serial: SerialServer) -> str:
+def network(serial: SerialServer):
+    network = NetworkManager()
+    network.add_connector(serial)
+    network.set_default_timeout(2)
+    yield network
+    network.__del__()
+
+
+@pytest.fixture
+def client_connected(network: NetworkManager) -> str:
     logger = logging.getLogger("Client Setup")
-    logger.info("Waiting for Client to connect")
-    time.sleep(3)
-    assert serial.get_client_count() == 1, "Either more or less than 1 Client is connected to the network"
-    logger.info("Client Connected")
-    time.sleep(5)
-    return CLIENT_NAME
+    detector = ClientDetector(network)
+    clients = detector.detect_clients(10)
+    assert len(clients) == 1, "Either more or less than 1 client is connected to the network"
+    client_id = clients[0]
+    logger.info(f"Client Connected: {client_id}")
+    return client_id
 
 
 @pytest.mark.client
 @pytest.mark.runtime
-def test_client_runtime(serial: SerialServer, backtrace_logger: BacktraceDetector, client_connected: str):
-
+def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDetector, client_connected: str):
     test_manager = RuntimeTestManager()
 
     illegal_request = Request("broken",
@@ -72,15 +78,41 @@ def test_client_runtime(serial: SerialServer, backtrace_logger: BacktraceDetecto
                               client_connected,
                               {"yolo": 3})
 
-    sync_request = Request(ApiURIs.sync_request,
+    sync_request = Request(ApiURIs.sync_request.uri,
                            None,
                            "self",
                            client_connected,
                            {})
 
-    test_manager.add_task(0, serial.send_request, [illegal_request])
-    test_manager.add_task(2, serial.send_request, [sync_request])
+    def task_sync():
+        res = network.send_request(ApiURIs.sync_request.uri,
+                                   client_connected,
+                                   {})
 
-    test_manager.run(60)
+    def task_echo():
+        payload = {"test": 123123,
+                   "message": "string"}
+        res = network.send_request(ApiURIs.test_echo.uri,
+                                   client_connected,
+                                   payload)
+        print(res)
+        assert res is not None
+        assert res.get_payload() == payload
+
+    test_manager.add_task(1, task_sync, [])
+    test_manager.add_task(2, task_echo, [])
+    # test_manager.add_task(2, serial.send_request, [sync_request])
+
+    # test_manager.run(60)
+
+
+    payload = {"test": 123123,
+               "message": "string"}
+    res = network.send_request(ApiURIs.test_echo.uri,
+                               client_connected,
+                               payload)
+    print(res)
+    assert res is not None
+    assert res.get_payload() == payload
 
     assert backtrace_logger.get_backtrace_count() == 0, f"Client crashed '{backtrace_logger.get_backtrace_count()}' times"

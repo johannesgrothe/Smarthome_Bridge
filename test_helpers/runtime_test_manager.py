@@ -1,5 +1,6 @@
 """Module for the RuntimeTestManager"""
 import time
+import threading
 
 from lib.logging_interface import LoggingInterface
 
@@ -45,7 +46,8 @@ class RuntimeTestManager(LoggingInterface):
         for task_id, tasks in self._tasks.items():
             if index % task_id == 0:
                 for func, args in tasks:
-                    func(*args)
+                    t = threading.Thread(target=func, args=args, daemon=True)
+                    t.start()
 
     def run(self, for_seconds: int):
         """
@@ -57,3 +59,6 @@ class RuntimeTestManager(LoggingInterface):
         for i in range(1, for_seconds):
             self._run_tasks_for_time_index(i)
             time.sleep(1)
+            if i % 10 == 0:
+                perc = round((i / for_seconds * 100), 1)
+                self._logger.info(f"Test has been running for {i} of {for_seconds} seconds ({perc}%)")

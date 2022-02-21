@@ -40,6 +40,7 @@ class BacktraceDetector(LoggingInterface):
         :param path: Path to save the file at
         :return: None
         """
+        self._logger.info(f"Saving backtrace log with {len(self._backtraces)} entries at '{path}'")
         ending = path.split(".")[-1]
         if ending == "csv":
             lines = ["timestamp, backtrace\n"] + [f"{a}, {b}\n" for a, b in self._backtraces]

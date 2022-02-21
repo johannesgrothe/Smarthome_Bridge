@@ -2,6 +2,7 @@
 import enum
 import re
 import datetime
+from typing import Optional
 
 from lib.logging_interface import LoggingInterface
 
@@ -81,10 +82,20 @@ class LogMessageCSVFormatter:
 class LogSaver(LoggingInterface):
     """Collects, decodes and stores log messages"""
     _messages: list[LogMessage]
+    _announced_messages: list[LogLevel]
 
-    def __init__(self):
+    def __init__(self, announced_messages: Optional[list[LogLevel]] = None):
+        """
+        Constructor for the LogSaver
+
+        :param announced_messages: Messages that should be logged as INFO instead of DEBUG for overview during test execution
+        """
         super().__init__()
         self._messages = []
+        if announced_messages:
+            self._announced_messages = announced_messages
+        else:
+            self._announced_messages = []
 
     def get_log_messages(self) -> list[LogMessage]:
         """
@@ -132,10 +143,21 @@ class LogSaver(LoggingInterface):
         :param message: Log message to add
         :return: None
         """
+        log_msg = f"<- {LogMessageTXTFormatter.parse_line(message)}"
+        if message.level in self._announced_messages:
+            self._logger.info(log_msg)
+        else:
+            self._logger.debug(log_msg)
         self._messages.append(message)
+
+    def get_last_log_message(self) -> Optional[LogMessage]:
+        if not self._messages:
+            return None
+        return self._messages[-1]
 
     def save(self, path: str):
         """Saves the log messages into a file"""
+        self._logger.info(f"Saving log with {len(self._messages)} entries at '{path}'")
         ending = path.split(".")[-1]
         if ending == "csv":
             lines = [LogMessageCSVFormatter.get_header()] + [LogMessageCSVFormatter.parse_line(x)
