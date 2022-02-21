@@ -69,8 +69,8 @@ def test_client_runtime(serial, backtrace_logger):
                            None,
                            {})
 
-    test_manager.add_task(0, serial.send_request, illegal_request)
-    test_manager.add_task(2, serial.send_request, sync_request)
+    test_manager.add_task(0, serial.send_request, [illegal_request])
+    test_manager.add_task(2, serial.send_request, [sync_request])
 
     test_manager.run(60)
 

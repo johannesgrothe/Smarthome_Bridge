@@ -1,6 +1,6 @@
 [run]
 source = .
-omit = *tests*,__init__.py,conftest.py,*test_helpers/*
+omit = *tests*,*__init__.py,conftest.py,*test_helpers/*,*system/*
 
 [report]
-omit = *tests*,__init__.py,conftest.py,*test_helpers/*
+omit = *tests*,*__init__.py,conftest.py,*test_helpers/*,*system/*
