@@ -3,9 +3,13 @@ import os
 import time
 
 import pytest
+
+from network.request import Request
 from network.serial_server import SerialServer
+from system.api_definitions import ApiURIs
 from test_helpers.backtrace_detector import BacktraceDetector
 from test_helpers.log_saver import LogSaver
+from test_helpers.runtime_test_manager import RuntimeTestManager
 
 SERIAL_HOSTNAME = "Client_Runtime_Test"
 SERIAL_BAUDRATE = 115200
@@ -32,9 +36,12 @@ def serial(log_saver, backtrace_logger):
     server = SerialServer(SERIAL_HOSTNAME,
                           SERIAL_BAUDRATE)
 
+    logger = logging.getLogger("Client Serial Out")
+
     def log_func(msg: str):
         log_saver.add_log_string(msg)
         backtrace_logger.check_line(msg)
+        logger.info(msg)
 
     server.set_logging_callback(log_func)
     yield server
@@ -45,6 +52,26 @@ def serial(log_saver, backtrace_logger):
 @pytest.mark.runtime
 def test_client_runtime(serial, backtrace_logger):
     time.sleep(3)
-    assert serial.get_client_count() == 1
-    time.sleep(30)
-    assert backtrace_logger.get_backtrace_count() == 0
+    assert serial.get_client_count() == 1, "Either more or less than 1 Client is connected to the network"
+    time.sleep(5)
+
+    test_manager = RuntimeTestManager()
+
+    illegal_request = Request("broken",
+                              None,
+                              "self",
+                              None,
+                              {"yolo": 3})
+
+    sync_request = Request(ApiURIs.sync_request,
+                           None,
+                           "self",
+                           None,
+                           {})
+
+    test_manager.add_task(0, serial.send_request, illegal_request)
+    test_manager.add_task(2, serial.send_request, sync_request)
+
+    test_manager.run(60)
+
+    assert backtrace_logger.get_backtrace_count() == 0, f"Client crashed '{backtrace_logger.get_backtrace_count()}' times"
