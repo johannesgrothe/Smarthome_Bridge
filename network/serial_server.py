@@ -18,6 +18,7 @@ class SerialServer(NetworkServer):
         super().__init__(hostname)
         self._baud_rate = baud_rate
         self._blocked_addresses = []
+        self._logging_callback = None
 
         self._thread_manager.add_thread("serial_server_accept", self._accept_new_clients)
         self._thread_manager.start_threads()
