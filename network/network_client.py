@@ -1,4 +1,3 @@
-from pubsub import Subscriber
 from network.request import Request
 from network.network_server import NetworkServerClient
 from network.network_connector import NetworkConnector

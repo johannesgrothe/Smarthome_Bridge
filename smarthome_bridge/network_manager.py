@@ -5,7 +5,7 @@ from time import sleep
 from typing import Optional
 from network.network_connector import NetworkConnector
 from network.request import Request
-from pubsub import Publisher, Subscriber
+from lib.pubsub import Publisher, Subscriber
 from network.network_receiver import NetworkReceiver
 
 

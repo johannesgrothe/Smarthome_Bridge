@@ -3,11 +3,11 @@ from abc import abstractmethod
 from queue import Queue
 from typing import Optional
 
-from json_validator import Validator
+from utils.json_validator import Validator
 from network.request import Request, response_callback_type
 from network.split_request_handler import SplitRequestHandler
-from pubsub import Publisher
-from thread_manager import ThreadManager
+from lib.pubsub import Publisher
+from utils.thread_manager import ThreadManager
 
 
 class ClientDisconnectedError(Exception):

@@ -1,8 +1,7 @@
-import json
 import os
-from jsonschema import validate, ValidationError
+from jsonschema import validate
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 
 from system.utils.schema_loader import SchemaLoader
 

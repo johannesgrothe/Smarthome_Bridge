@@ -1,7 +1,7 @@
 from gadgets.gadget import Gadget
 from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 
 from gadgets.any_gadget import AnyGadget
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR

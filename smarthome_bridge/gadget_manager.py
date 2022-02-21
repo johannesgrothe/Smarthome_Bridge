@@ -1,6 +1,6 @@
 from typing import Optional
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from gadget_publishers.gadget_publisher import GadgetPublisher
 
 from gadgets.gadget import Gadget

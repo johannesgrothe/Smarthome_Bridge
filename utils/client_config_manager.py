@@ -1,10 +1,10 @@
-import logging
 import os
 import json
 from typing import Optional
-from json_validator import Validator, ValidationError
+from jsonschema import ValidationError
 
-from logging_interface import LoggingInterface
+from utils.json_validator import Validator
+from lib.logging_interface import LoggingInterface
 
 _config_path = "configs"
 _validation_schema_name = "client_config"

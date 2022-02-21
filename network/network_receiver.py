@@ -3,7 +3,7 @@ from queue import Queue
 from typing import Optional
 
 from network.request import Request
-from pubsub import Publisher, Subscriber
+from lib.pubsub import Subscriber
 
 
 class NetworkReceiver(Subscriber):

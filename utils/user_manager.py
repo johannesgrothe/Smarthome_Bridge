@@ -1,4 +1,4 @@
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from system.api_definitions import ApiAccessLevel
 import json
 

@@ -1,5 +1,5 @@
 import pytest
-from pubsub import Publisher, Subscriber
+from lib.pubsub import Publisher, Subscriber
 from typing import Optional
 from network.request import Request
 

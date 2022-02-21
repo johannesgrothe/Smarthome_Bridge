@@ -1,7 +1,7 @@
 from network.network_connector import NetworkConnector
-from pubsub import Subscriber
+from lib.pubsub import Subscriber
 from network.request import Request
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 
 
 class TestEchoClient(Subscriber, LoggingInterface):

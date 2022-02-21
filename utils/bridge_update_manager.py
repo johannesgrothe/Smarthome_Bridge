@@ -1,8 +1,8 @@
 import sys
 from typing import Tuple
 
-from logging_interface import LoggingInterface
-from repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException
+from lib.logging_interface import LoggingInterface
+from utils.repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException
 
 
 class UpdateNotSuccessfulException(Exception):

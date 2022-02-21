@@ -1,5 +1,7 @@
 import pytest
-from json_validator import Validator, ValidationError, SchemaDoesNotExistError
+from jsonschema import ValidationError
+
+from utils.json_validator import Validator, SchemaDoesNotExistError
 
 TEST_REQ_OK = {"sender": "me",
                "receiver": "you",

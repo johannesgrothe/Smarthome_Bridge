@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from datetime import datetime
 
 from smarthome_bridge.client import Client

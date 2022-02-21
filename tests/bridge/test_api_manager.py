@@ -5,7 +5,6 @@ import pytest
 from smarthome_bridge.api_manager import ApiManager
 from smarthome_bridge.network_manager import NetworkManager
 from test_helpers.dummy_api_delegate import DummyApiDelegate
-from network.request import Request, NoResponsePossibleException
 from test_helpers.dummy_network_connector import DummyNetworkConnector
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.client import Client
@@ -13,7 +12,7 @@ from smarthome_bridge.characteristic import Characteristic, CharacteristicIdenti
 from gadgets.gadget import Gadget
 from system.api_definitions import ApiURIs
 from system.utils.software_version import SoftwareVersion
-from client_config_manager import ClientConfigManager, ConfigDoesNotExistException
+from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException
 
 HOSTNAME = "unittest_host"
 REQ_SENDER = "unittest"

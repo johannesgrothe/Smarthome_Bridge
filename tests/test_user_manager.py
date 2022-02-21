@@ -1,5 +1,5 @@
 import pytest
-from user_manager import UserManager, UserDoesNotExistException, DeletionNotPossibleException
+from utils.user_manager import UserManager, UserDoesNotExistException, DeletionNotPossibleException
 from system.api_definitions import ApiAccessLevel
 
 USERNAME1 = "test1"

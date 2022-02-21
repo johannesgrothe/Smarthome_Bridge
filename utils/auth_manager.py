@@ -1,5 +1,4 @@
-from typing import Optional, Tuple
-from user_manager import UserManager
+from utils.user_manager import UserManager
 from system.api_definitions import ApiURIs, ApiAccessLevel
 
 

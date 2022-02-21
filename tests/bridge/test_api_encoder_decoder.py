@@ -2,9 +2,9 @@ import random
 from datetime import datetime
 
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError, IdentifierEncodeError
-from smarthome_bridge.api_decoder import ApiDecoder, ClientDecodeError, GadgetDecodeError, CharacteristicDecodeError
+from smarthome_bridge.api_decoder import ApiDecoder
 
-from json_validator import Validator, ValidationError
+from utils.json_validator import Validator
 from smarthome_bridge.client import Client
 from gadgets.gadget import Gadget
 from system.gadget_definitions import GadgetIdentifier

@@ -1,30 +1,31 @@
 import json
 import os
 from typing import Optional, Callable
+from jsonschema import ValidationError
 
 from gadgets.any_gadget import AnyGadget
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
 from network.request import Request, NoClientResponseException
-from pubsub import Subscriber
-from json_validator import Validator, ValidationError
+from lib.pubsub import Subscriber
+from utils.json_validator import Validator
 
-from logging_interface import LoggingInterface
+from lib.logging_interface import LoggingInterface
 from smarthome_bridge.network_manager import NetworkManager
 
 from gadgets.gadget import Gadget
 
-from client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
+from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
 
 from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from system.api_definitions import ApiURIs, ApiAccessLevel
-from auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
+from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
 from clients.client_controller import ClientController, ClientRebootError
-from user_manager import UserDoesNotExistException
+from utils.user_manager import UserDoesNotExistException
 
-from bridge_update_manager import BridgeUpdateManager, UpdateNotPossibleException, NoUpdateAvailableException, \
+from utils.bridge_update_manager import BridgeUpdateManager, UpdateNotPossibleException, NoUpdateAvailableException, \
     UpdateNotSuccessfulException
 
 

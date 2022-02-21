@@ -1,5 +1,5 @@
 import pytest
-from repository_manager import RepositoryManager, RepositoryCloneException, RepositoryUnsafeToDeleteException,\
+from utils.repository_manager import RepositoryManager, RepositoryCloneException, RepositoryUnsafeToDeleteException,\
     RepositoryCheckoutException, RepositoryFetchException, RepositoryStatusException, RepositoryPullException
 import logging
 

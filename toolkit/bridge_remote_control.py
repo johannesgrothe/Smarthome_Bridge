@@ -18,8 +18,8 @@ from toolkit.direct_serial_connection_toolkit import DirectSerialConnectionToolk
 from toolkit.cli_helpers import ask_for_continue, select_option
 from toolkit.toolkit_exceptions import ToolkitException
 
-from chip_flasher import ChipFlasher
-from client_config_manager import ClientConfigManager
+from utils.chip_flasher import ChipFlasher
+from utils.client_config_manager import ClientConfigManager
 from toolkit.toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
 from toolkit.bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
     SoftwareWritingFailedException, ConfigWritingFailedException

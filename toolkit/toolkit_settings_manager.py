@@ -1,7 +1,9 @@
 import os
 import json
 import logging
-from json_validator import Validator, ValidationError
+from jsonschema import ValidationError
+
+from utils.json_validator import Validator
 from typing import Optional
 
 CONFIG_PATH = os.path.join("temp", "connection_configs.json")
