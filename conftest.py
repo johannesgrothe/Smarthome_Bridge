@@ -55,3 +55,12 @@ def f_dummy_gadget():
     dummy_gadget = DummyGadget("dummy_gadget")
     yield dummy_gadget
     dummy_gadget.__del__()
+
+
+@pytest.fixture()
+def f_blocked_serial_ports() -> list[str]:
+    blocked_ports = []
+    buf_ports = os.getenv('BLOCKED_SERIAL_PORTS', default=None)
+    if buf_ports is not None:
+        blocked_ports = buf_ports.split(";")
+    return blocked_ports

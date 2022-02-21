@@ -34,9 +34,11 @@ def backtrace_logger():
 
 
 @pytest.fixture
-def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector):
+def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector, f_blocked_serial_ports: list[str]):
     server = SerialServer(SERIAL_HOSTNAME,
                           SERIAL_BAUDRATE)
+    for client_id in f_blocked_serial_ports:
+        server.block_address(client_id)
 
     def log_func(msg: str):
         log_saver.add_log_string(msg)
@@ -104,7 +106,6 @@ def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDete
     # test_manager.add_task(2, serial.send_request, [sync_request])
 
     # test_manager.run(60)
-
 
     payload = {"test": 123123,
                "message": "string"}

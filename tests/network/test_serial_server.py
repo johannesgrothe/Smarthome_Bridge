@@ -6,15 +6,15 @@ from smarthome_bridge.network_manager import NetworkManager
 from network.serial_server import SerialServer
 from tests.network.connector_tests import send_test, send_split_test, broadcast_test
 
-_blocked_clients = ["/dev/tty.SLAB_USBtoUART"]
+
 _start_delay = 2
 
 
 @pytest.fixture
-def server():
+def server(f_blocked_serial_ports: list[str]):
     server = SerialServer("TestSerialServer",
                           115200)
-    for client_id in _blocked_clients:
+    for client_id in f_blocked_serial_ports:
         server.block_address(client_id)
     time.sleep(_start_delay)
     if server.get_client_count() == 0:
