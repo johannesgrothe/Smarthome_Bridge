@@ -52,7 +52,7 @@ def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector, f_blocked_s
 def network(serial: SerialServer):
     network = NetworkManager()
     network.add_connector(serial)
-    network.set_default_timeout(2)
+    network.set_default_timeout(4)
     yield network
     network.__del__()
 
@@ -82,8 +82,18 @@ def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDete
         assert res is not None, "Received no response to echo"
         assert res.get_payload() == payload, "Echo response payload does not equal the sent one"
 
+    def task_illegal_uri():
+        payload = {"test": 555}
+        network.send_request("yolokopter",
+                             client_connected,
+                             payload,
+                             timeout=0)
+
     task_echo_container = TaskManagementContainer(task_echo, [])
-    test_manager.add_task(1, task_echo_container)
+    test_manager.add_task(3, task_echo_container)
+
+    task_illegal_uri_container = TaskManagementContainer(task_illegal_uri, [])
+    test_manager.add_task(0, task_illegal_uri_container)
 
     test_manager.run(60)
 

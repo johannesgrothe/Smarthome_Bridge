@@ -1,4 +1,5 @@
 """Module for the RuntimeTestManager"""
+import datetime
 import time
 import threading
 from typing import Optional
@@ -23,12 +24,22 @@ class RuntimeTestManagerTask(LoggingInterface):
         self._thread_exception = None
         self._create_thread(func, args)
 
+    @staticmethod
+    def _encode_duration(t_start: datetime.datetime, t_end: datetime.datetime) -> str:
+        d = (t_end - t_start).total_seconds()
+        return f"{round(d, 2)}s"
+
     def _create_thread(self, func: callable, args):
         def thread_func():
+            t_start = datetime.datetime.now()
             try:
                 func(*args)
             except Exception as e:
                 self._thread_exception = e
+                return
+            t_end = datetime.datetime.now()
+            duration = self._encode_duration(t_start, t_end)
+            self._logger.info(f"Task '{func.__name__}' reported success after {duration}")
 
         self._thread = threading.Thread(target=thread_func, daemon=True)
 
@@ -43,12 +54,20 @@ class RuntimeTestManagerTask(LoggingInterface):
 
 
 class TaskManagementContainer:
+    """Container to organize a runtime task and its running threads"""
     function: callable
     args: list
     allow_multiple: bool
     _running_tasks: list[RuntimeTestManagerTask]
 
     def __init__(self, function: callable, args: list, allow_multiple: bool = False):
+        """
+        Constructor for the task management container
+
+        :param function: Function to execute
+        :param args: Arguments for said function
+        :param allow_multiple: Whether multiple threads are allowed to run simultaneously
+        """
         self.function = function
         self.args = args
         self.allow_multiple = allow_multiple
@@ -91,6 +110,9 @@ class RuntimeTestManager(LoggingInterface):
     _tasks: dict
 
     def __init__(self):
+        """
+        Constructor for the runtime test manager
+        """
         super().__init__()
         self._tasks = {x: [] for x in _task_timings}
 
@@ -119,8 +141,8 @@ class RuntimeTestManager(LoggingInterface):
             for task_container in tasks:
                 task_container: TaskManagementContainer
                 task_container.raise_captured_exceptions()
+                task_container.cleanup_threads()
                 if index % task_id == 0:
-                    task_container.cleanup_threads()
                     task_container.launch_new_task()
 
     def run(self, for_seconds: int):
