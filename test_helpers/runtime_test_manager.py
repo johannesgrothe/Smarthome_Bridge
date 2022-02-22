@@ -15,31 +15,95 @@ _task_count = 13
 _task_timings = [_get_id_for_task(x) for x in range(_task_count)]
 
 
+class RuntimeTestTaskTimeoutError(Exception):
+    def __init__(self, execution_time: float, timeout: float):
+        super().__init__(f"Task exceeded allowed execution time (took {execution_time}s instead of {timeout}s)")
+
+
+class TaskExecutionMetaContainer:
+    execution_time: datetime.timedelta
+    task_exception: Optional[Exception]
+
+    def __init__(self, d_time: datetime.timedelta, exception: Optional[Exception]):
+        self.execution_time = d_time
+        self.task_exception = exception
+
+
+class TaskExecutionMetaCollector(LoggingInterface):
+    def __init__(self):
+        super().__init__()
+
+    def add_task_meta(self, meta: TaskExecutionMetaContainer):
+        pass
+
+
+class TaskExecutionMetaChecker(LoggingInterface):
+    _task_name: str
+    _timeout: int
+    _t_start: Optional[datetime.datetime]
+
+    def __init__(self, task_name: str, timeout: int):
+        super().__init__()
+        self._t_start = None
+        self._timeout = timeout
+        self._task_name = task_name
+
+    def __del__(self):
+        self.stop(None)
+
+    def __enter__(self):
+        self.run()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.stop(exception_value)
+
+    def run(self):
+        self._t_start = datetime.datetime.now()
+
+    def stop(self, exception_value: Optional[Exception]):
+        if self._t_start is not None:
+            t_end = datetime.datetime.now()
+            duration = (t_end - self._t_start).total_seconds()
+            timeout_detected = False
+            self._t_start = None
+
+            if duration > self._timeout and exception_value is None:
+                exception_value = RuntimeTestTaskTimeoutError(duration, self._timeout)
+                timeout_detected = True
+
+            duration_str = f"{round(duration, 3)}s"
+            if exception_value is None:
+                self._logger.info(f"Task '{self._task_name}' reported success after {duration_str}")
+            else:
+                self._logger.info(f"Task '{self._task_name}' reported failure "
+                                  f"with '{exception_value.__class__.__name__}' after {duration_str}")
+
+            if timeout_detected:
+                raise exception_value
+
+
 class RuntimeTestManagerTask(LoggingInterface):
+    _name: str
+    _timeout: int
     _thread: threading.Thread
     _thread_exception: Optional[Exception]
 
-    def __init__(self, func: callable, args):
+    def __init__(self, name: str, timeout: int, func: callable, args):
         super().__init__()
+        self._name = name
+        self._timeout = timeout
         self._thread_exception = None
         self._create_thread(func, args)
 
-    @staticmethod
-    def _encode_duration(t_start: datetime.datetime, t_end: datetime.datetime) -> str:
-        d = (t_end - t_start).total_seconds()
-        return f"{round(d, 2)}s"
-
     def _create_thread(self, func: callable, args):
         def thread_func():
-            t_start = datetime.datetime.now()
             try:
-                func(*args)
+                with TaskExecutionMetaChecker(self._name, self._timeout):
+                    func(*args)
             except Exception as e:
                 self._thread_exception = e
                 return
-            t_end = datetime.datetime.now()
-            duration = self._encode_duration(t_start, t_end)
-            self._logger.info(f"Task '{func.__name__}' reported success after {duration}")
 
         self._thread = threading.Thread(target=thread_func, daemon=True)
 
@@ -55,23 +119,30 @@ class RuntimeTestManagerTask(LoggingInterface):
 
 class TaskManagementContainer:
     """Container to organize a runtime task and its running threads"""
+    name: str
     function: callable
     args: list
-    allow_multiple: bool
+    crash_on_error: bool
+    timeout: int
     _running_tasks: list[RuntimeTestManagerTask]
 
-    def __init__(self, function: callable, args: list, allow_multiple: bool = False):
+    def __init__(self, function: callable, args: list, timeout: int, crash_on_error: bool, task_name: Optional[str]):
         """
         Constructor for the task management container
 
         :param function: Function to execute
         :param args: Arguments for said function
-        :param allow_multiple: Whether multiple threads are allowed to run simultaneously
         """
         self.function = function
         self.args = args
-        self.allow_multiple = allow_multiple
         self._running_tasks = []
+        self.crash_on_error = crash_on_error
+        self.timeout = timeout
+
+        if task_name is None:
+            self.name = self.function.__name__
+        else:
+            self.name = task_name
 
     def launch_new_task(self):
         """
@@ -79,13 +150,15 @@ class TaskManagementContainer:
 
         :return: None
         """
-        if not self.allow_multiple and len(self._running_tasks) != 0:
-            raise Exception("Tried to lauch task but predecessor was still running")
-        new_task = RuntimeTestManagerTask(self.function, self.args)
+        new_task = RuntimeTestManagerTask(self.name, self.timeout, self.function, self.args)
         new_task.start()
         self._running_tasks.append(new_task)
 
-    def raise_captured_exceptions(self):
+    def handle_captured_exceptions(self):
+        if self.crash_on_error:
+            self._raise_captured_exceptions()
+
+    def _raise_captured_exceptions(self):
         """
         Goes through all tasks and raises captured exceptions
 
@@ -139,10 +212,9 @@ class RuntimeTestManager(LoggingInterface):
         """
         for task_id, tasks in self._tasks.items():
             for task_container in tasks:
-                task_container: TaskManagementContainer
-                task_container.raise_captured_exceptions()
-                task_container.cleanup_threads()
+                task_container.handle_captured_exceptions()
                 if index % task_id == 0:
+                    task_container.cleanup_threads()
                     task_container.launch_new_task()
 
     def run(self, for_seconds: int):

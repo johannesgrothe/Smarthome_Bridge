@@ -52,7 +52,7 @@ def serial(log_saver: LogSaver, backtrace_logger: BacktraceDetector, f_blocked_s
 def network(serial: SerialServer):
     network = NetworkManager()
     network.add_connector(serial)
-    network.set_default_timeout(4)
+    network.set_default_timeout(2)
     yield network
     network.__del__()
 
@@ -89,12 +89,21 @@ def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDete
                              payload,
                              timeout=0)
 
-    task_echo_container = TaskManagementContainer(task_echo, [])
-    test_manager.add_task(3, task_echo_container)
+    task_echo_container = TaskManagementContainer(function=task_echo,
+                                                  args=[],
+                                                  timeout=2,
+                                                  crash_on_error=True,
+                                                  task_name="Echo")
+    test_manager.add_task(2, task_echo_container)
 
-    task_illegal_uri_container = TaskManagementContainer(task_illegal_uri, [])
+    task_illegal_uri_container = TaskManagementContainer(function=task_illegal_uri,
+                                                         args=[],
+                                                         timeout=10,
+                                                         crash_on_error=False,
+                                                         task_name="Illegal Uri")
     test_manager.add_task(0, task_illegal_uri_container)
 
     test_manager.run(60)
 
-    assert backtrace_logger.get_backtrace_count() == 0, f"Client crashed '{backtrace_logger.get_backtrace_count()}' times"
+    assert backtrace_logger.get_backtrace_count() == 0, f"Client crashed" \
+                                                        f"'{backtrace_logger.get_backtrace_count()}' times"
