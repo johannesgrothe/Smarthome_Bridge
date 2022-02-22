@@ -16,37 +16,84 @@ _task_timings = [_get_id_for_task(x) for x in range(_task_count)]
 
 
 class RuntimeTestTaskTimeoutError(Exception):
-    def __init__(self, execution_time: float, timeout: float):
-        super().__init__(f"Task exceeded allowed execution time (took {execution_time}s instead of {timeout}s)")
+    def __init__(self, timeout: int):
+        super().__init__(f"Task exceeded allowed execution time of {timeout} seconds")
 
 
 class TaskExecutionMetaContainer:
-    execution_time: datetime.timedelta
+    execution_time: float
+    timeout: int
+    time_index: int
     task_exception: Optional[Exception]
 
-    def __init__(self, d_time: datetime.timedelta, exception: Optional[Exception]):
+    def __init__(self, d_time: float, timeout: int, time_index: int, exception: Optional[Exception]):
         self.execution_time = d_time
+        self.timeout = timeout
+        self.time_index = time_index
         self.task_exception = exception
 
 
 class TaskExecutionMetaCollector(LoggingInterface):
+    _task_meta: dict
+    _lock: threading.Lock
+
     def __init__(self):
         super().__init__()
+        self._task_meta = {}
+        self._lock = threading.Lock()
 
-    def add_task_meta(self, meta: TaskExecutionMetaContainer):
-        pass
+    def add_task_meta(self, task_name: str, time_index: int, meta: TaskExecutionMetaContainer):
+        with self._lock:
+            if task_name not in self._task_meta:
+                self._task_meta[task_name] = {}
+            self._task_meta[task_name][time_index] = meta
+
+    def save(self, path: str):
+        entries = sum([len(x) for _, x in self._task_meta.items()])
+        self._logger.info(f"Saving log with {entries} entries at '{path}'")
+        ending = path.split(".")[-1]
+        if ending == "csv":
+            lines = ["time_index, task_name, success, execution_time, timeout, exception_type, exception_message"]
+            with self._lock:
+                for task_name in self._task_meta:
+                    for time_index, meta in self._task_meta[task_name].items():
+                        meta: TaskExecutionMetaContainer
+                        x_type = None
+                        x_msg = None
+                        if meta.task_exception is not None:
+                            x_type = meta.task_exception.__class__.__name__
+                            x_msg = meta.task_exception.args[0]
+                        item_list = [time_index,
+                                     task_name,
+                                     (meta.task_exception is None),
+                                     round(meta.execution_time, 3),
+                                     meta.timeout,
+                                     x_type,
+                                     x_msg]
+                        lines.append(", ".join([str(x) for x in item_list]))
+
+        else:
+            raise Exception(f"Unknown file encoding '{ending}'")
+
+        with open(path, "w") as file_p:
+            lines = [x + "\n" for x in lines]
+            file_p.writelines(lines)
 
 
 class TaskExecutionMetaChecker(LoggingInterface):
     _task_name: str
     _timeout: int
+    _time_index: int
     _t_start: Optional[datetime.datetime]
+    _collector: Optional[TaskExecutionMetaCollector]
 
-    def __init__(self, task_name: str, timeout: int):
+    def __init__(self, task_name: str, time_index: int, timeout: int, collector: Optional[TaskExecutionMetaCollector]):
         super().__init__()
         self._t_start = None
         self._timeout = timeout
+        self._time_index = time_index
         self._task_name = task_name
+        self._collector = collector
 
     def __del__(self):
         self.stop(None)
@@ -65,47 +112,61 @@ class TaskExecutionMetaChecker(LoggingInterface):
         if self._t_start is not None:
             t_end = datetime.datetime.now()
             duration = (t_end - self._t_start).total_seconds()
-            timeout_detected = False
             self._t_start = None
 
-            if duration > self._timeout and exception_value is None:
-                exception_value = RuntimeTestTaskTimeoutError(duration, self._timeout)
-                timeout_detected = True
+            if self._collector is not None:
+                meta_container = TaskExecutionMetaContainer(duration,
+                                                            self._timeout,
+                                                            self._time_index,
+                                                            exception_value)
+                self._collector.add_task_meta(self._task_name, self._time_index, meta_container)
 
             duration_str = f"{round(duration, 3)}s"
             if exception_value is None:
-                self._logger.info(f"Task '{self._task_name}' reported success after {duration_str}")
+                self._logger.info(f"Task '{self._task_name}' reported success "
+                                  f"after {duration_str}")
             else:
                 self._logger.info(f"Task '{self._task_name}' reported failure "
                                   f"with '{exception_value.__class__.__name__}' after {duration_str}")
-
-            if timeout_detected:
-                raise exception_value
 
 
 class RuntimeTestManagerTask(LoggingInterface):
     _name: str
     _timeout: int
+    _time_index: int
     _thread: threading.Thread
     _thread_exception: Optional[Exception]
+    _meta_collector = Optional[TaskExecutionMetaCollector]
 
-    def __init__(self, name: str, timeout: int, func: callable, args):
+    def __init__(self, name: str, timeout: int, time_index: int, func: callable, args,
+                 meta_collector: Optional[TaskExecutionMetaCollector]):
         super().__init__()
         self._name = name
         self._timeout = timeout
+        self._time_index = time_index
         self._thread_exception = None
+        self._meta_collector = meta_collector
         self._create_thread(func, args)
 
     def _create_thread(self, func: callable, args):
         def thread_func():
             try:
-                with TaskExecutionMetaChecker(self._name, self._timeout):
-                    func(*args)
+                with TaskExecutionMetaChecker(self._name, self._time_index, self._timeout, self._meta_collector):
+                    buffer_t = threading.Thread(target=func,
+                                                args=args,
+                                                daemon=True,
+                                                name=f"{self._name}[{self._time_index}]_BufferThread")
+                    buffer_t.start()
+                    buffer_t.join(self._timeout)
+                    if buffer_t.is_alive():
+                        raise RuntimeTestTaskTimeoutError(self._timeout)
             except Exception as e:
                 self._thread_exception = e
                 return
 
-        self._thread = threading.Thread(target=thread_func, daemon=True)
+        self._thread = threading.Thread(target=thread_func,
+                                        daemon=True,
+                                        name=f"{self._name}[{self._time_index}]_Thread")
 
     def get_thread_exception(self) -> Optional[Exception]:
         return self._thread_exception
@@ -144,13 +205,13 @@ class TaskManagementContainer:
         else:
             self.name = task_name
 
-    def launch_new_task(self):
+    def launch_new_task(self, time_index: int, meta_collector: Optional[TaskExecutionMetaCollector]):
         """
         Launches a new task of this kind
 
         :return: None
         """
-        new_task = RuntimeTestManagerTask(self.name, self.timeout, self.function, self.args)
+        new_task = RuntimeTestManagerTask(self.name, self.timeout, time_index, self.function, self.args, meta_collector)
         new_task.start()
         self._running_tasks.append(new_task)
 
@@ -181,13 +242,15 @@ class TaskManagementContainer:
 class RuntimeTestManager(LoggingInterface):
     """Test Helper that lets you adds tasks and executes them repeatedly"""
     _tasks: dict
+    _meta_collector: Optional[TaskExecutionMetaCollector]
 
-    def __init__(self):
+    def __init__(self, meta_collector: Optional[TaskExecutionMetaCollector] = None):
         """
         Constructor for the runtime test manager
         """
         super().__init__()
         self._tasks = {x: [] for x in _task_timings}
+        self._meta_collector = meta_collector
 
     def add_task(self, timing: int, container: TaskManagementContainer):
         """
@@ -215,7 +278,7 @@ class RuntimeTestManager(LoggingInterface):
                 task_container.handle_captured_exceptions()
                 if index % task_id == 0:
                     task_container.cleanup_threads()
-                    task_container.launch_new_task()
+                    task_container.launch_new_task(index, self._meta_collector)
 
     def run(self, for_seconds: int):
         """
@@ -230,3 +293,9 @@ class RuntimeTestManager(LoggingInterface):
             if i % 10 == 0:
                 perc = round((i / for_seconds * 100), 1)
                 self._logger.info(f"Test has been running for {i} of {for_seconds} seconds ({perc}%)")
+        time.sleep(5)
+        for task_id, tasks in self._tasks.items():
+            for task_container in tasks:
+                task_container.handle_captured_exceptions()
+                task_container.cleanup_threads()
+        time.sleep(1)
