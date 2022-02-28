@@ -3,6 +3,7 @@ import os
 
 import pytest
 
+from network.network_receiver import NetworkReceiver
 from network.serial_server import SerialServer
 from smarthome_bridge.network_manager import NetworkManager
 from system.api_definitions import ApiURIs
@@ -17,6 +18,7 @@ SERIAL_BAUDRATE = 115200
 LOG_OUTPUT_FILE = os.path.join("test_reports", "client_runtime_trace.csv")
 BACKTRACE_OUTPUT_FILE = os.path.join("test_reports", "client_backtraces.csv")
 TEST_META_OUTPUT_FILE = os.path.join("test_reports", "test_execution_meta.csv")
+TEST_META_PLOT_FILE = os.path.join("test_reports", "test_execution_meta.png")
 
 
 @pytest.fixture
@@ -38,6 +40,7 @@ def test_run_meta_collector() -> TaskExecutionMetaCollector:
     collector = TaskExecutionMetaCollector()
     yield collector
     collector.save(TEST_META_OUTPUT_FILE)
+    collector.save(TEST_META_PLOT_FILE)
 
 
 @pytest.fixture
@@ -76,43 +79,83 @@ def client_connected(network: NetworkManager) -> str:
     return client_id
 
 
-@pytest.mark.client
-@pytest.mark.runtime
-def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDetector, client_connected: str,
-                        test_run_meta_collector: TaskExecutionMetaCollector):
-    test_manager = RuntimeTestManager(meta_collector=test_run_meta_collector)
+@pytest.fixture
+def task_echo_container(network: NetworkManager, client_connected: str) -> TaskManagementContainer:
+    task_timeout = 4
 
-    def task_echo():
+    def task():
         payload = {"test": 123123,
                    "message": "string"}
         res = network.send_request(ApiURIs.test_echo.uri,
                                    client_connected,
-                                   payload)
+                                   payload,
+                                   timeout=task_timeout + 1)
         assert res is not None, "Received no response to echo"
         assert res.get_payload() == payload, "Echo response payload does not equal the sent one"
 
-    def task_illegal_uri():
+    out_container = TaskManagementContainer(function=task,
+                                            args=[],
+                                            timeout=task_timeout,
+                                            crash_on_error=False,
+                                            task_name="Echo")
+    return out_container
+
+
+@pytest.fixture
+def task_illegal_uri_container(network: NetworkManager, client_connected: str) -> TaskManagementContainer:
+    def task():
         payload = {"test": 555}
         network.send_request("yolokopter",
                              client_connected,
                              payload,
                              timeout=0)
 
-    task_echo_container = TaskManagementContainer(function=task_echo,
-                                                  args=[],
-                                                  timeout=4,
-                                                  crash_on_error=False,
-                                                  task_name="Echo")
-    test_manager.add_task(2, task_echo_container)
+    out_container = TaskManagementContainer(function=task,
+                                            args=[],
+                                            timeout=2,
+                                            crash_on_error=False,
+                                            task_name="Illegal URI")
+    return out_container
 
-    task_illegal_uri_container = TaskManagementContainer(function=task_illegal_uri,
-                                                         args=[],
-                                                         timeout=10,
-                                                         crash_on_error=False,
-                                                         task_name="Illegal Uri")
+
+@pytest.fixture
+def task_sync_container(network: NetworkManager, client_connected: str) -> TaskManagementContainer:
+    task_timeout = 7
+
+    def task():
+        receiver = NetworkReceiver()
+        network.subscribe(receiver)
+        receiver.start_listening()
+
+        network.send_request(ApiURIs.sync_request.uri,
+                             client_connected,
+                             {},
+                             timeout=task_timeout + 1)
+
+        reqs = receiver.collect_requests()
+        network.unsubscribe(receiver)
+        sync_reqs = [x for x in reqs if x.get_sender() == client_connected and x.get_path() == ApiURIs.sync_client.uri]
+        assert len(sync_reqs) == 1
+
+    out_container = TaskManagementContainer(function=task,
+                                            args=[],
+                                            timeout=task_timeout,
+                                            crash_on_error=False,
+                                            task_name="Sync")
+    return out_container
+
+
+@pytest.mark.client
+@pytest.mark.runtime
+def test_client_runtime(backtrace_logger: BacktraceDetector, test_run_meta_collector: TaskExecutionMetaCollector,
+                        task_echo_container, task_illegal_uri_container, task_sync_container):
+    test_manager = RuntimeTestManager(meta_collector=test_run_meta_collector)
+
     test_manager.add_task(0, task_illegal_uri_container)
+    test_manager.add_task(2, task_echo_container)
+    test_manager.add_task(3, task_sync_container)
 
-    test_manager.run(20)
+    test_manager.run(300)
 
     assert backtrace_logger.get_backtrace_count() == 0, f"Client crashed" \
                                                         f"'{backtrace_logger.get_backtrace_count()}' times"

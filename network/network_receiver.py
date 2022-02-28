@@ -22,7 +22,7 @@ class NetworkReceiver(Subscriber):
     def receive(self, req: Request):
         self._request_queue.put(req)
 
-    def start_listening_for_responses(self):
+    def start_listening(self):
         """Clears the queue and starts recording requests.
         All received requests are used the next time wait_for_responses() is called."""
         self._request_queue = Queue()
@@ -47,3 +47,18 @@ class NetworkReceiver(Subscriber):
                     responses.append(res)
 
         return responses
+
+    def collect_requests(self, timeout: int = 5) -> list[Request]:
+        if not self._keep_queue:
+            self._request_queue = Queue()
+        else:
+            self._keep_queue = False
+
+        requests: list[Request] = []
+        timeout_time = datetime.now() + timedelta(seconds=timeout)
+
+        while timeout and datetime.now() < timeout_time:
+            if not self._request_queue.empty():
+                requests.append(self._request_queue.get())
+
+        return requests

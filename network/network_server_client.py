@@ -24,8 +24,6 @@ class NetworkServerClient(Publisher):
 
     _thread_manager: ThreadManager
 
-    __split_handler: SplitRequestHandler
-
     __out_queue: Queue
     __in_queue: Queue
 
@@ -35,8 +33,6 @@ class NetworkServerClient(Publisher):
         self._host_name = host_name
         self._address = address
         self._validator = Validator()
-
-        self.__split_handler = SplitRequestHandler()
 
         self.__out_queue = Queue()
         self.__in_queue = Queue()
@@ -61,12 +57,10 @@ class NetworkServerClient(Publisher):
 
     def __task_publish(self):
         if not self.__in_queue.empty():
-            in_req = self.__in_queue.get()
-            req = self.__split_handler.handle(in_req)
-            if req:
-                if req.get_sender() != self._host_name:
-                    req.set_callback_method(self._respond_to)
-                    self._forward_request(req)
+            req = self.__in_queue.get()
+            if req.get_sender() != self._host_name:
+                req.set_callback_method(self._respond_to)
+                self._forward_request(req)
 
     def _respond_to(self, req: Request, payload: dict, path: Optional[str] = None):
         if path:

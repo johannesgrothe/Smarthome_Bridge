@@ -89,7 +89,7 @@ class NetworkManager(Publisher, Subscriber):
 
     def _send_request_obj(self, req: Request, timeout: int, max_responses: int):
         req_receiver = NetworkReceiver()
-        req_receiver.start_listening_for_responses()
+        req_receiver.start_listening()
 
         for connector in self._connectors:
             connector.subscribe(req_receiver)

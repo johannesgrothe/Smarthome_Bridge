@@ -1,4 +1,5 @@
 """Module for the client detector"""
+import datetime
 import time
 
 from network.request import Request
@@ -19,7 +20,9 @@ class ClientDetector(Subscriber):
         """
         super().__init__()
         self._network = network_connector
-        self._network.subscribe(self)
+
+    def __del__(self):
+        self._network.unsubscribe(self)
 
     def receive(self, req: Request):
         if req.get_sender() not in self._clients:
@@ -33,5 +36,7 @@ class ClientDetector(Subscriber):
         :return: A list of all received client IDs
         """
         self._clients = []
+        self._network.subscribe(self)
         time.sleep(timeout)
+        self._network.unsubscribe(self)
         return self._clients

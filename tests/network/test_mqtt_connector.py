@@ -2,7 +2,7 @@ import pytest
 
 from network.mqtt_connector import MQTTConnector
 from test_helpers.echo_client import TestEchoClient
-from tests.network.connector_tests import send_test, send_split_test, broadcast_test, broadcast_single_response_test
+from tests.network.connector_tests import send_test, broadcast_test, broadcast_single_response_test
 from smarthome_bridge.network_manager import NetworkManager
 
 TEST_ECHO_CLIENT_NAME = "pytest_echo_client"
@@ -41,16 +41,6 @@ def manager(sender):
 @pytest.mark.network
 def test_mqtt_connector_send(manager: NetworkManager, f_payload_big, echo_client):
     send_test(manager, echo_client.get_hostname(), f_payload_big)
-
-
-@pytest.mark.network
-def test_mqtt_connector_send_split_long(manager: NetworkManager, f_payload_big, echo_client):
-    send_split_test(manager, echo_client.get_hostname(), f_payload_big)
-
-
-@pytest.mark.network
-def test_mqtt_connector_send_split_short(manager: NetworkManager, f_payload_small, echo_client):
-    send_split_test(manager, echo_client.get_hostname(), f_payload_small)
 
 
 @pytest.mark.network
