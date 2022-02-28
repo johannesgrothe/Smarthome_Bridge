@@ -103,7 +103,7 @@ def test_client_runtime(network: NetworkManager, backtrace_logger: BacktraceDete
                                                   timeout=4,
                                                   crash_on_error=False,
                                                   task_name="Echo")
-    # test_manager.add_task(2, task_echo_container)
+    test_manager.add_task(2, task_echo_container)
 
     task_illegal_uri_container = TaskManagementContainer(function=task_illegal_uri,
                                                          args=[],

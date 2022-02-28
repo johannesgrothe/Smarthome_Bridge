@@ -16,6 +16,7 @@ coverage = {version="*"}
 pytest-cov = {version="*"}
 pytest-dotenv = {version="*"}
 werkzeug = {version="*"}
+matplotlib = {version="*"}
 
 [dev-packages]
 

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from test_helpers.timing_organizer import TimingOrganizer
 
 
-_legal_delta = 50
+_legal_delta = 15
 
 
 def time_test(ms: int):
