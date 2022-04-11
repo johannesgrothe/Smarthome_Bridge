@@ -64,7 +64,7 @@ class BridgeUpdateManager(LoggingInterface):
                     self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash))
         try:
             self._logger.info("NO DETACHED HEAD")
-            self._repo_manager.fetch_from()
+            self._repo_manager.fetch()
             remote_hash = self._repo_manager.get_commit_hash(self._repo_manager.get_remote_branch())
         except RepositoryFetchException:
             raise UpdateNotPossibleException
