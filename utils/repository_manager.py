@@ -200,7 +200,12 @@ class RepositoryManager(LoggingInterface):
         :param branch: The branch to get the commit hash for. defaults to HEAD
         :return: The current commit hash.
         """
-        return os.popen(f"cd {self._path};git rev-parse {branch}").read().strip("\n")
+        buf_dir = os.getcwd()
+        os.chdir(self._path)
+        command = f"git rev-parse {branch}"
+        buf_hash = os.popen(command).read().strip("\n")
+        os.chdir(buf_dir)
+        return buf_hash
 
     def get_branch_date(self) -> str:
         """
