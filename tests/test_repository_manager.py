@@ -1,8 +1,7 @@
 import pytest
-from utils.repository_manager import RepositoryManager, RepositoryCloneException, RepositoryUnsafeToDeleteException,\
+from utils.repository_manager import RepositoryManager, RepositoryCloneException, RepositoryUnsafeToDeleteException, \
     RepositoryCheckoutException, RepositoryFetchException, RepositoryStatusException, RepositoryPullException
 import logging
-
 
 REPO_PATH = "temp"
 REPO_NAME = "Smarthome_Infrastructure"
@@ -16,7 +15,6 @@ CHECKOUT_BRANCH = "master"
 
 @pytest.fixture
 def manager():
-
     manager = RepositoryManager(REPO_PATH,
                                 REPO_NAME,
                                 URL)
@@ -25,7 +23,6 @@ def manager():
 
 @pytest.fixture
 def manager_broken():
-
     manager = RepositoryManager(REPO_PATH,
                                 REPO_NAME_BROKEN,
                                 BROKEN_URL)

@@ -229,6 +229,9 @@ class RepositoryManager(LoggingInterface):
             raise RepositoryStatusException()
         return branch_list[0]
 
+    def head_is_detached(self) -> bool:
+        return self.get_branch().startswith("(HEAD ")
+
     def get_remote_branch(self) -> str:
         """
         Gets the remote branch associated with the current local branch.
