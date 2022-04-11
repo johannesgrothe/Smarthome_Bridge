@@ -219,10 +219,10 @@ class RepositoryManager(LoggingInterface):
         Gets the number of commits between two commit hashes
         :return: Number of commits between two commit hashes
         """
-        # num_commits = os.system(f"cd {self._path};git rev-list --ancestry-path {old_commit}..{new_commit}")
-        commits = os.popen(f"cd {self._path};git rev-list --ancestry-path {new_commit}..{old_commit}").read().strip("\n").split("\n")
-        num_commits = len(commits)
-        return num_commits
+        commits = os.popen(f"cd {self._path};git rev-list --ancestry-path {old_commit}..{new_commit}").read().strip(
+            "\n").split("\n")
+        commits = [x for x in commits if x]
+        return len(commits)
 
     def get_branch(self) -> str:
         """

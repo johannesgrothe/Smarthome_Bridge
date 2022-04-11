@@ -56,12 +56,13 @@ class BridgeUpdateManager(LoggingInterface):
         if self._repo_manager.head_is_detached():
             self._logger.info("DETACHED HEAD")
             remote_hash = self._repo_manager.get_commit_hash(_default_branch)
+            commits_between = self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash)
             return (current_hash,
                     remote_hash,
                     self._repo_manager.get_branch(),
                     current_date,
                     current_date,  # TODO: doesn't work
-                    self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash))
+                    commits_between)
         try:
             self._logger.info("NO DETACHED HEAD")
             self._repo_manager.fetch()
@@ -70,12 +71,15 @@ class BridgeUpdateManager(LoggingInterface):
             raise UpdateNotPossibleException
         if current_hash == remote_hash:
             raise NoUpdateAvailableException
+        commits_between = self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash)
+        if commits_between == 0:
+            raise NoUpdateAvailableException
         return (current_hash,
                 remote_hash,
                 self._repo_manager.get_branch(),
                 current_date,
                 current_date,  # TODO: doesn't work
-                self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash))
+                commits_between)
 
     def execute_update(self):
         """
