@@ -4,18 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-flask = {version="*"}
-flask-cors = {version="*"}
-paho_mqtt = {version="*"}
-pyserial = {version="*"}
-requests = {version="*"}
-pysimplegui = {version="*"}
-jsonschema = {version="*"}
-pytest = {version="*"}
-coverage = {version="*"}
-pytest-cov = {version="*"}
-pytest-dotenv = {version="*"}
-werkzeug = {version="*"}
+flask = { version = "*" }
+flask-cors = { version = "*" }
+paho_mqtt = { version = "*" }
+pyserial = { version = "*" }
+requests = { version = "*" }
+pysimplegui = { version = "*" }
+jsonschema = { version = "*" }
+pytest = { version = "*" }
+coverage = { version = "*" }
+pytest-cov = { version = "*" }
+pytest-dotenv = { version = "*" }
+werkzeug = { version = "*" }
+homekit = { version = "*" }
 
 [dev-packages]
 
