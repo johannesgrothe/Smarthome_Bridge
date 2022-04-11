@@ -200,7 +200,12 @@ class RepositoryManager(LoggingInterface):
         :param branch: The branch to get the commit hash for. defaults to HEAD
         :return: The current commit hash.
         """
-        return os.popen(f"cd {self._path};git rev-parse {branch}").read().strip("\n")
+        buf_dir = os.getcwd()
+        os.chdir(self._path)
+        command = f"git rev-parse {branch}"
+        buf_hash = os.popen(command).read().strip("\n")
+        os.chdir(buf_dir)
+        return buf_hash
 
     def get_branch_date(self) -> str:
         """
@@ -214,7 +219,10 @@ class RepositoryManager(LoggingInterface):
         Gets the number of commits between two commit hashes
         :return: Number of commits between two commit hashes
         """
-        return os.system(f"cd {self._path};git rev-list --ancestry-path {old_commit}..{new_commit}")
+        commits = os.popen(f"cd {self._path};git rev-list --ancestry-path {old_commit}..{new_commit}").read().strip(
+            "\n").split("\n")
+        commits = [x for x in commits if x]
+        return len(commits)
 
     def get_branch(self) -> str:
         """
@@ -229,6 +237,9 @@ class RepositoryManager(LoggingInterface):
             raise RepositoryStatusException()
         return branch_list[0]
 
+    def head_is_detached(self) -> bool:
+        return self.get_branch().startswith("(HEAD ")
+
     def get_remote_branch(self) -> str:
         """
         Gets the remote branch associated with the current local branch.
@@ -241,4 +252,5 @@ class RepositoryManager(LoggingInterface):
         if len(branch_list) != 1:
             raise RepositoryStatusException()
         data = [x for x in branch_list[0].split(" ") if x]
-        return data[2].split(": ")[0]
+        out_branch = data[2].strip("[").strip("]").strip(":")
+        return out_branch

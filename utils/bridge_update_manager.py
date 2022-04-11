@@ -4,6 +4,8 @@ from typing import Tuple
 from lib.logging_interface import LoggingInterface
 from utils.repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException
 
+_default_branch = "master"
+
 
 class UpdateNotSuccessfulException(Exception):
     def __init__(self):
@@ -51,19 +53,33 @@ class BridgeUpdateManager(LoggingInterface):
         """
         current_hash = self._repo_manager.get_commit_hash()
         current_date = self._repo_manager.get_branch_date()
+        if self._repo_manager.head_is_detached():
+            self._logger.info("DETACHED HEAD")
+            remote_hash = self._repo_manager.get_commit_hash(_default_branch)
+            commits_between = self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash)
+            return (current_hash,
+                    remote_hash,
+                    self._repo_manager.get_branch(),
+                    current_date,
+                    current_date,  # TODO: doesn't work
+                    commits_between)
         try:
-            self._repo_manager.fetch_from()
+            self._logger.info("NO DETACHED HEAD")
+            self._repo_manager.fetch()
             remote_hash = self._repo_manager.get_commit_hash(self._repo_manager.get_remote_branch())
         except RepositoryFetchException:
             raise UpdateNotPossibleException
         if current_hash == remote_hash:
+            raise NoUpdateAvailableException
+        commits_between = self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash)
+        if commits_between == 0:
             raise NoUpdateAvailableException
         return (current_hash,
                 remote_hash,
                 self._repo_manager.get_branch(),
                 current_date,
                 current_date,  # TODO: doesn't work
-                self._repo_manager.get_num_commits_between_commits(current_hash, remote_hash))
+                commits_between)
 
     def execute_update(self):
         """
@@ -72,7 +88,10 @@ class BridgeUpdateManager(LoggingInterface):
         :return: None
         :raises UpdateNotSuccessfulException: If the updating process failed for any reason
         """
-        update_successful = self._repo_manager.pull()
+        if self._repo_manager.head_is_detached():
+            update_successful = self._repo_manager.checkout(_default_branch)
+        else:
+            update_successful = self._repo_manager.pull()
         if not update_successful:
             raise UpdateNotSuccessfulException
 
