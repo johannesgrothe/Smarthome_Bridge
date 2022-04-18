@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import threading
 import time
 from abc import ABCMeta
@@ -87,8 +88,8 @@ class GadgetPublisherHomekit(GadgetPublisher):
             self.stop_server()
         self._logger.info("Starting Accessory Server")
         self._homekit_server.publish_device()
-        self._homekit_server.serve_forever()
-        self._server_thread = threading.Thread(target=self._homekit_server.serve_forever(3),
+        self._server_thread = threading.Thread(target=self._homekit_server.serve_forever,
+                                               args=[3],
                                                name=HOMEKIT_SERVER_NAME,
                                                daemon=True)
         self._server_thread.start()
@@ -119,42 +120,63 @@ class GadgetPublisherHomekit(GadgetPublisher):
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    rgb_light = Accessory('Testlicht_RGB', PRODUCER, 'BHSLightBulbService', '0001', '0.1')
-    rgb_light_service = BHSLightBulbService()
-    rgb_light_service.set_on_set_callback(light_switched)
-    rgb_light_service.set_hue_set_callback(light_hue)
-    rgb_light_service.set_brightness_set_callback(light_bri)
-    rgb_light_service.set_saturation_set_callback(light_sat)
-    rgb_light.services.append(rgb_light_service)
-
-    light = Accessory('Testlicht', PRODUCER, 'LightBulbService', '0002', '0.2')
-    light_service = LightBulbService()
-    light_service.set_on_set_callback(light_switched)
-    light.services.append(light_service)
-
-    switch = Accessory('TestSwitch', PRODUCER, 'SwitchService', '0003', '0.1')
-    switch_service = SwitchService()
-    switch_service.set_on_set_callback(switch_triggered)
-    switch.services.append(switch_service)
-
     config_file = "temp/demoserver.json"
 
-    server = GadgetPublisherHomekit(config_file)
-    # server._homekit_server.add_accessory(rgb_light)
+    print(sys.argv[1])
 
-    time.sleep(2)
-    print(".")
-    time.sleep(2)
-    print(".")
-    time.sleep(2)
-    print(".")
-    time.sleep(2)
-    print(".")
-    time.sleep(2)
-    print(".")
+    if int(sys.argv[1]) == 0:
+        print("Object")
+        server = GadgetPublisherHomekit(config_file)
 
-    server.__del__()
+        light = Accessory('Testlicht', PRODUCER, 'LightBulbService', '0002', '0.2')
+        light_service = LightBulbService()
+        light_service.set_on_set_callback(light_switched)
+        light.services.append(light_service)
+
+        server._homekit_server.add_accessory(light)
+
+        for i in range(30):
+            time.sleep(2)
+            print(".")
+
+        server.__del__()
+    else:
+        print("Old")
+
+        try:
+            logger = logging.getLogger('accessory')
+            httpd = AccessoryServer(config_file, logger)
+
+            dummy_accessory = Accessory("PythonBridge", PRODUCER, "tester_version", "00001", "0.3")
+            httpd.add_accessory(dummy_accessory)
+
+            rgb_light = Accessory('Testlicht_RGB', PRODUCER, 'BHSLightBulbService', '0001', '0.1')
+            rgb_light_service = BHSLightBulbService()
+            rgb_light_service.set_on_set_callback(light_switched)
+            rgb_light_service.set_hue_set_callback(light_hue)
+            rgb_light_service.set_brightness_set_callback(light_bri)
+            rgb_light_service.set_saturation_set_callback(light_sat)
+            rgb_light.services.append(rgb_light_service)
+
+            light = Accessory('Testlicht', PRODUCER, 'LightBulbService', '0002', '0.2')
+            light_service = LightBulbService()
+            light_service.set_on_set_callback(light_switched)
+            light.services.append(light_service)
+
+            switch = Accessory('TestSwitch', PRODUCER, 'SwitchService', '0003', '0.1')
+            switch_service = SwitchService()
+            switch_service.set_on_set_callback(switch_triggered)
+            switch.services.append(switch_service)
+
+            httpd.add_accessory(rgb_light)
+            httpd.add_accessory(light)
+            httpd.add_accessory(switch)
+
+            httpd.publish_device()
+            logger.info('published device and start serving')
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
 
 
 if __name__ == "__main__":
