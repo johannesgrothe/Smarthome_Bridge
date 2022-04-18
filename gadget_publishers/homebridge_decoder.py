@@ -1,6 +1,6 @@
 from lib.logging_interface import LoggingInterface
 from smarthome_bridge.characteristic import Characteristic
-from gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator,\
+from gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator, \
     CharacteristicParsingError
 
 
@@ -56,7 +56,16 @@ class HomebridgeDecoder(LoggingInterface):
         for service in data["properties"]:
             for characteristic in data["properties"][service]:
                 for key in ["minValue", "maxValue", "minStep"]:
-                    characteristic_data[characteristic][key] = data["properties"][service][characteristic][key]
+                    if data["properties"][service][characteristic]["format"] == "bool":
+                        value_map = {
+                            "minValue": 0,
+                            "maxValue": 1,
+                            "minStep": 1
+                        }
+                        buf_val = value_map[key]
+                    else:
+                        buf_val = data["properties"][service][characteristic][key]
+                    characteristic_data[characteristic][key] = buf_val
                 if characteristic_data[characteristic]["value"] is None:
                     characteristic_data[characteristic]["value"] = characteristic_data[characteristic]["minValue"]
         return characteristic_data
