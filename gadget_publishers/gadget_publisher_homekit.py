@@ -98,13 +98,16 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
     _brightness: int
     _saturation: int
 
-    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface):
+    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface, status: int, hue: int, brightness: int,
+                 saturation: int):
         super().__init__(name, publisher)
 
-        self._status = 1
-        self._hue = 100
-        self._brightness = 55
-        self._saturation = 100
+        print("creating rgblamp")
+
+        self._status = status
+        self._hue = hue
+        self._brightness = brightness
+        self._saturation = saturation
 
         rgb_light_service = BHSLightBulbService()
 
@@ -135,8 +138,9 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     @status.setter
     def status(self, value: int):
-        self._status = value
-        self._trigger_update()
+        if self._status != value:
+            self._status = value
+            self._trigger_update()
 
     @property
     def hue(self) -> int:
@@ -144,8 +148,9 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     @hue.setter
     def hue(self, value: int):
-        self._hue = value
-        self._trigger_update()
+        if self._hue != value:
+            self._hue = value
+            self._trigger_update()
 
     @property
     def saturation(self) -> int:
@@ -153,8 +158,9 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     @saturation.setter
     def saturation(self, value: int):
-        self._saturation = value
-        self._trigger_update()
+        if self._saturation != value:
+            self._saturation = value
+            self._trigger_update()
 
     @property
     def brightness(self) -> int:
@@ -162,8 +168,9 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     @brightness.setter
     def brightness(self, value: int):
-        self._brightness = value
-        self._trigger_update()
+        if self._brightness != value:
+            self._brightness = value
+            self._trigger_update()
 
     def _callback_set_status(self) -> Callable:
         def func(new_value):
@@ -224,6 +231,7 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
 class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
     _config_file: str
+    _server_logger: logging.Logger
     _homekit_server: AccessoryServer
     _server_thread: Optional[threading.Thread]
     _gadgets: list[HomekitAccessoryWrapper]
@@ -233,25 +241,26 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         self._logger.info("Starting...")
         self._config_file = config
         self._gadgets = []
-        server_logger = logging.getLogger(HOMEKIT_SERVER_NAME)
-        self._homekit_server = AccessoryServer(self._config_file, server_logger)
+        self._server_logger = logging.getLogger(HOMEKIT_SERVER_NAME)
+        self._server_thread = None
+
+        self._homekit_server = AccessoryServer(self._config_file, self._server_logger)
         dummy_accessory = Accessory("PythonBridge", MANUFACTURER, "tester_version", "00001", "0.3")
         self._homekit_server.add_accessory(dummy_accessory)
-        self._server_thread = None
-        self.start_server()
 
-        self.test_rgb_lamp = HomekitRGBLamp("dummy_rgb_lamp", self)
-        self._homekit_server.add_accessory(self.test_rgb_lamp.accessory)
-        self._homekit_server.set_identify_callback(status_cb)
+        self.start_server()
 
     def __del__(self):
         super().__del__()
         self.stop_server()
 
     def receive_update(self, gadget: str, update_data: dict):
+        if gadget == self._last_published_gadget:
+            print("pass")
         if self._status_supplier is None:
             self._logger.info(f"Cannot publish Gadget Info")
             return
+
         origin_gadget = self._status_supplier.get_gadget(gadget)
         if origin_gadget is None:
             return
@@ -266,7 +275,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             ]:
                 characteristics.append(Characteristic(c_id,
                                                       0,
-                                                      1,
+                                                      1000,
                                                       value=update_data[c_name]))
         if characteristics is None:
             return
@@ -276,8 +285,15 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
 
         self._publish_gadget(out_gadget)
 
+    def _gen_server_method(self) -> Callable:
+        def func():
+            self._homekit_server.serve_forever(3)
+
+        return func
+
     def stop_server(self):
         if self._server_thread is None:
+            self._logger.info("Accessory Server is not running")
             return
         self._logger.info("Stopping Accessory Server")
         self._homekit_server.unpublish_device()
@@ -289,11 +305,15 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         if self._server_thread is not None:
             self.stop_server()
         self._logger.info("Starting Accessory Server")
+        self._homekit_server = AccessoryServer(self._config_file, self._server_logger)
         self._homekit_server.publish_device()
         self._server_thread = threading.Thread(target=self._homekit_server.serve_forever,
-                                               args=[3],
-                                               name=HOMEKIT_SERVER_NAME,
+                                               args=[0.5],
+                                               # name=HOMEKIT_SERVER_NAME,
                                                daemon=True)
+        # self._server_thread = threading.Thread(target=self._gen_server_method(),
+        #                                        name=HOMEKIT_SERVER_NAME,
+        #                                        daemon=True)
         self._server_thread.start()
 
     def reset_config(self):
@@ -320,20 +340,38 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
 
     def receive_gadget(self, gadget: Gadget):
         if self._gadget_exists(gadget.get_name()):
-            self.remove_gadget(gadget.get_name())
+            # self.remove_gadget(gadget.get_name())
+            homekit_gadget = self._get_gadget(gadget.get_name())
+            if isinstance(homekit_gadget, HomekitRGBLamp):
+                print("should sync")
+                homekit_gadget.status = gadget.get_characteristic(CharacteristicIdentifier.status).get_step_value()
+                homekit_gadget.hue = gadget.get_characteristic(CharacteristicIdentifier.hue).get_step_value()
+                homekit_gadget.saturation = gadget.get_characteristic(
+                    CharacteristicIdentifier.saturation).get_step_value()
+                homekit_gadget.brightness = gadget.get_characteristic(
+                    CharacteristicIdentifier.brightness).get_step_value()
+            return
         self.create_gadget(gadget)
 
     def create_gadget(self, gadget: Gadget):
+        print(gadget.get_name())
         if self._gadget_exists(gadget.get_name()):
             raise Exception("gadget exists already")
         if isinstance(gadget, LampNeopixelBasic):
-            homekit_gadget = HomekitRGBLamp(gadget.get_name(), self)
-            homekit_gadget.status = gadget.get_characteristic(CharacteristicIdentifier.status).get_step_value()
-            homekit_gadget.hue = gadget.get_characteristic(CharacteristicIdentifier.hue).get_step_value()
-            homekit_gadget.brightness = gadget.get_characteristic(CharacteristicIdentifier.brightness).get_step_value()
-            homekit_gadget.saturation = gadget.get_characteristic(CharacteristicIdentifier.saturation).get_step_value()
+            self._logger.info(f"Creating gadget '{gadget.get_name()}'")
+            homekit_gadget = HomekitRGBLamp(gadget.get_name(),
+                                            self,
+                                            gadget.get_characteristic(CharacteristicIdentifier.status).get_step_value(),
+                                            gadget.get_characteristic(CharacteristicIdentifier.hue).get_step_value(),
+                                            gadget.get_characteristic(
+                                                CharacteristicIdentifier.brightness).get_step_value(),
+                                            gadget.get_characteristic(
+                                                CharacteristicIdentifier.saturation).get_step_value())
             self._homekit_server.add_accessory(homekit_gadget.accessory)
             self._gadgets.append(homekit_gadget)
+            self._homekit_server.publish_device()
+            # self.stop_server()
+            # self.start_server()
         else:
             print("error")
             return
@@ -371,6 +409,9 @@ def main():
         print("Object")
         server = GadgetPublisherHomekit(config_file)
 
+        # time.sleep(5)
+        input("press enter to continue")
+
         server.receive_gadget(LampNeopixelBasic("yolo_lamp",
                                                 "tester",
                                                 Characteristic(
@@ -398,12 +439,14 @@ def main():
                                                     value=88
                                                 )))
 
+        # server._homekit_server.unpublish_device()
+        # server._homekit_server.publish_device()
+        server.stop_server()
+        server.start_server()
+
         for i in range(30):
             time.sleep(5)
             print(".")
-            new_status = 0 if server.test_rgb_lamp.status else 1
-            server.test_rgb_lamp.status = new_status
-            print(f"CHANGING STATUS TO {new_status}")
             # server._homekit_server.unpublish_device()
             # server._homekit_server.publish_device()
 
