@@ -64,7 +64,7 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
         pass
 
     @abstractmethod
-    def remove_gadget(self, gadget_name: str) -> bool:
+    def remove_gadget(self, gadget_name: str):
         """
         Removes a gadget from the publishing interface
 
