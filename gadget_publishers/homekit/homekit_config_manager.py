@@ -1,16 +1,38 @@
 import json
 import random
 import socket
+from typing import Optional
 
 from lib.logging_interface import LoggingInterface
 
 
+class NoConfigFoundError(Exception):
+    pass
+
+
 class HomekitConfigManager(LoggingInterface):
     _config_path: str
+    _data: Optional[dict]
 
     def __init__(self, config_path: str):
         super().__init__()
         self._config_path = config_path
+        self._reload()
+
+    def _reload(self):
+        try:
+            with open(self._config_path, "r") as file_p:
+                self._data = json.load(file_p)
+        except FileNotFoundError:
+            self._data = None
+
+    @property
+    def path(self) -> str:
+        return self._config_path
+
+    @property
+    def data(self) -> dict:
+        return self._data
 
     @staticmethod
     def _generate_host_ip() -> str:
@@ -55,6 +77,7 @@ class HomekitConfigManager(LoggingInterface):
 
         with open(self._config_path, "w") as file_p:
             json.dump(new_config, file_p)
+        self._reload()
 
     def reset_config_pairings(self) -> None:
         """
@@ -62,14 +85,23 @@ class HomekitConfigManager(LoggingInterface):
 
         :return: None
         """
-        with open(self._config_path, "r") as file_p:
-            cfg_data = json.load(file_p)
+        try:
+            with open(self._config_path, "r") as file_p:
+                cfg_data = json.load(file_p)
+        except FileNotFoundError:
+            raise NoConfigFoundError(f"No file found at path '{self._config_path}'")
 
-        new_config = {
-            x: cfg_data[x] for x in ["accessory_pairing_id", "accessory_pin",
-                                     "c#", "category", "host_ip", "host_port",
-                                     "name"]
-        }
+        needed_keys = ["accessory_pairing_id", "accessory_pin",
+                       "c#", "category", "host_ip", "host_port",
+                       "name"]
+
+        try:
+            new_config = {
+                x: cfg_data[x] for x in needed_keys
+            }
+        except KeyError:
+            raise NoConfigFoundError(f"File at '{self._config_path}' is missing keys")
 
         with open(self._config_path, "w") as file_p:
             json.dump(new_config, file_p)
+        self._reload()

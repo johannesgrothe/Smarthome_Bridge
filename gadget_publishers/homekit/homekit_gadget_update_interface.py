@@ -1,3 +1,4 @@
+"""Module for the homekit gadget publisher interface"""
 from abc import abstractmethod, ABCMeta
 
 
