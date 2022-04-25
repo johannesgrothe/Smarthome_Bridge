@@ -60,6 +60,10 @@ def parse_args():
                         help='Adds dummy data for debugging.',
                         action="store_true")
 
+    parser.add_argument('--homekit_active',
+                        help='Activates the homekit connector.',
+                        action="store_true")
+
     parser.add_argument('--logging', help='Log-Level to be set', type=str, default="INFO",
                         choices=["DEBUG", "INFO", "ERROR"])
     args = parser.parse_args()
@@ -87,6 +91,12 @@ def main():
     if args.static_user_password:
         user_data = (args.static_user_name, args.static_user_password)
 
+    # HOMEKIT
+    homekit_active = False
+    if args.homekit_active:
+        homekit_active = True
+
+
     launcher = BridgeLauncher()
 
     launcher.launch(name=args.bridge_name,
@@ -95,6 +105,7 @@ def main():
                     socket_port=args.socket_port,
                     serial_active=args.serial,
                     static_user_data=user_data,
+                    homekit_active=homekit_active,
                     add_dummy_data=args.dummy_data)
 
     while True:

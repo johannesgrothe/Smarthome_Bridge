@@ -1,5 +1,5 @@
-import json
 import logging
+import os.path
 import sys
 import threading
 import time
@@ -10,190 +10,21 @@ from homekit.accessoryserver import AccessoryServer
 from homekit.model import Accessory
 from homekit.model.services import LightBulbService
 from homekit.model.services import BHSLightBulbService
-from homekit.model import get_id
-from homekit.model.characteristics import OnCharacteristicMixin
-from homekit.model.services import ServicesTypes, AbstractService
-
 from gadget_publishers.gadget_publisher import GadgetPublisher
+from gadget_publishers.homekit.homekit_accessory_constants import HomekitConstants
+from gadget_publishers.homekit.homekit_accessory_rgb_lamp import HomekitRGBLamp
+from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
+from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
+from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
+from gadget_publishers.homekit.homekit_services import SwitchService
 from gadgets.any_gadget import AnyGadget
 from gadgets.gadget import Gadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
-from lib.logging_interface import LoggingInterface
 from smarthome_bridge.characteristic import Characteristic
-from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher
 from system.gadget_definitions import CharacteristicIdentifier
 
-MANUFACTURER = "j_klink"
-SERIAL_NUMBER = "00001"
-REVISION = "0.1.4"
-HOMEKIT_SERVER_NAME = "HomekitAccessoryServer"
 RESTART_DELAY = 7
-
-
-class GadgetPublisherHomekitInterface(metaclass=ABCMeta):
-
-    @abstractmethod
-    def receive_update(self, gadget_name: str, update_data: dict):
-        pass
-
-
-class SwitchService(AbstractService, OnCharacteristicMixin):
-
-    def __init__(self):
-        AbstractService.__init__(self, ServicesTypes.get_uuid('public.hap.service.switch'), get_id())
-        OnCharacteristicMixin.__init__(self, get_id())
-
-
-class HomekitAccessoryWrapper(LoggingInterface, GadgetUpdatePublisher, metaclass=ABCMeta):
-    _name: str
-    _accessory: Accessory
-    _publisher: GadgetPublisherHomekitInterface
-
-    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface):
-        super().__init__()
-        self._name = name
-        self._publisher = publisher
-        self._accessory = Accessory(self._name,
-                                    MANUFACTURER,
-                                    self.__class__.__name__,
-                                    SERIAL_NUMBER,
-                                    REVISION)
-        # self._accessory.set_identify_callback(status_cb)
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def accessory(self) -> Accessory:
-        return self._accessory
-
-
-class HomekitRGBLamp(HomekitAccessoryWrapper):
-    _status: int
-    _hue: int
-    _brightness: int
-    _saturation: int
-
-    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface, status: int, hue: int, brightness: int,
-                 saturation: int):
-        super().__init__(name, publisher)
-
-        self._status = status
-        self._hue = hue
-        self._brightness = brightness
-        self._saturation = saturation
-
-        rgb_light_service = BHSLightBulbService()
-
-        rgb_light_service.set_on_set_callback(self._callback_set_status())
-        rgb_light_service.set_hue_set_callback(self._callback_set_hue())
-        rgb_light_service.set_brightness_set_callback(self._callback_set_brightness())
-        rgb_light_service.set_saturation_set_callback(self._callback_set_saturation())
-
-        rgb_light_service.set_on_get_callback(self._callback_get_status())
-        rgb_light_service.set_hue_get_callback(self._callback_get_hue())
-        rgb_light_service.set_brightness_get_callback(self._callback_get_brightness())
-        rgb_light_service.set_saturation_get_callback(self._callback_get_saturation())
-
-        self._accessory.add_service(rgb_light_service)
-
-    def _trigger_update(self):
-        update_data = {
-            "status": self.status,
-            "hue": self.hue,
-            "saturation": self.saturation,
-            "brightness": self.brightness
-        }
-        self._publisher.receive_update(self.name, update_data)
-
-    @property
-    def status(self) -> int:
-        return self._status
-
-    @status.setter
-    def status(self, value: int):
-        if self._status != value:
-            self._status = value
-            self._trigger_update()
-
-    @property
-    def hue(self) -> int:
-        return self._hue
-
-    @hue.setter
-    def hue(self, value: int):
-        if self._hue != value:
-            self._hue = value
-            self._trigger_update()
-
-    @property
-    def saturation(self) -> int:
-        return self._saturation
-
-    @saturation.setter
-    def saturation(self, value: int):
-        if self._saturation != value:
-            self._saturation = value
-            self._trigger_update()
-
-    @property
-    def brightness(self) -> int:
-        return self._brightness
-
-    @brightness.setter
-    def brightness(self, value: int):
-        if self._brightness != value:
-            self._brightness = value
-            self._trigger_update()
-
-    def _callback_set_status(self) -> Callable:
-        def func(new_value):
-            self.status = new_value
-
-        return func
-
-    def _callback_set_hue(self) -> Callable:
-        def func(new_value):
-            self.hue = new_value
-
-        return func
-
-    def _callback_set_brightness(self) -> Callable:
-        def func(new_value):
-            self.brightness = new_value
-
-        return func
-
-    def _callback_set_saturation(self) -> Callable:
-        def func(new_value):
-            self.saturation = new_value
-
-        return func
-
-    def _callback_get_status(self) -> Callable:
-        def func():
-            return self.status
-
-        return func
-
-    def _callback_get_hue(self) -> Callable:
-        def func():
-            return self.hue
-
-        return func
-
-    def _callback_get_brightness(self) -> Callable:
-        def func():
-            return self.brightness
-
-        return func
-
-    def _callback_get_saturation(self) -> Callable:
-        def func():
-            return self.saturation
-
-        return func
+HOMEKIT_SERVER_NAME = "HomekitAccessoryServer"
 
 
 class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
@@ -208,11 +39,18 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         super().__init__()
         self._logger.info("Starting...")
         self._config_file = config
+        if not os.path.isfile(self._config_file):
+            HomekitConfigManager(self._config_file).generate_new_config()
+
         self._gadgets = []
         self._server_logger = logging.getLogger(HOMEKIT_SERVER_NAME)
         self._server_thread = None
         self._restart_scheduled = False
-        self._dummy_accessory = Accessory("PythonBridge", MANUFACTURER, "tester_version", "00001", "0.3")
+        self._dummy_accessory = Accessory("PythonBridge",
+                                          HomekitConstants().manufacturer,
+                                          self.__class__.__name__,
+                                          "1776",
+                                          HomekitConstants().revision)
 
         self.start_server()
 
@@ -221,7 +59,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         self._restart_scheduled = False
         self.stop_server()
 
-    def receive_update(self, gadget: str, update_data: dict):
+    def receive_update(self, gadget: str, update_data: dict) -> None:
         if gadget == self._last_published_gadget:
             return
         if self._status_supplier is None:
@@ -284,17 +122,6 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
                                                name=HOMEKIT_SERVER_NAME,
                                                daemon=True)
         self._server_thread.start()
-
-    def reset_config(self):
-        with open(self._config_file, "r") as file_p:
-            cfg_data = json.load(file_p)
-
-        new_config = {
-            x: cfg_data[x] for x in ["accessory_pairing_id", "c#", "category", "host_ip", "host_port", "name"]
-        }
-
-        with open(self._config_file, "w") as file_p:
-            json.dump(new_config, file_p)
 
     def _schedule_restart(self):
 
@@ -360,6 +187,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
     def remove_gadget(self, gadget_name: str):
         found = self._get_gadget(gadget_name)
         self._gadgets.remove(found)
+        self._schedule_restart()
 
     def receive_gadget_update(self, gadget: Gadget):
         homekit_gadget = self._get_gadget(gadget.get_name())

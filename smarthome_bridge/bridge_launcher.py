@@ -1,3 +1,5 @@
+import os
+
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from system.api_definitions import ApiAccessLevel
@@ -86,6 +88,7 @@ class BridgeLauncher:
                socket_port: Optional[int],
                serial_active: bool,
                static_user_data: Optional[Tuple[str, str]],
+               homekit_active: bool,
                add_dummy_data: bool = False) -> Bridge:
 
         # Create Bridge
@@ -113,14 +116,8 @@ class BridgeLauncher:
             # serial = SerialServer(name, 115200)
             # bridge.get_network_manager().add_connector(serial)
 
-        # HOMEBRIDGE GADGET PUBLISHER
-        # if mqtt is not None:
-        #     hb_network = HomebridgeNetworkConnector(name, mqtt, 3)
-        #     hb_publisher = GadgetPublisherHomeBridge(hb_network)
-        #     bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
-
         # APPLE HOME PUBLISHER
-        config_file = "temp/demoserver.json"
+        config_file = os.path.join("bridge_data", "homekit_server_settings.json")
         hk_publisher = GadgetPublisherHomekit(config_file)
         bridge.get_gadget_manager().add_gadget_publisher(hk_publisher)
 
