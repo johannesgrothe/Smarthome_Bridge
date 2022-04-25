@@ -243,10 +243,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         self._gadgets = []
         self._server_logger = logging.getLogger(HOMEKIT_SERVER_NAME)
         self._server_thread = None
-
-        self._homekit_server = AccessoryServer(self._config_file, self._server_logger)
-        dummy_accessory = Accessory("PythonBridge", MANUFACTURER, "tester_version", "00001", "0.3")
-        self._homekit_server.add_accessory(dummy_accessory)
+        self._dummy_accessory = Accessory("PythonBridge", MANUFACTURER, "tester_version", "00001", "0.3")
 
         self.start_server()
 
@@ -306,14 +303,16 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             self.stop_server()
         self._logger.info("Starting Accessory Server")
         self._homekit_server = AccessoryServer(self._config_file, self._server_logger)
+
+        self._homekit_server.add_accessory(self._dummy_accessory)
+
+        for gadget in self._gadgets:
+            self._homekit_server.add_accessory(gadget.accessory)
         self._homekit_server.publish_device()
         self._server_thread = threading.Thread(target=self._homekit_server.serve_forever,
                                                args=[0.5],
-                                               # name=HOMEKIT_SERVER_NAME,
+                                               name=HOMEKIT_SERVER_NAME,
                                                daemon=True)
-        # self._server_thread = threading.Thread(target=self._gen_server_method(),
-        #                                        name=HOMEKIT_SERVER_NAME,
-        #                                        daemon=True)
         self._server_thread.start()
 
     def reset_config(self):
