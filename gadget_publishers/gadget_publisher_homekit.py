@@ -235,6 +235,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
     _homekit_server: AccessoryServer
     _server_thread: Optional[threading.Thread]
     _gadgets: list[HomekitAccessoryWrapper]
+    _restart_scheduled: bool
 
     def __init__(self, config: str):
         super().__init__()
@@ -243,12 +244,14 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         self._gadgets = []
         self._server_logger = logging.getLogger(HOMEKIT_SERVER_NAME)
         self._server_thread = None
+        self._restart_scheduled = False
         self._dummy_accessory = Accessory("PythonBridge", MANUFACTURER, "tester_version", "00001", "0.3")
 
         self.start_server()
 
     def __del__(self):
         super().__del__()
+        self._restart_scheduled = False
         self.stop_server()
 
     def receive_update(self, gadget: str, update_data: dict):
@@ -326,6 +329,21 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         with open(self._config_file, "w") as file_p:
             json.dump(new_config, file_p)
 
+    def _schedule_restart(self):
+
+        def restart_method(seconds: int):
+            self._logger.info(f"Restarting in {seconds}s")
+            time.sleep(seconds)
+            if self._restart_scheduled:
+                self.start_server()
+
+        restart_thread = threading.Thread(target=restart_method,
+                                          args=[5],
+                                          name=f"{self.__class__.__name__}RestartThread",
+                                          daemon=True)
+        self._restart_scheduled = True
+        restart_thread.start()
+
     def _gadget_exists(self, name: str):
         return name in [x.name for x in self._gadgets]
 
@@ -369,8 +387,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             self._homekit_server.add_accessory(homekit_gadget.accessory)
             self._gadgets.append(homekit_gadget)
             self._homekit_server.publish_device()
-            # self.stop_server()
-            # self.start_server()
+            self._schedule_restart()
         else:
             print("error")
             return
@@ -408,7 +425,6 @@ def main():
         print("Object")
         server = GadgetPublisherHomekit(config_file)
 
-        # time.sleep(5)
         input("press enter to continue")
 
         server.receive_gadget(LampNeopixelBasic("yolo_lamp",
@@ -438,16 +454,9 @@ def main():
                                                     value=88
                                                 )))
 
-        # server._homekit_server.unpublish_device()
-        # server._homekit_server.publish_device()
-        server.stop_server()
-        server.start_server()
-
         for i in range(30):
             time.sleep(5)
             print(".")
-            # server._homekit_server.unpublish_device()
-            # server._homekit_server.publish_device()
 
         server.__del__()
     else:
