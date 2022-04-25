@@ -5,8 +5,8 @@ from system.api_definitions import ApiURIs
 
 
 @pytest.fixture
-def manager_user():
-    manager = UserManager()
+def manager_user(f_temp_exists):
+    manager = UserManager(f_temp_exists)
     manager.add_user("test2", "testpw2", ApiAccessLevel.user, True)
     yield manager
     manager.delete_user("test2")

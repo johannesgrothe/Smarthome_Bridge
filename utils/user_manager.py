@@ -44,11 +44,9 @@ class UserManager(LoggingInterface):
     _users: dict
     _persistent_user_path: str
 
-    def __init__(self):
+    def __init__(self, data_directory: str):
         super().__init__()
-        if not os.path.exists(f"{os.getcwd()}/bridge_data"):
-            os.system("mkdir bridge_data")
-        self._persistent_user_path = f"{os.getcwd()}/bridge_data/persistent_users.json"
+        self._persistent_user_path = os.path.join(data_directory, "persistent_users.json")
         self._users = self._load_persistent_users()
 
     def add_user(self, username: str, password: str, access_level: ApiAccessLevel, persistent_user: bool):

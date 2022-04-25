@@ -24,8 +24,16 @@ class HomekitConfigManager(LoggingInterface):
         return f"{d[0]}{d[1]}{d[2]}-{d[3]}{d[4]}-{d[5]}{d[6]}{d[7]}"
 
     @staticmethod
-    def _generate_pairing_id() -> str:
-        id_bytes = [hex(random.randint(0, 255)) for _ in range(7)]
+    def _generate_pairing_id_part() -> str:
+        hex_val = hex(random.randint(0, 255))
+        shorted = hex_val[2:].upper()
+        if len(shorted) == 1:
+            shorted = "0" + shorted
+        return shorted
+
+    @classmethod
+    def _generate_pairing_id(cls) -> str:
+        id_bytes = [cls._generate_pairing_id_part() for _ in range(6)]
         return ":".join(id_bytes)
 
     def generate_new_config(self) -> None:
@@ -34,6 +42,7 @@ class HomekitConfigManager(LoggingInterface):
 
         :return: None
         """
+        self._logger.info("Creating new config file")
         new_config = {
             "accessory_pairing_id": self._generate_pairing_id(),
             "accessory_pin": self._generate_pin(),

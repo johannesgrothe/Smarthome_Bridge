@@ -12,8 +12,8 @@ ACCESS_LEVEL = ApiAccessLevel.user
 
 
 @pytest.fixture
-def manager():
-    manager = UserManager()
+def manager(f_temp_exists):
+    manager = UserManager(f_temp_exists)
     yield manager
     for user in [USERNAME1, USERNAME2]:
         try:

@@ -89,10 +89,14 @@ class BridgeLauncher:
                serial_active: bool,
                static_user_data: Optional[Tuple[str, str]],
                homekit_active: bool,
-               add_dummy_data: bool = False) -> Bridge:
+               add_dummy_data: bool = False,
+               data_directory: str = "bridge_data") -> Bridge:
+
+        if not os.path.isdir(data_directory):
+            os.mkdir(data_directory)
 
         # Create Bridge
-        bridge = Bridge(name)
+        bridge = Bridge(name, data_directory)
 
         # MQTT
         if mqtt is not None:
@@ -117,9 +121,10 @@ class BridgeLauncher:
             # bridge.get_network_manager().add_connector(serial)
 
         # APPLE HOME PUBLISHER
-        config_file = os.path.join("bridge_data", "homekit_server_settings.json")
-        hk_publisher = GadgetPublisherHomekit(config_file)
-        bridge.get_gadget_manager().add_gadget_publisher(hk_publisher)
+        if homekit_active:
+            config_file = os.path.join(data_directory, "homekit_server_settings.json")
+            hk_publisher = GadgetPublisherHomekit(config_file)
+            bridge.get_gadget_manager().add_gadget_publisher(hk_publisher)
 
         if static_user_data is not None:
             u_name, u_passwd = static_user_data

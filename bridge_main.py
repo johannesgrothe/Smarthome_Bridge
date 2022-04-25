@@ -6,7 +6,6 @@ from typing import Optional
 from smarthome_bridge.bridge_launcher import BridgeLauncher
 from network.mqtt_credentials_container import MqttCredentialsContainer
 
-
 _default_user_default_username = "debug_admin"
 
 
@@ -95,7 +94,6 @@ def main():
     homekit_active = False
     if args.homekit_active:
         homekit_active = True
-
 
     launcher = BridgeLauncher()
 
