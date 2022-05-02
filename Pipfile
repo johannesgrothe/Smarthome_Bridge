@@ -17,7 +17,7 @@ pytest-cov = { version = "*" }
 pytest-dotenv = { version = "*" }
 werkzeug = { version = "*" }
 homekit = { version = "0.19.0" }
-zeroconf = { version = "0.28.7" }
+zeroconf ="==0.28.7"
 
 [dev-packages]
 
