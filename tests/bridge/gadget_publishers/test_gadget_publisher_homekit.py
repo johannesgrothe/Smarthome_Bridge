@@ -61,7 +61,6 @@ def publisher(config: str):
     connector.__del__()
 
 
-@pytest.mark.github_skip  # TODO: fix github issue: AttributeError: 'Zeroconf' object has no attribute 'check_service'
 @pytest.mark.bridge
 def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: Gadget, status_supplier: DummyStatusSupplier):
     with pytest.raises(GadgetDeletionError):

@@ -3,7 +3,7 @@ import os.path
 import sys
 import threading
 import time
-from typing import Optional, Callable
+from typing import Optional
 
 from homekit.accessoryserver import AccessoryServer
 from homekit.model import Accessory
