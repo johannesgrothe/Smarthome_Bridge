@@ -40,19 +40,6 @@ def test_serial_server_send(manager: NetworkManager, f_payload_small: dict):
     send_test(manager, name, f_payload_small)
 
 
-# TODO: Check why large payloads fuck up
-@pytest.mark.network
-def test_serial_server_send_split_long(manager: NetworkManager, f_payload_big: dict):
-    name = os.getenv('SERIAL_CLIENT_NAME')
-    send_split_test(manager, name, f_payload_big, part_max_len=50)
-
-
-@pytest.mark.network
-def test_serial_server_send_split_short(manager: NetworkManager, f_payload_small: dict):
-    name = os.getenv('SERIAL_CLIENT_NAME')
-    send_split_test(manager, name, f_payload_small)
-
-
 @pytest.mark.network
 def test_serial_server_broadcast(manager: NetworkManager, f_payload_small):
     broadcast_test(manager, f_payload_small)

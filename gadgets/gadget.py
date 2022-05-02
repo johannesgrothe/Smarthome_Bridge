@@ -1,7 +1,7 @@
 """Module to contain the gadget class"""
 from typing import Optional, Callable
 import logging
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 from gadgets.gadget_event_mapping import GadgetEventMapping
 from smarthome_bridge.characteristic import Characteristic

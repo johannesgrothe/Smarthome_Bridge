@@ -3,14 +3,13 @@ import os.path
 import sys
 import threading
 import time
-from abc import ABCMeta, abstractmethod
 from typing import Optional, Callable
 
 from homekit.accessoryserver import AccessoryServer
 from homekit.model import Accessory
 from homekit.model.services import LightBulbService
 from homekit.model.services import BHSLightBulbService
-from gadget_publishers.gadget_publisher import GadgetPublisher
+from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetCreationError, GadgetDeletionError
 from gadget_publishers.homekit.homekit_accessory_constants import HomekitConstants
 from gadget_publishers.homekit.homekit_accessory_rgb_lamp import HomekitRGBLamp
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
@@ -25,6 +24,10 @@ from system.gadget_definitions import CharacteristicIdentifier
 
 RESTART_DELAY = 7
 HOMEKIT_SERVER_NAME = "HomekitAccessoryServer"
+
+
+class GadgetDoesNotExistError(Exception):
+    pass
 
 
 class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
@@ -90,12 +93,6 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
 
         self._publish_gadget_update(out_gadget)
 
-    def _gen_server_method(self) -> Callable:
-        def func():
-            self._homekit_server.serve_forever(3)
-
-        return func
-
     def stop_server(self):
         if self._server_thread is None:
             self._logger.info("Accessory Server is not running")
@@ -144,28 +141,20 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
     def _get_gadget(self, gadget_name: str) -> HomekitAccessoryWrapper:
         found = [x for x in self._gadgets if x.name == gadget_name]
         if not found:
-            raise Exception("Gadget does not exist")
+            raise GadgetDoesNotExistError("Gadget does not exist")
         if len(found) != 1:
             raise Exception(f"More than one gadget with name {gadget_name} exists")
         return found[0]
 
     def receive_gadget(self, gadget: Gadget):
         if self._gadget_exists(gadget.get_name()):
-            # self.remove_gadget(gadget.get_name())
-            homekit_gadget = self._get_gadget(gadget.get_name())
-            if isinstance(homekit_gadget, HomekitRGBLamp):
-                homekit_gadget.status = gadget.get_characteristic(CharacteristicIdentifier.status).get_step_value()
-                homekit_gadget.hue = gadget.get_characteristic(CharacteristicIdentifier.hue).get_step_value()
-                homekit_gadget.saturation = gadget.get_characteristic(
-                    CharacteristicIdentifier.saturation).get_step_value()
-                homekit_gadget.brightness = gadget.get_characteristic(
-                    CharacteristicIdentifier.brightness).get_step_value()
-            return
-        self.create_gadget(gadget)
+            self.receive_gadget_update(gadget)
+        else:
+            self.create_gadget(gadget)
 
     def create_gadget(self, gadget: Gadget):
         if self._gadget_exists(gadget.get_name()):
-            raise Exception(f"Accessory with name '{gadget.get_name()}' exists already")
+            raise GadgetCreationError(gadget.get_name())
         if isinstance(gadget, LampNeopixelBasic):
             self._logger.info(f"Creating accessory for '{gadget.get_name()}'")
             homekit_gadget = HomekitRGBLamp(gadget.get_name(),
@@ -185,9 +174,12 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             return
 
     def remove_gadget(self, gadget_name: str):
-        found = self._get_gadget(gadget_name)
-        self._gadgets.remove(found)
-        self._schedule_restart()
+        try:
+            found = self._get_gadget(gadget_name)
+            self._gadgets.remove(found)
+            self._schedule_restart()
+        except GadgetDoesNotExistError:
+            raise GadgetDeletionError(gadget_name)
 
     def receive_gadget_update(self, gadget: Gadget):
         homekit_gadget = self._get_gadget(gadget.get_name())

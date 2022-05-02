@@ -44,16 +44,6 @@ def test_mqtt_connector_send(manager: NetworkManager, f_payload_big, echo_client
 
 
 @pytest.mark.network
-def test_mqtt_connector_send_split_long(manager: NetworkManager, f_payload_big, echo_client):
-    send_split_test(manager, echo_client.get_hostname(), f_payload_big)
-
-
-@pytest.mark.network
-def test_mqtt_connector_send_split_short(manager: NetworkManager, f_payload_small, echo_client):
-    send_split_test(manager, echo_client.get_hostname(), f_payload_small)
-
-
-@pytest.mark.network
 def test_mqtt_connector_broadcast(manager: NetworkManager, f_payload_big, echo_client):
     broadcast_test(manager, f_payload_big)
 

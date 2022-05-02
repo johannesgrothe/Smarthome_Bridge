@@ -28,10 +28,12 @@ class HomekitConfigManager(LoggingInterface):
 
     @property
     def path(self) -> str:
+        """Path to the config managed by this controller"""
         return self._config_path
 
     @property
     def data(self) -> dict:
+        """Data contained in config managed by this controller"""
         return self._data
 
     @staticmethod

@@ -14,4 +14,3 @@ class GadgetPublisherHomekitInterface(metaclass=ABCMeta):
         :param update_data: Information about the updatd characteristics
         :return: None
         """
-        pass
