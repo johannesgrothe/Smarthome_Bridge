@@ -19,13 +19,14 @@ def launcher():
 @pytest.mark.bridge
 def test_bridge_launcher(launcher: BridgeLauncher):
     print("Launching Bridge")
-    bridge = launcher.launch(BRIDGE_NAME,
-                             None,
-                             BRIDGE_API_PORT,
-                             BRIDGE_SOCKET_PORT,
-                             True,
-                             (BRIDGE_DEFAULT_USER_NAME, BRIDGE_DEFAULT_USER_PW),
-                             True)
+    bridge = launcher.launch(name=BRIDGE_NAME,
+                             mqtt=None,
+                             api_port=BRIDGE_API_PORT,
+                             socket_port=BRIDGE_SOCKET_PORT,
+                             serial_active=True,
+                             static_user_data=(BRIDGE_DEFAULT_USER_NAME, BRIDGE_DEFAULT_USER_PW),
+                             homekit_active=False,
+                             add_dummy_data=True)
 
     TimingOrganizer.delay(30000)
 
