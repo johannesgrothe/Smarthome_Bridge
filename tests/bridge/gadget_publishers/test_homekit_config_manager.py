@@ -14,7 +14,7 @@ def manager(f_temp_exists):
 
 
 @pytest.mark.bridge
-def test_homekit_constants(manager: HomekitConfigManager):
+def test_homekit_config_manager(manager: HomekitConfigManager):
     assert manager.data is None
     with pytest.raises(NoConfigFoundError):
         manager.reset_config_pairings()

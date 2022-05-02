@@ -4,7 +4,7 @@ from network.request import Request
 from lib.logging_interface import LoggingInterface
 
 
-class TestEchoClient(Subscriber, LoggingInterface):
+class EchoClient(Subscriber, LoggingInterface):
 
     _network: NetworkConnector
 

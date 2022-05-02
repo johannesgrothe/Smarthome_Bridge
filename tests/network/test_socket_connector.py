@@ -4,8 +4,8 @@ import time
 from smarthome_bridge.network_manager import NetworkManager
 from network.socket_server import SocketServer
 from network.socket_connector import SocketConnector
-from test_helpers.echo_client import TestEchoClient
-from tests.network.connector_tests import send_test, send_split_test, broadcast_test, \
+from test_helpers.echo_client import EchoClient
+from tests.network.connector_tests import send_test, broadcast_test, \
     broadcast_single_response_test
 
 SERVER_PORT = 5780
@@ -35,13 +35,13 @@ def client(server):
 
 @pytest.fixture
 def echo_client(client):
-    echo_client = TestEchoClient(client)
+    echo_client = EchoClient(client)
     return echo_client
 
 
 @pytest.fixture
 def echo_server(server):
-    echo_server = TestEchoClient(server)
+    echo_server = EchoClient(server)
     return echo_server
 
 
@@ -62,35 +62,35 @@ def client_manager(client):
 
 
 @pytest.mark.network
-def test_socket_server_send(server_manager: NetworkManager, f_payload_big: dict, echo_client: TestEchoClient):
+def test_socket_server_send(server_manager: NetworkManager, f_payload_big: dict, echo_client: EchoClient):
     send_test(server_manager, CLIENT_NAME, f_payload_big)
 
 
 @pytest.mark.network
 def test_socket_server_send_broadcast(server_manager: NetworkManager, f_payload_small: dict,
-                                      echo_client: TestEchoClient):
+                                      echo_client: EchoClient):
     broadcast_test(server_manager, f_payload_small)
 
 
 @pytest.mark.network
 def test_socket_server_send_broadcast_single_resp(server_manager: NetworkManager, f_payload_small: dict,
-                                                  echo_client: TestEchoClient):
+                                                  echo_client: EchoClient):
     broadcast_single_response_test(server_manager, f_payload_small)
 
 
 @pytest.mark.network
-def test_socket_client_send(echo_server: TestEchoClient, f_payload_big: dict, client_manager: NetworkManager):
+def test_socket_client_send(echo_server: EchoClient, f_payload_big: dict, client_manager: NetworkManager):
     send_test(client_manager, SERVER_NAME, f_payload_big)
 
 
 @pytest.mark.network
-def test_socket_client_send_broadcast(echo_server: TestEchoClient, f_payload_small: dict,
+def test_socket_client_send_broadcast(echo_server: EchoClient, f_payload_small: dict,
                                       client_manager: NetworkManager):
     broadcast_test(client_manager, f_payload_small)
 
 
 @pytest.mark.network
-def test_socket_client_send_broadcast_single_resp(echo_server: TestEchoClient, f_payload_small: dict,
+def test_socket_client_send_broadcast_single_resp(echo_server: EchoClient, f_payload_small: dict,
                                                   client_manager: NetworkManager):
     broadcast_single_response_test(client_manager, f_payload_small)
 

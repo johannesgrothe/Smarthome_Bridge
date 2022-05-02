@@ -4,7 +4,7 @@ import os
 
 from smarthome_bridge.network_manager import NetworkManager
 from network.serial_server import SerialServer
-from tests.network.connector_tests import send_test, send_split_test, broadcast_test
+from tests.network.connector_tests import send_test, broadcast_test
 
 _blocked_clients = ["/dev/tty.SLAB_USBtoUART"]
 _start_delay = 2
