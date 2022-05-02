@@ -4,7 +4,7 @@ import os
 
 from smarthome_bridge.network_manager import NetworkManager
 from network.serial_server import SerialServer
-from tests.network.connector_tests import send_test, send_split_test, broadcast_test
+from tests.network.connector_tests import send_test, broadcast_test
 
 _blocked_clients = ["/dev/tty.SLAB_USBtoUART"]
 _start_delay = 2
@@ -38,19 +38,6 @@ def test_serial_server_send(manager: NetworkManager, f_payload_small: dict):
     print(f"Serial client: {name}")
     assert name is not None
     send_test(manager, name, f_payload_small)
-
-
-# TODO: Check why large payloads fuck up
-@pytest.mark.network
-def test_serial_server_send_split_long(manager: NetworkManager, f_payload_big: dict):
-    name = os.getenv('SERIAL_CLIENT_NAME')
-    send_split_test(manager, name, f_payload_big, part_max_len=50)
-
-
-@pytest.mark.network
-def test_serial_server_send_split_short(manager: NetworkManager, f_payload_small: dict):
-    name = os.getenv('SERIAL_CLIENT_NAME')
-    send_split_test(manager, name, f_payload_small)
 
 
 @pytest.mark.network

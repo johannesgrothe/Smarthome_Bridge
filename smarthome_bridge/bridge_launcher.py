@@ -1,3 +1,7 @@
+import os
+
+from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
+from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 
@@ -38,6 +42,34 @@ class BridgeLauncher:
             GadgetEventMapping("ab09d8_", [(1, 1)])
         ])
         bridge.get_gadget_manager().receive_gadget(gadget)
+
+        gadget2 = LampNeopixelBasic("dummy_lamp",
+                                    "bridge",
+                                    Characteristic(CharacteristicIdentifier.status,
+                                                   0,
+                                                   1,
+                                                   1),
+                                    Characteristic(
+                                        CharacteristicIdentifier.hue,
+                                        0,
+                                        360,
+                                        value=25
+                                    ),
+                                    Characteristic(
+                                        CharacteristicIdentifier.saturation,
+                                        0,
+                                        100,
+                                        value=99
+                                    ),
+                                    Characteristic(
+                                        CharacteristicIdentifier.brightness,
+                                        0,
+                                        100,
+                                        value=88
+                                    ))
+
+        bridge.get_gadget_manager().receive_gadget(gadget2)
+
         date = datetime.utcnow()
         client = Client(name="dummy_client",
                         runtime_id=18298931,
@@ -56,10 +88,15 @@ class BridgeLauncher:
                socket_port: Optional[int],
                serial_active: bool,
                static_user_data: Optional[Tuple[str, str]],
-               add_dummy_data: bool = False) -> Bridge:
+               homekit_active: bool,
+               add_dummy_data: bool = False,
+               data_directory: str = "bridge_data") -> Bridge:
+
+        if not os.path.isdir(data_directory):
+            os.mkdir(data_directory)
 
         # Create Bridge
-        bridge = Bridge(name)
+        bridge = Bridge(name, data_directory)
 
         # MQTT
         if mqtt is not None:
@@ -83,11 +120,11 @@ class BridgeLauncher:
             # serial = SerialServer(name, 115200)
             # bridge.get_network_manager().add_connector(serial)
 
-        # HOMEBRIDGE GADGET PUBLISHER
-        if mqtt is not None:
-            hb_network = HomebridgeNetworkConnector(name, mqtt, 3)
-            hb_publisher = GadgetPublisherHomeBridge(hb_network)
-            bridge.get_gadget_manager().add_gadget_publisher(hb_publisher)
+        # APPLE HOME PUBLISHER
+        if homekit_active:
+            config_file = os.path.join(data_directory, "homekit_server_settings.json")
+            hk_publisher = GadgetPublisherHomekit(config_file)
+            bridge.get_gadget_manager().add_gadget_publisher(hk_publisher)
 
         if static_user_data is not None:
             u_name, u_passwd = static_user_data

@@ -7,8 +7,8 @@ BRIDGE_NAME = "test_bridge"
 
 
 @pytest.fixture()
-def bridge():
-    bridge = Bridge(BRIDGE_NAME)
+def bridge(f_temp_exists):
+    bridge = Bridge(BRIDGE_NAME, f_temp_exists)
     yield bridge
     bridge.__del__()
 

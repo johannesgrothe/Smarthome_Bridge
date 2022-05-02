@@ -31,7 +31,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     _gadget_sync_lock: threading.Lock
     _bridge_info: BridgeInformationContainer
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, data_directory: str):
         super().__init__()
         self._logger = logging.getLogger(f"{self.__class__.__name__}[{name}]")
         self._logger.info("Starting bridge")
@@ -40,7 +40,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._gadget_manager = GadgetManager()
         self._gadget_sync_lock = threading.Lock()
         self.api = ApiManager(self, self._network_manager)
-        auth_manager = AuthManager(UserManager())
+        auth_manager = AuthManager(UserManager(data_directory))
         self.api.set_auth_manager(auth_manager)
         self._gadget_manager.subscribe(self)
 

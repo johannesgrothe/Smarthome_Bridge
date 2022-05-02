@@ -27,7 +27,8 @@ class ThreadController:
             while self._thread_running:
                 thread_method()
 
-        buffer_thread = Thread(target=buffer_thread_method)
+        buffer_thread = Thread(target=buffer_thread_method,
+                               daemon=True)
 
         return buffer_thread
 

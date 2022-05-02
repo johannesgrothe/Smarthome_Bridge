@@ -1,5 +1,6 @@
 import os
 
+from system.exporters.temp_dir_manager import TempDirManager
 from test_helpers.gadget_fixtures import *
 from test_helpers.network_fixtures import *
 
@@ -55,3 +56,13 @@ def f_dummy_gadget():
     dummy_gadget = DummyGadget("dummy_gadget")
     yield dummy_gadget
     dummy_gadget.__del__()
+
+
+@pytest.fixture
+def f_temp_exists():
+    temp_dir = "temp"
+    print("Creating temp dir")
+    TempDirManager(temp_dir).assert_temp()
+    yield temp_dir
+    print("Removing temporary files")
+    TempDirManager(temp_dir).clean_temp()
