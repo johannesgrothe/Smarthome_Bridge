@@ -14,13 +14,12 @@ from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from gadgets.gadget import Gadget
 from smarthome_bridge.client import Client
-from utils.repository_manager import RepositoryManager
+from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools
 from utils.user_manager import UserManager
 
 
 class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
-
     _logger: logging.Logger
 
     _network_manager: NetworkManager
@@ -44,10 +43,17 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self.api.set_auth_manager(auth_manager)
         self._gadget_manager.subscribe(self)
 
-        repo_manager = RepositoryManager(os.getcwd(), None)
+        try:
+            repo_manager = RepositoryManager(os.getcwd(), None)
+            g_branch = repo_manager.get_branch()
+            g_hash = repo_manager.get_commit_hash()
+        except RepositoryStatusException:
+            # When deployed via docker, no repository information is copied since the bridge is a submodule
+            g_branch = None
+            g_hash = None
         self._bridge_info = BridgeInformationContainer(name,
-                                                       repo_manager.get_branch(),
-                                                       repo_manager.get_commit_hash(),
+                                                       g_branch,
+                                                       g_hash,
                                                        datetime.now(),
                                                        SystemInfoTools.read_pio_version(),
                                                        SystemInfoTools.read_pipenv_version(),
@@ -118,4 +124,3 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                 for x
                 in self._gadget_manager.get_gadget_ids()
                 if self._gadget_manager.get_gadget(x) is not None]
-

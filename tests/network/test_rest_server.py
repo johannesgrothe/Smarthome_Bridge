@@ -1,5 +1,4 @@
 import pytest
-import time
 
 from network.rest_server import RestServer
 

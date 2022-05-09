@@ -1,7 +1,8 @@
 import logging
 import argparse
+import os
 import socket
-from typing import Optional
+from typing import Optional, Tuple
 
 from smarthome_bridge.bridge_launcher import BridgeLauncher
 from network.mqtt_credentials_container import MqttCredentialsContainer
@@ -69,12 +70,32 @@ def parse_args():
     return args
 
 
-def main():
+def load_parameters() -> Tuple[dict, argparse.Namespace]:
     args = parse_args()
+    out_data = {}
+    for arg_name, argparse_val, env_key in [("log_lvl", args.logging, "LOG_LEVEL"),
+                                            ("bridge_name", args.bridge_name, "BRIDGE_NAME"),
+                                            ("mqtt_ip", args.mqtt_ip, "MQTT_IP"),
+                                            ("mqtt_port", args.mqtt_port, "MQTT_PORT"),
+                                            ("mqtt_user", args.mqtt_user, "MQTT_USERNAME"),
+                                            ("mqtt_pw", args.mqtt_pw, "MQTT_PASSWORD"),
+                                            ("rest_port", args.api_port, "API_PORT"),
+                                            ("socket_port", args.socket_port, "SOCKET_PORT"),
+                                            ("serial_active", args.serial, "SERIAL_ACTIVE"),
+                                            ("homekit_active", args.homekit_active, "HOMEKIT_ACTIVE")]:
+        buf_val = argparse_val
+        if buf_val is None:
+            buf_val = os.getenv(env_key)
+        out_data[arg_name] = buf_val
+    return out_data, args
 
-    if args.logging == "DEBUG":
+
+def main():
+    params, args = load_parameters()
+
+    if params["log_lvl"] == "DEBUG":
         log = logging.DEBUG
-    elif args.logging == "INFO":
+    elif params["log_lvl"] == "INFO":
         log = logging.INFO
     else:
         log = logging.ERROR
@@ -82,8 +103,11 @@ def main():
 
     # MQTT
     mqtt_credentials = None
-    if args.mqtt_ip and args.mqtt_port:
-        mqtt_credentials = MqttCredentialsContainer(args.mqtt_ip, args.mqtt_port, args.mqtt_user, args.mqtt_pw)
+    mqtt_ip = params["mqtt_ip"]
+    mqtt_port = params["mqtt_port"]
+    if mqtt_ip and mqtt_port:
+        mqtt_credentials = MqttCredentialsContainer(args.mqtt_ip, args.mqtt_port,
+                                                    params["mqtt_user"], params["mqtt_pw"])
 
     # DEFAULT USER
     user_data = None
@@ -91,17 +115,22 @@ def main():
         user_data = (args.static_user_name, args.static_user_password)
 
     # HOMEKIT
-    homekit_active = False
-    if args.homekit_active:
-        homekit_active = True
+    homekit_active = params["homekit_active"]
+    if homekit_active is None:
+        homekit_active = False
+
+    # Serial
+    serial_active = params["serial_active"]
+    if serial_active is None:
+        serial_active = False
 
     launcher = BridgeLauncher()
 
-    launcher.launch(name=args.bridge_name,
+    launcher.launch(name=params["bridge_name"],
                     mqtt=mqtt_credentials,
-                    api_port=args.api_port,
-                    socket_port=args.socket_port,
-                    serial_active=args.serial,
+                    api_port=params["rest_port"],
+                    socket_port=params["socket_port"],
+                    serial_active=serial_active,
                     static_user_data=user_data,
                     homekit_active=homekit_active,
                     add_dummy_data=args.dummy_data)
