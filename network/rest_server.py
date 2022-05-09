@@ -42,6 +42,7 @@ class RestServer(NetworkServer):
     def __init__(self, hostname: str, port: int):
         super().__init__(hostname)
         self._port = port
+        self._logger.info(f"Rest api running at {self._port}")
         self._create_api()
         self._server = RestServerThread(self._app, self._port)
         self._server.start()

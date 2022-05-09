@@ -18,7 +18,7 @@ class MQTTConnector(NetworkClient):
         try:
             mqtt_client.connect(credentials.ip, credentials.port)
         except OSError:
-            self._logger.error("Could not connect to MQTT Server.")
+            pass
 
         mqtt_client.loop_start()
         mqtt_client.subscribe(f"{channel}/#")

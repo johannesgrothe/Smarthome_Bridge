@@ -3,6 +3,7 @@ import argparse
 import os
 import socket
 from typing import Optional, Tuple
+from dotenv import load_dotenv
 
 from smarthome_bridge.bridge_launcher import BridgeLauncher
 from network.mqtt_credentials_container import MqttCredentialsContainer
@@ -20,8 +21,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Smarthome Bridge')
     parser.add_argument('--bridge_name',
                         help='Network Name for the Bridge',
-                        type=str,
-                        default=get_sender())
+                        type=str)
 
     parser.add_argument('--mqtt_ip',
                         help='IP of the MQTT Broker',
@@ -72,20 +72,31 @@ def parse_args():
 
 def load_parameters() -> Tuple[dict, argparse.Namespace]:
     args = parse_args()
+    load_dotenv()
     out_data = {}
-    for arg_name, argparse_val, env_key in [("log_lvl", args.logging, "LOG_LEVEL"),
-                                            ("bridge_name", args.bridge_name, "BRIDGE_NAME"),
-                                            ("mqtt_ip", args.mqtt_ip, "MQTT_IP"),
-                                            ("mqtt_port", args.mqtt_port, "MQTT_PORT"),
-                                            ("mqtt_user", args.mqtt_user, "MQTT_USERNAME"),
-                                            ("mqtt_pw", args.mqtt_pw, "MQTT_PASSWORD"),
-                                            ("rest_port", args.api_port, "API_PORT"),
-                                            ("socket_port", args.socket_port, "SOCKET_PORT"),
-                                            ("serial_active", args.serial, "SERIAL_ACTIVE"),
-                                            ("homekit_active", args.homekit_active, "HOMEKIT_ACTIVE")]:
+    for arg_name, argparse_val, env_key, param_type in [
+        ("log_lvl", args.logging, "LOG_LEVEL", str),
+        ("bridge_name", args.bridge_name, "BRIDGE_NAME", str),
+        ("mqtt_ip", args.mqtt_ip, "MQTT_IP", str),
+        ("mqtt_port", args.mqtt_port, "MQTT_PORT", int),
+        ("mqtt_user", args.mqtt_user, "MQTT_USERNAME", str),
+        ("mqtt_pw", args.mqtt_pw, "MQTT_PASSWORD", str),
+        ("rest_port", args.api_port, "REST_API_PORT", int),
+        ("socket_port", args.socket_port, "SOCKET_API_PORT", int),
+        ("serial_active", args.serial, "SERIAL_ACTIVE", bool),
+        ("homekit_active", args.homekit_active, "HOMEKIT_ACTIVE", bool)
+    ]:
         buf_val = argparse_val
-        if buf_val is None:
-            buf_val = os.getenv(env_key)
+        if buf_val is None or (buf_val is False and param_type is bool):
+            env_val = os.getenv(env_key)
+            if env_val is not None:
+                if param_type == bool:
+                    if env_val in ["true", "True", "TRUE"]:
+                        buf_val = True
+                    else:
+                        buf_val = False
+                else:
+                    buf_val = param_type(env_val)
         out_data[arg_name] = buf_val
     return out_data, args
 
@@ -101,12 +112,17 @@ def main():
         log = logging.ERROR
     logging.basicConfig(level=log, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+    # NAME
+    bridge_name = params["bridge_name"]
+    if bridge_name is None:
+        bridge_name = get_sender()
+
     # MQTT
     mqtt_credentials = None
     mqtt_ip = params["mqtt_ip"]
     mqtt_port = params["mqtt_port"]
     if mqtt_ip and mqtt_port:
-        mqtt_credentials = MqttCredentialsContainer(args.mqtt_ip, args.mqtt_port,
+        mqtt_credentials = MqttCredentialsContainer(mqtt_ip, mqtt_port,
                                                     params["mqtt_user"], params["mqtt_pw"])
 
     # DEFAULT USER
@@ -126,7 +142,7 @@ def main():
 
     launcher = BridgeLauncher()
 
-    launcher.launch(name=params["bridge_name"],
+    launcher.launch(name=bridge_name,
                     mqtt=mqtt_credentials,
                     api_port=params["rest_port"],
                     socket_port=params["socket_port"],
