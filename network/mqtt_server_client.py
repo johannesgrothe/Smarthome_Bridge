@@ -57,6 +57,7 @@ class MQTTServerClient(NetworkServerClient):
                 self._validator.validate(body, REQ_VALIDATION_SCHEME_NAME)
             except ValidationError:
                 self._logger.warning("Could not decode Request, Schema Validation failed.")
+                return
 
             topic_without_channel = topic[len(self._channel):].strip("/")
 
@@ -66,6 +67,7 @@ class MQTTServerClient(NetworkServerClient):
                                   body["sender"],
                                   body["receiver"],
                                   body["payload"],
+                                  is_response=body["is_response"],
                                   connection_type=f"MQTT")
                 inc_req.set_auth(MqttAuthContainer())
                 inc_req.set_callback_method(self._respond_to)

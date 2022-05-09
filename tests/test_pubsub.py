@@ -35,7 +35,8 @@ def test_req():
                   1776,
                   "testsuite",
                   None,
-                  {})
+                  {},
+                  is_response=False)
     yield req
 
 

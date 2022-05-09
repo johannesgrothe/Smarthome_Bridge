@@ -35,7 +35,8 @@ class RestServerRequestManager:
                                 session_id=session_id,
                                 sender=sender,
                                 receiver=hostname,
-                                payload=payload)
+                                payload=payload,
+                                is_response=False)
         if auth is not None:
             self._request.set_auth(auth)
         self._request.set_callback_method(self._get_response_function())
@@ -54,7 +55,8 @@ class RestServerRequestManager:
                                      session_id=req.get_session_id(),
                                      sender=self._request.get_receiver(),
                                      receiver=req.get_sender(),
-                                     payload=payload)
+                                     payload=payload,
+                                     is_response=True)
 
         return respond
 

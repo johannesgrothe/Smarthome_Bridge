@@ -80,7 +80,8 @@ class NetworkServerClient(Publisher):
                           req.get_session_id(),
                           self._host_name,
                           receiver,
-                          payload)
+                          payload,
+                          True)
 
         self._send(out_req)
 

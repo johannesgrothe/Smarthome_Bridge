@@ -31,9 +31,10 @@ class Request:
     _receiver: Optional[str]
     _payload: dict
     _response_function: Optional[response_callback_type]
+    _is_response: bool
 
     def __init__(self, path: str, session_id: Optional[int], sender: str, receiver: Optional[str],
-                 payload: dict, connection_type: Optional[str] = None):
+                 payload: dict, is_response: bool, connection_type: Optional[str] = None):
         """Constructor for the request"""
 
         if not path:
@@ -46,6 +47,8 @@ class Request:
         else:
             self._session_id = session_id
 
+        self._is_response = is_response
+
         self._path = path
         self._auth = None
         self._sender = sender
@@ -57,6 +60,10 @@ class Request:
     def __str__(self):
         """Converts the request to a string"""
         return "<'{}': {}>".format(self.get_path(), self.get_body())
+
+    @property
+    def is_response(self):
+        return self._is_response
 
     def set_callback_method(self, function: response_callback_type):
         self._response_function = function
@@ -97,7 +104,8 @@ class Request:
         return {"session_id": self._session_id,
                 "sender": self._sender,
                 "receiver": self._receiver,
-                "payload": self._payload}
+                "payload": self._payload,
+                "is_response": self._is_response}
 
     def get_callback(self) -> response_callback_type:
         return self._response_function

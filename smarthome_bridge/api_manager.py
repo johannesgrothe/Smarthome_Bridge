@@ -198,8 +198,29 @@ class ApiManager(Subscriber, LoggingInterface):
             self._handle_unknown(req)
             raise AuthError()
 
+    @staticmethod
+    def _check_direction(req: Request) -> bool:
+        """
+        Checks if the request's direction to determine if it needs handling
+
+        :param req: Request to check
+        :return: True if request needs to be handled
+        """
+        res_receiver_paths = [x.uri for x in ApiURIs.get_endpoints() if x.outgoing]
+        if req.is_response and req.get_path() in res_receiver_paths:
+            return True
+
+        req_receiver_paths = [x.uri for x in ApiURIs.get_endpoints() if not x.outgoing]
+        if not req.is_response and req.get_path() in req_receiver_paths:
+            return True
+
+        return False
+
     def _handle_request(self, req: Request):
         self._log_request(req)
+
+        if not self._check_direction(req):
+            return
 
         try:
             self._check_auth(req)

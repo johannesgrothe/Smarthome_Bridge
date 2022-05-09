@@ -25,7 +25,8 @@ class DummyNetworkConnector(NetworkConnector):
                               req.get_session_id(),
                               req.get_receiver(),
                               req.get_sender(),
-                              {"ack": self._mock_ack})
+                              {"ack": self._mock_ack},
+                              is_response=True)
             self.receive(out_req)
 
         if self._mock_ack is not None:
@@ -57,17 +58,19 @@ class DummyNetworkConnector(NetworkConnector):
                               session_id=req.get_session_id(),
                               sender=req.get_receiver(),
                               receiver=req.get_sender(),
-                              payload=payload)
+                              payload=payload,
+                              is_response=True)
             self._last_response = out_req
 
         return mock_response_function
 
-    def mock_receive(self, path: str, sender: str, payload: dict):
+    def mock_receive(self, path: str, sender: str, payload: dict, is_response: bool = False):
         buf_req = Request(path,
                           None,
                           sender,
                           self._hostname,
-                          payload)
+                          payload,
+                          is_response=is_response)
         buf_req.set_callback_method(self._get_mock_response_function())
         self.receive(buf_req)
 
