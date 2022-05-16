@@ -32,7 +32,7 @@ class HomekitConfigManager(LoggingInterface):
         return self._config_path
 
     @property
-    def data(self) -> dict:
+    def data(self) -> Optional[dict]:
         """Data contained in config managed by this controller"""
         return self._data
 

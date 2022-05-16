@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
+from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadgets.gadget import Gadget
 from smarthome_bridge.client import Client
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
@@ -67,4 +68,12 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         Returns information about all the gadgets
 
         :return: All the saved gadgets
+        """
+
+    @abstractmethod
+    def get_gadget_publisher_info(self) -> list[GadgetPublisher]:
+        """
+        Returns information about all the gadget publishers
+
+        :return: All the gadget publishers
         """

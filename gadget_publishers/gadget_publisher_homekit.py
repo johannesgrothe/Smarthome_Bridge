@@ -62,6 +62,10 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         self._restart_scheduled = False
         self.stop_server()
 
+    @property
+    def config(self) -> HomekitConfigManager:
+        return HomekitConfigManager(self._config_file)
+
     def receive_update(self, gadget: str, update_data: dict) -> None:
         if gadget == self._last_published_gadget:
             return

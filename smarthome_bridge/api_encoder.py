@@ -1,5 +1,7 @@
-from typing import Tuple
+from typing import Tuple, Type
 
+from gadget_publishers.gadget_publisher import GadgetPublisher
+from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from lib.logging_interface import LoggingInterface
 from datetime import datetime
 
@@ -20,6 +22,15 @@ class GadgetEncodeError(Exception):
         super().__init__(f"Cannot encode {class_name} '{gadget_name}'")
 
 
+class GadgetPublisherEncodeError(Exception):
+    def __init__(self, class_name: str):
+        super().__init__(f"Cannot encode {class_name}")
+
+
+_gadget_publisher_name_mapping: dict[Type[GadgetPublisher], str] = {
+    GadgetPublisherHomekit: "homekit"
+}
+
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -27,14 +38,15 @@ class ApiEncoder(LoggingInterface):
     def __init__(self):
         super().__init__()
 
-    def encode_client(self, client: Client) -> dict:
+    @classmethod
+    def encode_client(cls, client: Client) -> dict:
         """
         Serializes a clients data according to api specification
 
         :param client: The client to serialize
         :return: The serialized version of the client as dict
         """
-        self._logger.debug(f"Serializing client '{client.get_name()}'")
+        cls._get_logger().debug(f"Serializing client '{client.get_name()}'")
         out_date = None
         if client.get_sw_flash_time() is not None:
             out_date = client.get_sw_flash_time().strftime(DATETIME_FORMAT)
@@ -51,7 +63,8 @@ class ApiEncoder(LoggingInterface):
                 "port_mapping": client.get_port_mapping(),
                 "api_version": str(client.get_api_version())}
 
-    def encode_gadget(self, gadget: Gadget) -> dict:
+    @classmethod
+    def encode_gadget(cls, gadget: Gadget) -> dict:
         """
         Serializes a gadget according to api specification
 
@@ -60,17 +73,17 @@ class ApiEncoder(LoggingInterface):
         :raises GadgetEncodeError: If anything goes wrong during the serialization process
         """
         try:
-            identifier = self.encode_gadget_identifier(gadget)
+            identifier = cls.encode_gadget_identifier(gadget)
         except IdentifierEncodeError as err:
-            self._logger.error(err.args[0])
+            cls._get_logger().error(err.args[0])
             raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name())
 
-        characteristics_json = [self.encode_characteristic(x) for x in gadget.get_characteristics()]
+        characteristics_json = [cls.encode_characteristic(x) for x in gadget.get_characteristics()]
 
         mapping_json = {}
         for mapping in gadget.get_event_mapping():
             if mapping.get_id() in mapping_json:
-                self._logger.error(f"found double mapping for {mapping.get_id()}")
+                cls._get_logger().error(f"found double mapping for {mapping.get_id()}")
                 continue
             mapping_json[mapping.get_id()] = mapping.get_list()
 
@@ -81,7 +94,8 @@ class ApiEncoder(LoggingInterface):
 
         return gadget_json
 
-    def encode_gadget_update(self, gadget: Gadget) -> dict:
+    @classmethod
+    def encode_gadget_update(cls, gadget: Gadget) -> dict:
         """
         Serializes gadget update information according to api specification
 
@@ -89,7 +103,7 @@ class ApiEncoder(LoggingInterface):
         :return: The serialized version of the changeable gadget information as dict
         :raises GadgetEncodeError: If anything goes wrong during the serialization process
         """
-        characteristics_json = [self.encode_characteristic_update(x) for x in gadget.get_characteristics()]
+        characteristics_json = [cls.encode_characteristic_update(x) for x in gadget.get_characteristics()]
 
         gadget_json = {"id": gadget.get_name(),
                        "characteristics": characteristics_json}
@@ -173,20 +187,53 @@ class ApiEncoder(LoggingInterface):
                 "new_branch_release_date": new_date,
                 "num_commits_between_branches": num_commits}
 
-    def encode_all_gadgets_info(self, gadget_info: list[Gadget]) -> dict:
+    @classmethod
+    def encode_all_gadgets_info(cls, gadget_info: list[Gadget]) -> dict:
         gadget_data = []
         for gadget in gadget_info:
             try:
-                gadget_data.append(self.encode_gadget(gadget))
+                gadget_data.append(cls.encode_gadget(gadget))
             except GadgetEncodeError:
-                self._logger.error(f"Failed to encode gadget '{gadget.get_name()}'")
+                cls._get_logger().error(f"Failed to encode gadget '{gadget.get_name()}'")
         return {"gadgets": gadget_data}
 
-    def encode_all_clients_info(self, client_info: list[Client]) -> dict:
+    @classmethod
+    def encode_all_clients_info(cls, client_info: list[Client]) -> dict:
         client_data = []
         for client in client_info:
             try:
-                client_data.append(self.encode_client(client))
+                client_data.append(cls.encode_client(client))
             except GadgetEncodeError:
-                self._logger.error(f"Failed to encode client '{client.get_name()}'")
+                cls._get_logger().error(f"Failed to encode client '{client.get_name()}'")
         return {"clients": client_data}
+
+    @staticmethod
+    def encode_gadget_publisher(publisher: GadgetPublisher) -> dict:
+        try:
+            out_data = {
+                "type": _gadget_publisher_name_mapping[publisher.__class__]
+            }
+        except KeyError:
+            raise GadgetPublisherEncodeError(publisher.__class__.__name__)
+
+        if isinstance(publisher, GadgetPublisherHomekit):
+            config_data = publisher.config.data
+            if config_data is not None:
+                out_data["pairing_pin"] = config_data["accessory_pin"]
+                out_data["port"] = config_data["host_port"]
+                out_data["name"] = config_data["name"]
+        else:
+            raise GadgetPublisherEncodeError(publisher.__class__.__name__)
+        return out_data
+
+    @classmethod
+    def encode_gadget_publisher_list(cls, publishers: list[GadgetPublisher]):
+        buf_list = []
+        for publisher in publishers:
+            try:
+                buf_list.append(cls.encode_gadget_publisher(publisher))
+            except GadgetPublisherEncodeError as err:
+                cls._get_logger().error(err.args[0])
+        return {
+            "gadget_publishers": buf_list
+        }

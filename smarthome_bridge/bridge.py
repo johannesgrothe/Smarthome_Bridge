@@ -3,6 +3,7 @@ import os
 import threading
 from datetime import datetime
 
+from gadget_publishers.gadget_publisher import GadgetPublisher
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
@@ -25,6 +26,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     _network_manager: NetworkManager
     _client_manager: ClientManager
     _gadget_manager: GadgetManager
+    _gadget_publishers: list[GadgetPublisher]
     api: ApiManager
 
     _gadget_sync_lock: threading.Lock
@@ -37,6 +39,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
         self._gadget_manager = GadgetManager()
+        self._gadget_publishers = []
         self._gadget_sync_lock = threading.Lock()
         self.api = ApiManager(self, self._network_manager)
         auth_manager = AuthManager(UserManager(data_directory))
@@ -66,6 +69,8 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._network_manager.__del__()
         self._client_manager.__del__()
         self._gadget_manager.__del__()
+        for publisher in self._gadget_publishers:
+            publisher.__del__()
 
     def get_network_manager(self):
         return self._network_manager
@@ -82,6 +87,15 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     def receive_gadget(self, gadget: Gadget):
         pass
+
+    def add_gadget_publisher(self, publisher: GadgetPublisher):
+        publisher_classes = [x.__class__ for x in self._gadget_publishers]
+        if publisher.__class__ in publisher_classes:
+            self._logger.error(f"{publisher.__class__.__name__} already present in publishers")
+            return
+        if publisher not in self._gadget_publishers:
+            self._gadget_publishers.append(publisher)
+            self._gadget_manager.add_gadget_publisher(publisher)
 
     # API delegation
 
@@ -124,3 +138,6 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                 for x
                 in self._gadget_manager.get_gadget_ids()
                 if self._gadget_manager.get_gadget(x) is not None]
+
+    def get_gadget_publisher_info(self) -> list[GadgetPublisher]:
+        return self._gadget_publishers
