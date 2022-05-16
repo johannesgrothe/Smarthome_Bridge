@@ -201,7 +201,7 @@ class ApiManager(Subscriber, LoggingInterface):
     @staticmethod
     def _check_direction(req: Request) -> bool:
         """
-        Checks if the request's direction to determine if it needs handling
+        Checks the request's direction to determine if it needs handling
 
         :param req: Request to check
         :return: True if request needs to be handled
