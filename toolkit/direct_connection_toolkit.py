@@ -208,18 +208,18 @@ class DirectConnectionToolkit(metaclass=ABCMeta):
                 client_id = None
                 client_list = self._scan_for_clients()
 
-                if len(client_list) == 0:
-                    pass
-                elif len(client_list) > 1:
-                    client_id = select_option(client_list, "client to connect to")
-                else:
-                    client_id = client_list[0]
-                self._client_name = client_id
+            if len(client_list) == 0:
+                pass
+            elif len(client_list) > 1:
+                client_id = select_option(client_list, "client to connect to")
+            else:
+                client_id = client_list[0]
+            self._client_name = client_id
 
             if not self._client_name:
                 response = ask_for_continue("Could not find any gadget. Try again?")
                 if not response:
-                    raise ToolkitException
+                    raise ToolkitException()
 
     @abstractmethod
     def _get_ready(self):
