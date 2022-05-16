@@ -84,7 +84,8 @@ class NetworkManager(Publisher, Subscriber):
                           None,
                           self._hostname,
                           receiver,
-                          payload)
+                          payload,
+                          is_response=False)
         return out_req
 
     def _send_request_obj(self, req: Request, timeout: int, max_responses: int):
@@ -148,64 +149,3 @@ class NetworkManager(Publisher, Subscriber):
 
         responses = self._send_request_obj(req, timeout, max_responses)
         return responses
-
-    def send_request_split(self, path: str, receiver: str, payload: dict, part_max_size: int = 30,
-                           timeout: Optional[int] = None) -> Optional[Request]:
-        """
-        Sends a request to all attached networks.
-        The request will be split into individual parts with a maximum length.
-
-        :param path: Path to send the request on
-        :param receiver: Receiver for the Request
-        :param payload: Payload to be send
-        :param part_max_size: Maximum size in bytes for each individual payload chunk
-        :param timeout: Maximum timeout to wait for an answer
-        :return: The response if there is any
-        """
-        if timeout is None:
-            timeout = self._default_timeout
-        req = Request(path, None, self._hostname, receiver, payload)
-        session_id = req.get_session_id()
-        path = req.get_path()
-        sender = req.get_sender()
-        receiver = req.get_receiver()
-
-        payload_str = json.dumps(req.get_payload())
-
-        # Make string ready to be contained in json itself
-        payload_str = payload_str.replace('"', "$*$")
-
-        payload_len = len(payload_str)
-        parts = []
-        start = 0
-        package_index = 0
-
-        while start < payload_len:
-            end = start + part_max_size
-            payload_part = payload_str[start:(end if end < payload_len else payload_len)]
-            parts.append(payload_part)
-            start = end
-
-        last_index = len(parts)
-
-        for payload_part in parts:
-
-            out_dict = {"package_index": package_index, "split_payload": payload_part}
-            if package_index == 0:
-                out_dict["last_index"] = last_index
-
-            out_req = Request(path,
-                              session_id,
-                              sender,
-                              receiver,
-                              out_dict)
-            if package_index == last_index - 1:
-                responses = self._send_request_obj(out_req, timeout, 1)
-                if not responses:
-                    return None
-                return responses[0]
-            else:
-                self._send_request_obj(out_req, 0, 0)
-            package_index += 1
-            sleep(0.1)
-        return None

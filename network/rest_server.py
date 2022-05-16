@@ -14,8 +14,8 @@ from system.utils.api_endpoint_definition import ApiAccessType
 
 
 # TODO: make get_endpoints() public
-GET_ROUTES = [x.uri for x in ApiURIs._get_endpoints() if x.access_type == ApiAccessType.read]
-UPDATE_ROUTES = [x.uri for x in ApiURIs._get_endpoints() if x.access_type == ApiAccessType.write]
+GET_ROUTES = [x.uri for x in ApiURIs.get_endpoints() if x.access_type == ApiAccessType.read]
+UPDATE_ROUTES = [x.uri for x in ApiURIs.get_endpoints() if x.access_type == ApiAccessType.write]
 
 
 class RestServerThread(threading.Thread):

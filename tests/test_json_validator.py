@@ -6,7 +6,8 @@ from utils.json_validator import Validator, SchemaDoesNotExistError
 TEST_REQ_OK = {"sender": "me",
                "receiver": "you",
                "session_id": 1776,
-               "payload": {}}
+               "payload": {},
+               "is_response": False}
 TEST_REQ_ERR = {"test_key": "yolokopter"}
 
 REQ_SCHEMA_NAME = "request_basic_structure"

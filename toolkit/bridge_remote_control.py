@@ -5,13 +5,11 @@ import sys
 
 import requests
 import json
-import gadgetlib
 import logging
 import random
-from gadgetlib import GadgetIdentifier, CharacteristicIdentifier
 from typing import Optional
-from tools import git_tools
 
+from system.gadget_definitions import CharacteristicIdentifier, GadgetIdentifier
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from toolkit.direct_mqtt_connection_toolkit import DirectMqttConnectionToolkit
 from toolkit.direct_serial_connection_toolkit import DirectSerialConnectionToolkit
@@ -21,7 +19,7 @@ from toolkit.toolkit_exceptions import ToolkitException
 from utils.chip_flasher import ChipFlasher
 from utils.client_config_manager import ClientConfigManager
 from toolkit.toolkit_settings_manager import ToolkitSettingsManager, InvalidConfigException
-from toolkit.bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException,\
+from toolkit.bridge_connector import BridgeConnector, BridgeSocketApiException, BridgeRestApiException, \
     SoftwareWritingFailedException, ConfigWritingFailedException
 
 DIRECT_NETWORK_MODES = ["serial", "mqtt"]
@@ -293,7 +291,7 @@ class BridgeConnectionToolkit:
         characteristic_max_len = 0
 
         for characteristic_data in characteristics:
-            name = gadgetlib.characteristic_identifier_to_str(CharacteristicIdentifier(characteristic_data["type"]))
+            name = str(CharacteristicIdentifier(characteristic_data["type"]))
             if len(name) > characteristic_max_len:
                 characteristic_max_len = len(name)
 
@@ -674,12 +672,12 @@ if __name__ == '__main__':
         for gadget_data in bridge_gadgets:
             print(" -> {} <{}>".format(
                 format_string_len(gadget_data["name"], gadget_max_name_len),
-                gadgetlib.gadget_identifier_to_str(GadgetIdentifier(gadget_data["type"]))
+                str(GadgetIdentifier(gadget_data["type"]))
             ))
 
             characteristic_max_len = 0
             for characteristic_data in gadget_data["characteristics"]:
-                name = gadgetlib.characteristic_identifier_to_str(CharacteristicIdentifier(characteristic_data["type"]))
+                name = str(CharacteristicIdentifier(characteristic_data["type"]))
                 if len(name) > characteristic_max_len:
                     characteristic_max_len = len(name)
 
@@ -773,7 +771,7 @@ if __name__ == '__main__':
                     print("Custom Config not implemented")
                     continue
                 else:
-                    config_name = bridge_configs[config_index-1]
+                    config_name = bridge_configs[config_index - 1]
                     config_to_flash = read_config_from_bridge(config_name)
 
                 if not config_to_flash:

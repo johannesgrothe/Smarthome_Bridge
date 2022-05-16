@@ -63,7 +63,8 @@ class SocketServerClient(NetworkServerClient):
                           req_body["sender"],
                           req_body["receiver"],
                           req_body["payload"],
-                          connection_type=f"Socket")
+                          connection_type=f"Socket",
+                          is_response=req_body["is_response"])
 
         return buf_req
 

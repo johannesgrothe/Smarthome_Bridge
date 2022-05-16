@@ -82,7 +82,7 @@ class ClientController(LoggingInterface):
         :raises ValidationError: If passed config was faulty
         """
         self._validator.validate(system_config, "client_system_config")
-        res = self._network.send_request(ApiURIs.client_config_write.uri,
+        res = self._network.send_request(ApiURIs.client_system_config_write.uri,
                                          self._client_id,
                                          system_config)
         if not res:

@@ -57,7 +57,8 @@ class SplitRequestHandler:
                                           first_req.get_session_id(),
                                           first_req.get_sender(),
                                           first_req.get_receiver(),
-                                          json_data)
+                                          json_data,
+                                          is_response=True)
 
                         out_req.set_callback_method(first_req.get_callback())
                         del self._part_data[id_str]

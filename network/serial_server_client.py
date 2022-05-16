@@ -80,7 +80,8 @@ class SerialServerClient(NetworkServerClient):
                                   sender=json_body["sender"],
                                   receiver=json_body["receiver"],
                                   payload=json_body["payload"],
-                                  connection_type=f"Serial[{self._address}]")
+                                  connection_type=f"Serial[{self._address}]",
+                                  is_response=json_body["is_response"])
                 out_req.set_auth(SerialAuthContainer())
 
                 return out_req
