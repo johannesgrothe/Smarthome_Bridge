@@ -9,7 +9,7 @@ from typing import Optional, Callable
 from lib.logging_interface import LoggingInterface
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from gadget_publishers.homebridge_request import HomeBridgeRequest
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
 from utils.thread_manager import ThreadManager
 
@@ -182,7 +182,7 @@ class HomebridgeNetworkConnector(LoggingInterface):
         """
         self._characteristic_update_callback = callback
 
-    def add_gadget(self, gadget: Gadget) -> bool:
+    def add_gadget(self, gadget: RemoteGadget) -> bool:
         try:
             buf_payload = HomebridgeEncoder().encode_gadget(gadget)
         except GadgetEncodeError as err:

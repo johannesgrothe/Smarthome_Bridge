@@ -1,6 +1,6 @@
 from lib.logging_interface import LoggingInterface
 
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from system.gadget_definitions import CharacteristicIdentifier
 from gadgets.fan import Fan
 from gadgets.lamp import Lamp
@@ -28,7 +28,7 @@ from gadget_publishers.homebridge_characteristic_translator import HomebridgeCha
 
 
 class GadgetEncodeError(Exception):
-    def __init__(self, gadget: Gadget):
+    def __init__(self, gadget: RemoteGadget):
         super().__init__(f"Failed to decode {gadget.get_name()}/{gadget.__class__.__name__}")
 
 
@@ -37,7 +37,7 @@ class HomebridgeEncoder(LoggingInterface):
     def __init__(self):
         super().__init__()
 
-    def encode_gadget(self, gadget: Gadget) -> dict:
+    def encode_gadget(self, gadget: RemoteGadget) -> dict:
         """
         Encodes a gadget for an 'add'-request to homebridge
 
@@ -52,13 +52,13 @@ class HomebridgeEncoder(LoggingInterface):
         raise GadgetEncodeError(gadget)
 
     @staticmethod
-    def _get_base_info(gadget: Gadget) -> dict:
+    def _get_base_info(gadget: RemoteGadget) -> dict:
         return {
             "name": gadget.get_name(),
             "service_name": gadget.get_name(),
         }
 
-    def _encode_fan(self, gadget: Gadget) -> dict:
+    def _encode_fan(self, gadget: RemoteGadget) -> dict:
         out_dict = self._get_base_info(gadget)
         out_dict["service"] = "Fan"
 
@@ -67,7 +67,7 @@ class HomebridgeEncoder(LoggingInterface):
             out_dict[hb_name] = self._encode_characteristic(gadget, characteristic_type)
         return out_dict
 
-    def _encode_lamp(self, gadget: Gadget) -> dict:
+    def _encode_lamp(self, gadget: RemoteGadget) -> dict:
         out_dict = self._get_base_info(gadget)
         out_dict["service"] = "Lightbulb"
 
@@ -80,7 +80,7 @@ class HomebridgeEncoder(LoggingInterface):
         return out_dict
 
     @staticmethod
-    def _encode_characteristic(gadget: Gadget, characteristic_type: CharacteristicIdentifier) -> dict:
+    def _encode_characteristic(gadget: RemoteGadget, characteristic_type: CharacteristicIdentifier) -> dict:
         gadget_characteristic = gadget.get_characteristic(characteristic_type)
         value_range = gadget_characteristic.get_max() - gadget_characteristic.get_min()
         min_step = value_range // gadget_characteristic.get_steps()

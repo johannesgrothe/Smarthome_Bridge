@@ -3,7 +3,7 @@ import pytest
 from gadget_publishers.homebridge_encoder import HomebridgeEncoder, GadgetEncodeError
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 
-from gadgets.any_gadget import AnyGadget
+from gadgets.any_gadget import AnyRemoteGadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 
@@ -61,9 +61,9 @@ def characteristic_status():
 
 @pytest.fixture()
 def any_gadget(characteristic_status):
-    gadget = AnyGadget(ANY_NAME,
-                       TEST_CLIENT,
-                       [characteristic_status])
+    gadget = AnyRemoteGadget(ANY_NAME,
+                             TEST_CLIENT,
+                             [characteristic_status])
     yield gadget
     gadget.__del__()
 
@@ -102,7 +102,7 @@ def fan(characteristic_status):
 
 
 @pytest.mark.bridge
-def test_homebridge_decoder_error(encoder: HomebridgeEncoder, any_gadget: AnyGadget):
+def test_homebridge_decoder_error(encoder: HomebridgeEncoder, any_gadget: AnyRemoteGadget):
     with pytest.raises(GadgetEncodeError):
         encoder.encode_gadget(any_gadget)
 

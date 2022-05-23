@@ -18,7 +18,8 @@ pytest-dotenv = { version = "*" }
 werkzeug = { version = "*" }
 python-dotenv = { version = "*" }
 homekit = { version = "0.19.0" }
-zeroconf ="==0.28.7"
+zeroconf = "==0.28.7"
+denonavr = { version = "*" }
 
 [dev-packages]
 

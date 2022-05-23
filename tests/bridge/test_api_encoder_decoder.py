@@ -6,7 +6,7 @@ from smarthome_bridge.api_decoder import ApiDecoder
 
 from utils.json_validator import Validator
 from smarthome_bridge.client import Client
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier
 from system.utils.software_version import SoftwareVersion
 
@@ -70,7 +70,7 @@ def test_api_characteristic_de_serialization(encoder: ApiEncoder, decoder: ApiDe
 
 @pytest.mark.bridge
 def test_api_gadget_de_serialization(f_validator: Validator, encoder: ApiEncoder, decoder: ApiDecoder,
-                                     f_any_gadget: Gadget, f_dummy_gadget: Gadget):
+                                     f_any_gadget: RemoteGadget, f_dummy_gadget: RemoteGadget):
     serialized_data = encoder.encode_gadget(f_any_gadget)
     f_validator.validate(serialized_data, "api_gadget_data")
 
@@ -83,7 +83,7 @@ def test_api_gadget_de_serialization(f_validator: Validator, encoder: ApiEncoder
 
 
 @pytest.mark.bridge
-def test_api_gadget_identifier_de_serialization(encoder: ApiEncoder, f_any_gadget: Gadget, f_dummy_gadget: Gadget):
+def test_api_gadget_identifier_de_serialization(encoder: ApiEncoder, f_any_gadget: RemoteGadget, f_dummy_gadget: RemoteGadget):
     identifier = encoder.encode_gadget_identifier(f_any_gadget)
     assert identifier == GadgetIdentifier.any_gadget
 

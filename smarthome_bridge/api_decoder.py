@@ -1,6 +1,6 @@
 from datetime import datetime
 from lib.logging_interface import LoggingInterface
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from gadgets.gadget_factory import GadgetFactory
@@ -30,7 +30,7 @@ class ApiDecoder(LoggingInterface):
     def __init__(self):
         super().__init__()
 
-    def decode_gadget(self, gadget_data: dict, host: str) -> Gadget:
+    def decode_gadget(self, gadget_data: dict, host: str) -> RemoteGadget:
         """
         Decodes a gadget out of the data given
 

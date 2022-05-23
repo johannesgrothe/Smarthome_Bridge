@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 import threading
 
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
 
@@ -42,7 +42,7 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
         self._status_supplier = supplier
 
     @abstractmethod
-    def receive_gadget(self, gadget: Gadget):
+    def receive_gadget(self, gadget: RemoteGadget):
         """
         Updates a gadget. It will be created if it does not exist yet and it will detect which characteristics have
         changed and update those in need of updating
@@ -53,7 +53,7 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
         pass
 
     @abstractmethod
-    def create_gadget(self, gadget: Gadget):
+    def create_gadget(self, gadget: RemoteGadget):
         """
         Creates/Saves a new gadget
 
@@ -74,7 +74,7 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
         """
         pass
 
-    def _publish_gadget(self, gadget: Gadget):
+    def _publish_gadget(self, gadget: RemoteGadget):
         with self.__publish_lock:
             self._last_published_gadget = gadget.get_name()
             super()._publish_gadget(gadget)

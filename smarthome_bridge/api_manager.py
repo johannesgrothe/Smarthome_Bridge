@@ -3,7 +3,7 @@ import os
 from typing import Optional, Callable
 from jsonschema import ValidationError
 
-from gadgets.any_gadget import AnyGadget
+from gadgets.any_gadget import AnyRemoteGadget
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
 from network.request import Request, NoClientResponseException
 from lib.pubsub import Subscriber
@@ -12,7 +12,7 @@ from utils.json_validator import Validator
 from lib.logging_interface import LoggingInterface
 from smarthome_bridge.network_manager import NetworkManager
 
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 
 from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
 
@@ -81,7 +81,7 @@ class ApiManager(Subscriber, LoggingInterface):
         req.respond(out_payload)
         self._logger.info(f"Responding with status: {ack} to request: {req.get_path()}")
 
-    def send_gadget_update(self, gadget: Gadget):
+    def send_gadget_update(self, gadget: RemoteGadget):
         self._logger.info(f"Broadcasting gadget update information for '{gadget.get_name()}'")
         try:
             gadget_data = ApiEncoder().encode_gadget_update(gadget)
@@ -351,9 +351,9 @@ class ApiManager(Subscriber, LoggingInterface):
             value = [x.step_value for x in gadget_update_info.characteristics if x.id == c.get_type()][0]
             c.set_step_value(value)
 
-        out_gadget = AnyGadget(gadget_update_info.id,
-                               req.get_sender(),
-                               buf_characteristics)
+        out_gadget = AnyRemoteGadget(gadget_update_info.id,
+                                     req.get_sender(),
+                                     buf_characteristics)
 
         self._logger.info(f"Updating {len(buf_characteristics)} gadget characteristics from '{client_id}'")
         self._delegate.handle_gadget_update(out_gadget)

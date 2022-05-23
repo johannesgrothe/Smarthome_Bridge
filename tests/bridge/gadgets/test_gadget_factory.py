@@ -3,7 +3,7 @@ import pytest
 from gadgets.gadget_factory import GadgetFactory, GadgetCreationError
 from system.gadget_definitions import GadgetIdentifier
 
-from gadgets.any_gadget import AnyGadget
+from gadgets.any_gadget import AnyRemoteGadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 
 
@@ -18,7 +18,7 @@ def factory():
 
 
 @pytest.mark.bridge
-def test_gadget_factory_any_gadget(factory: GadgetFactory, f_characteristic_fan_speed, f_any_gadget: AnyGadget):
+def test_gadget_factory_any_gadget(factory: GadgetFactory, f_characteristic_fan_speed, f_any_gadget: AnyRemoteGadget):
     with pytest.raises(NotImplementedError):
         factory.create_gadget(gadget_type=GadgetIdentifier.any_gadget,
                               name=f_any_gadget.get_name(),

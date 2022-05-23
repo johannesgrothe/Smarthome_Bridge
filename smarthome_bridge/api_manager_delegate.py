@@ -20,7 +20,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def handle_gadget_sync(self, gadget: Gadget):
+    def handle_gadget_sync(self, gadget: RemoteGadget):
         """
         Handles an incoming gadget sync request by applying the changes
 
@@ -29,7 +29,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def handle_gadget_update(self, gadget: Gadget):
+    def handle_gadget_update(self, gadget: RemoteGadget):
         """
         Handles an incoming gadget update request by applying changes from the passed container to the gadget manager
 
@@ -63,7 +63,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_gadget_info(self) -> list[Gadget]:
+    def get_gadget_info(self) -> list[RemoteGadget]:
         """
         Returns information about all the gadgets
 

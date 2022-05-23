@@ -1,8 +1,8 @@
-from gadgets.gadget import Gadget, Characteristic
+from gadgets.remote_gadget import RemoteGadget, Characteristic
 from system.gadget_definitions import GadgetIdentifier
 
 
-class Fan(Gadget):
+class Fan(RemoteGadget):
     def __init__(self,
                  name: str,
                  host_client: str,

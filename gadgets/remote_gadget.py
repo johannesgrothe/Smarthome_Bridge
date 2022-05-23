@@ -18,19 +18,16 @@ class CharacteristicNotPresentError(Exception):
         super().__init__(f"Characteristic {c_type} is does not exist in this gadget")
 
 
-class Gadget(object, metaclass=ABCMeta):
+class Gadget(metaclass=ABCMeta):
     _characteristics: [Characteristic]
     _name: str
-    _host_client: str
     _logger: logging.Logger
     _event_mapping: list[GadgetEventMapping]
 
     def __init__(self,
                  name: str,
-                 host_client: str,
                  characteristics: list[Characteristic]):
         self._name = name
-        self._host_client = host_client
         self._characteristics = characteristics
         self._characteristics.sort()
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -119,9 +116,6 @@ class Gadget(object, metaclass=ABCMeta):
             raise CharacteristicNotPresentError(c_type)
         return buf_characteristic.get_min(), buf_characteristic.get_max(), buf_characteristic.get_steps()
 
-    def get_host_client(self):
-        return self._host_client
-
     def get_name(self) -> str:
         return self._name
 
@@ -137,3 +131,17 @@ class Gadget(object, metaclass=ABCMeta):
 
     def set_event_mapping(self, e_mapping: list[GadgetEventMapping]):
         self._event_mapping = e_mapping
+
+
+class RemoteGadget(Gadget):
+    _host_client: str
+
+    def __init__(self,
+                 name: str,
+                 host_client: str,
+                 characteristics: list[Characteristic]):
+        super().__init__(name, characteristics)
+        self._host_client = host_client
+
+    def get_host_client(self):
+        return self._host_client

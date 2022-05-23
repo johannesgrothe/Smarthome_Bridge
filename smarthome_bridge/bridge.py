@@ -13,7 +13,7 @@ from smarthome_bridge.api_manager import ApiManager
 from smarthome_bridge.gadget_manager import GadgetManager
 
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from smarthome_bridge.client import Client
 from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools
@@ -81,11 +81,11 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     def get_gadget_manager(self):
         return self._gadget_manager
 
-    def receive_gadget_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: RemoteGadget):
         self._logger.info(f"Forwarding update for {gadget.get_name()}")
         self.api.send_gadget_update(gadget)
 
-    def receive_gadget(self, gadget: Gadget):
+    def receive_gadget(self, gadget: RemoteGadget):
         pass
 
     def add_gadget_publisher(self, publisher: GadgetPublisher):
@@ -109,11 +109,11 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         else:
             self.api.request_sync(client_name)
 
-    def handle_gadget_sync(self, gadget: Gadget):
+    def handle_gadget_sync(self, gadget: RemoteGadget):
         with self._gadget_sync_lock:
             self._gadget_manager.receive_gadget(gadget)
 
-    def handle_gadget_update(self, gadget: Gadget):
+    def handle_gadget_update(self, gadget: RemoteGadget):
         with self._gadget_sync_lock:
             self._gadget_manager.receive_gadget_update(gadget)
 
@@ -133,7 +133,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
                 in self._client_manager.get_client_ids()
                 if self._client_manager.get_client(x) is not None]
 
-    def get_gadget_info(self) -> list[Gadget]:
+    def get_gadget_info(self) -> list[RemoteGadget]:
         return [self._gadget_manager.get_gadget(x)
                 for x
                 in self._gadget_manager.get_gadget_ids()

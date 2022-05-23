@@ -11,11 +11,11 @@ from smarthome_bridge.client import Client
 class DummyApiDelegate(ApiManagerDelegate):
     _last_heartbeat_name = Optional[str]
     _last_heartbeat_runtime = Optional[int]
-    _last_gadget: Optional[Gadget]
-    _last_gadget_update: Optional[Gadget]
+    _last_gadget: Optional[RemoteGadget]
+    _last_gadget_update: Optional[RemoteGadget]
     _last_client: Optional[Client]
 
-    _gadgets: list[Gadget]
+    _gadgets: list[RemoteGadget]
     _clients: list[Client]
     _gadget_publishers: list[GadgetPublisher]
 
@@ -37,10 +37,10 @@ class DummyApiDelegate(ApiManagerDelegate):
         self._last_heartbeat_name = client_name
         self._last_heartbeat_runtime = runtime_id
 
-    def handle_gadget_update(self, gadget: Gadget):
+    def handle_gadget_update(self, gadget: RemoteGadget):
         self._last_gadget_update = gadget
 
-    def handle_gadget_sync(self, gadget: Gadget):
+    def handle_gadget_sync(self, gadget: RemoteGadget):
         self._last_gadget = gadget
 
     def handle_client_sync(self, client: Client):
@@ -55,13 +55,13 @@ class DummyApiDelegate(ApiManagerDelegate):
     def get_last_client(self) -> Optional[Client]:
         return self._last_client
 
-    def get_last_gadget_update(self) -> Optional[Gadget]:
+    def get_last_gadget_update(self) -> Optional[RemoteGadget]:
         return self._last_gadget_update
 
-    def get_last_gadget(self) -> Optional[Gadget]:
+    def get_last_gadget(self) -> Optional[RemoteGadget]:
         return self._last_gadget
 
-    def add_gadget(self, gadget: Gadget):
+    def add_gadget(self, gadget: RemoteGadget):
         self._gadgets.append(gadget)
 
     def add_client(self, client: Client):
@@ -80,7 +80,7 @@ class DummyApiDelegate(ApiManagerDelegate):
     def get_client_info(self) -> list[Client]:
         return self._clients
 
-    def get_gadget_info(self) -> list[Gadget]:
+    def get_gadget_info(self) -> list[RemoteGadget]:
         return self._gadgets
 
     def get_gadget_publisher_info(self) -> list[GadgetPublisher]:

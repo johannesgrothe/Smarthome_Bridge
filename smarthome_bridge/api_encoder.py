@@ -6,7 +6,7 @@ from lib.logging_interface import LoggingInterface
 from datetime import datetime
 
 from smarthome_bridge.client import Client
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
@@ -111,7 +111,7 @@ class ApiEncoder(LoggingInterface):
         return gadget_json
 
     @staticmethod
-    def encode_gadget_identifier(gadget: Gadget) -> GadgetIdentifier:
+    def encode_gadget_identifier(gadget: RemoteGadget) -> GadgetIdentifier:
         """
         Gets a gadget identifier for the class of the passed gadget
 

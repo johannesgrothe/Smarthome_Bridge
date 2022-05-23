@@ -3,8 +3,8 @@ from typing import Optional
 from lib.logging_interface import LoggingInterface
 from gadget_publishers.gadget_publisher import GadgetPublisher
 
-from gadgets.gadget import Gadget
-from gadgets.any_gadget import AnyGadget
+from gadgets.remote_gadget import RemoteGadget
+from gadgets.any_gadget import AnyRemoteGadget
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
 from gadgets.gadget_factory import GadgetFactory, GadgetCreationError
 from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
@@ -16,7 +16,7 @@ class GadgetDoesntExistError(Exception):
 
 
 class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscriber, GadgetStatusSupplier):
-    _gadgets: list[Gadget]
+    _gadgets: list[RemoteGadget]
     _gadget_publishers: list[GadgetPublisher]
 
     def __init__(self):
@@ -32,7 +32,7 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
             publisher = self._gadget_publishers.pop()
             publisher.__del__()
 
-    def get_gadget(self, name: str) -> Optional[Gadget]:
+    def get_gadget(self, name: str) -> Optional[RemoteGadget]:
         for found_gadget in self._gadgets:
             if found_gadget.get_name() == name:
                 return found_gadget
@@ -44,7 +44,7 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
     def get_gadget_count(self) -> int:
         return len(self._gadgets)
 
-    def receive_gadget_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: RemoteGadget):
         found_gadget = self.get_gadget(gadget.get_name())
         if found_gadget is None:
             self._logger.error(f"Received update data for unknown gadget '{gadget.get_name()}'")
@@ -59,15 +59,15 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
                 changed_characteristics.append(c)
 
         if changed_characteristics:
-            buf_gadget = AnyGadget(gadget.get_name(),
+            buf_gadget = AnyRemoteGadget(gadget.get_name(),
                                    "any",
-                                   changed_characteristics)
+                                         changed_characteristics)
             self._publish_gadget_update(buf_gadget)
 
-    def receive_gadget(self, gadget: Gadget):
+    def receive_gadget(self, gadget: RemoteGadget):
         found_gadget = self.get_gadget(gadget.get_name())
         if found_gadget is None:
-            if not isinstance(gadget, AnyGadget):
+            if not isinstance(gadget, AnyRemoteGadget):
                 self._logger.info(f"Adding gadget '{gadget.get_name()}'")
                 self._gadgets.append(gadget)
                 self._publish_gadget(gadget)
@@ -90,7 +90,7 @@ class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscri
             self._gadgets.append(merged_gadget)
             self._publish_gadget(merged_gadget)
 
-    def _remove_gadget_from_publishers(self, gadget: Gadget):
+    def _remove_gadget_from_publishers(self, gadget: RemoteGadget):
         """
         Removes a gadget from all publishers
 

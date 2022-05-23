@@ -1,9 +1,9 @@
-from gadgets.gadget import Gadget
+from gadgets.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
 from lib.logging_interface import LoggingInterface
 
-from gadgets.any_gadget import AnyGadget
+from gadgets.any_gadget import AnyRemoteGadget
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from smarthome_bridge.api_encoder import ApiEncoder, IdentifierEncodeError
@@ -44,7 +44,7 @@ class GadgetFactory(LoggingInterface):
                 return characteristic
         raise CharacteristicNotFoundError(ident)
 
-    def merge_gadgets(self, old_gadget: Gadget, new_gadget: Gadget) -> Gadget:
+    def merge_gadgets(self, old_gadget: RemoteGadget, new_gadget: RemoteGadget) -> RemoteGadget:
         """
         Merges two gadgets (typically one 'original' and a new one with update information) into a new gadget
         containing with name, client and class of the old and characteristics of the new one.
@@ -55,7 +55,7 @@ class GadgetFactory(LoggingInterface):
         :raise GadgetMergeError: If anything goes wrong during merges
         """
         encoder = ApiEncoder()
-        if not isinstance(new_gadget, AnyGadget) and old_gadget.__class__ != new_gadget.__class__:
+        if not isinstance(new_gadget, AnyRemoteGadget) and old_gadget.__class__ != new_gadget.__class__:
             raise GadgetMergeError(f"Cannot merge gadgets with different classes {old_gadget.__class__.__name__} "
                                    f"and {new_gadget.__class__.__name__}")
         try:
@@ -74,7 +74,7 @@ class GadgetFactory(LoggingInterface):
     @staticmethod
     def create_any_gadget(name: str,
                           host_client: str,
-                          characteristics: list[Characteristic]) -> AnyGadget:
+                          characteristics: list[Characteristic]) -> AnyRemoteGadget:
         """
         Creates a new 'AnyGadget' from the passed data
 
@@ -83,15 +83,15 @@ class GadgetFactory(LoggingInterface):
         :param characteristics: Characteristics for the newly created gadget
         :return: The newly created gadget
         """
-        return AnyGadget(name,
-                         host_client,
-                         characteristics)
+        return AnyRemoteGadget(name,
+                               host_client,
+                               characteristics)
 
     def create_gadget(self,
                       gadget_type: GadgetIdentifier,
                       name: str,
                       host_client: str,
-                      characteristics: list[Characteristic]) -> Gadget:
+                      characteristics: list[Characteristic]) -> RemoteGadget:
         """
         Creates a new Gadget from the passed data
 

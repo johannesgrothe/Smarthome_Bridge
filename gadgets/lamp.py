@@ -1,8 +1,8 @@
-from gadgets.gadget import Gadget, Characteristic
+from gadgets.remote_gadget import RemoteGadget, Characteristic
 from system.gadget_definitions import GadgetIdentifier
 
 
-class Lamp(Gadget):
+class Lamp(RemoteGadget):
     def __init__(self,
                  name: str,
                  host_client: str,

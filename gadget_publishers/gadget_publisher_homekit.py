@@ -16,8 +16,8 @@ from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessory
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
 from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
 from gadget_publishers.homekit.homekit_services import SwitchService
-from gadgets.any_gadget import AnyGadget
-from gadgets.gadget import Gadget
+from gadgets.any_gadget import AnyRemoteGadget
+from gadgets.remote_gadget import RemoteGadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from smarthome_bridge.characteristic import Characteristic
 from system.gadget_definitions import CharacteristicIdentifier
@@ -91,9 +91,9 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
                                                       value=update_data[c_name]))
         if characteristics is None:
             return
-        out_gadget = AnyGadget(gadget,
+        out_gadget = AnyRemoteGadget(gadget,
                                "",
-                               characteristics)
+                                     characteristics)
 
         self._publish_gadget_update(out_gadget)
 
@@ -150,13 +150,13 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             raise Exception(f"More than one gadget with name {gadget_name} exists")
         return found[0]
 
-    def receive_gadget(self, gadget: Gadget):
+    def receive_gadget(self, gadget: RemoteGadget):
         if self._gadget_exists(gadget.get_name()):
             self.receive_gadget_update(gadget)
         else:
             self.create_gadget(gadget)
 
-    def create_gadget(self, gadget: Gadget):
+    def create_gadget(self, gadget: RemoteGadget):
         if self._gadget_exists(gadget.get_name()):
             raise GadgetCreationError(gadget.get_name())
         if isinstance(gadget, LampNeopixelBasic):
@@ -185,7 +185,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         except GadgetDoesNotExistError:
             raise GadgetDeletionError(gadget_name)
 
-    def receive_gadget_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: RemoteGadget):
         homekit_gadget = self._get_gadget(gadget.get_name())
         if isinstance(homekit_gadget, HomekitRGBLamp):
             status = gadget.get_characteristic(CharacteristicIdentifier.status)

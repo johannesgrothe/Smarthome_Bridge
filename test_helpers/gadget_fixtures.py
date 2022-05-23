@@ -1,6 +1,6 @@
 import pytest
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from gadgets.any_gadget import AnyGadget
+from gadgets.any_gadget import AnyRemoteGadget
 
 
 @pytest.fixture()
@@ -46,8 +46,8 @@ def f_characteristic_saturation():
 
 @pytest.fixture()
 def f_any_gadget(f_characteristic_fan_speed):
-    gadget = AnyGadget(name="any_gadget",
-                       host_client="any_host",
-                       characteristics=[f_characteristic_fan_speed])
+    gadget = AnyRemoteGadget(name="any_gadget",
+                             host_client="any_host",
+                             characteristics=[f_characteristic_fan_speed])
     yield gadget
     gadget.__del__()

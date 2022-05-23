@@ -3,8 +3,8 @@ from typing import Optional
 from system.gadget_definitions import CharacteristicIdentifier
 from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetDeletionError,\
     GadgetUpdateError, GadgetCreationError
-from gadgets.gadget import Gadget
-from gadgets.any_gadget import AnyGadget
+from gadgets.remote_gadget import RemoteGadget
+from gadgets.any_gadget import AnyRemoteGadget
 from gadget_publishers.homebridge_characteristic_translator import HomebridgeCharacteristicTranslator, \
     CharacteristicParsingError
 from gadget_publishers.homebridge_network_connector import HomebridgeNetworkConnector
@@ -37,7 +37,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         if not deletion_successful:
             raise GadgetDeletionError(gadget_name)
 
-    def create_gadget(self, gadget: Gadget):
+    def create_gadget(self, gadget: RemoteGadget):
         self._logger.info(f"Creating gadget '{gadget.get_name()}' on external source")
         adding_successful = self._network_connector.add_gadget(gadget)
         if not adding_successful:
@@ -68,14 +68,14 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
 
         characteristic.set_true_value(value)
 
-        out_gadget = AnyGadget(gadget_name,
+        out_gadget = AnyRemoteGadget(gadget_name,
                                "any",
-                               [characteristic])
+                                     [characteristic])
 
         self._publish_gadget_update(out_gadget)
 
     @staticmethod
-    def _gadget_needs_update(local_gadget: Gadget, fetched_gadget: Gadget):
+    def _gadget_needs_update(local_gadget: RemoteGadget, fetched_gadget: RemoteGadget):
         """
         Checks if the gadget on the remote storage needs an update by comparing the gadgets characteristics boundaries
 
@@ -86,7 +86,7 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         needs_update = local_gadget.get_characteristics() != fetched_gadget.get_characteristics()
         return needs_update
 
-    def _fetch_gadget_data(self, gadget_name: str) -> Optional[Gadget]:
+    def _fetch_gadget_data(self, gadget_name: str) -> Optional[RemoteGadget]:
         """
         Tries to load a gadget from the remote storage
 
@@ -96,11 +96,11 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
         fetched_gadget_data = self._network_connector.get_gadget_info(gadget_name)
         if fetched_gadget_data is not None:
             fetched_characteristics = HomebridgeDecoder().decode_characteristics(fetched_gadget_data)
-            fetched_gadget = AnyGadget(gadget_name, "any", fetched_characteristics)
+            fetched_gadget = AnyRemoteGadget(gadget_name, "any", fetched_characteristics)
             return fetched_gadget
         return None
 
-    def _update_characteristic(self, gadget: Gadget, characteristic: CharacteristicIdentifier):
+    def _update_characteristic(self, gadget: RemoteGadget, characteristic: CharacteristicIdentifier):
         """
         Updates a specific characteristic on from the gadget on the remote storage
 
@@ -115,14 +115,14 @@ class GadgetPublisherHomeBridge(GadgetPublisher):
                                                       characteristic_str,
                                                       characteristic_value)
 
-    def receive_gadget_update(self, gadget: Gadget):
+    def receive_gadget_update(self, gadget: RemoteGadget):
         for identifier in [x.get_type() for x in gadget.get_characteristics()]:
             try:
                 self._update_characteristic(gadget, identifier)
             except CharacteristicParsingError as err:
                 self._logger.info(err.args[0])
 
-    def receive_gadget(self, gadget: Gadget):
+    def receive_gadget(self, gadget: RemoteGadget):
         if self._last_published_gadget is not None and self._last_published_gadget == gadget.get_name():
             return
         fetched_gadget = self._fetch_gadget_data(gadget.get_name())
