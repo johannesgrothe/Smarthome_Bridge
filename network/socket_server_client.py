@@ -4,6 +4,7 @@ from typing import Optional
 
 from jsonschema import ValidationError
 
+from network.auth_container import AuthContainer, CredentialsAuthContainer
 from network.network_connector import REQ_VALIDATION_SCHEME_NAME
 from network.request import Request
 from network.network_server import NetworkServerClient
@@ -12,15 +13,18 @@ from network.network_server import NetworkServerClient
 _socket_timeout = 1
 _socket_receive_len = 3000
 _socket_request_scheme = "socket_request_structure"
+_socket_authentication_scheme = "socket_authentication"
 
 
 class SocketServerClient(NetworkServerClient):
 
     _socket_client: socket.socket
+    _auth: Optional[AuthContainer]
 
     def __init__(self, host_name: str, address: str, client: socket.socket):
         super().__init__(host_name, address)
         self._socket_client = client
+        self._auth = None
         self._thread_manager.start_threads()
 
     def __del__(self):
@@ -45,6 +49,13 @@ class SocketServerClient(NetworkServerClient):
             return None
 
         try:
+            self._validator.validate(buf_json, _socket_authentication_scheme)
+            self._auth = CredentialsAuthContainer(buf_json['username'], buf_json['password'])
+            return None
+        except ValidationError:
+            pass
+
+        try:
             self._validator.validate(buf_json, _socket_request_scheme)
         except ValidationError:
             self._logger.info(f"Received JSON is no valid Socket Request: '{buf_rec_data}'")
@@ -64,6 +75,8 @@ class SocketServerClient(NetworkServerClient):
                           req_body["receiver"],
                           req_body["payload"],
                           connection_type=f"Socket")
+
+        buf_req.set_auth(self._auth)
 
         return buf_req
 

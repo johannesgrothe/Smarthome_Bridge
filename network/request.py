@@ -124,7 +124,7 @@ class Request:
         """Returns the credentials contained in the request"""
         return self._auth
 
-    def set_auth(self, auth: AuthContainer):
+    def set_auth(self, auth: Optional[AuthContainer]):
         """Sets credentials of the request"""
         self._auth = auth
 
