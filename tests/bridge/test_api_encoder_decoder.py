@@ -6,7 +6,7 @@ from smarthome_bridge.api_decoder import ApiDecoder
 
 from utils.json_validator import Validator
 from smarthome_bridge.client import Client
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier
 from system.utils.software_version import SoftwareVersion
 
@@ -75,7 +75,7 @@ def test_api_gadget_de_serialization(f_validator: Validator, encoder: ApiEncoder
     f_validator.validate(serialized_data, "api_gadget_data")
 
     with pytest.raises(NotImplementedError):
-        deserialized_gadget = decoder.decode_gadget(serialized_data, f_any_gadget.get_host_client())
+        deserialized_gadget = decoder.decode_remote_gadget(serialized_data, f_any_gadget.get_host_client())
     # assert deserialized_gadget.equals(f_any_gadget)
 
     with pytest.raises(GadgetEncodeError):

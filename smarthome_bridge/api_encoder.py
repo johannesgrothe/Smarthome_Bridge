@@ -5,11 +5,11 @@ from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from lib.logging_interface import LoggingInterface
 from datetime import datetime
 
-from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
-from local_gadgets.local_gadget import LocalGadget
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
+from gadgets.local.local_gadget import LocalGadget
 from smarthome_bridge.api_coders.gadgets.denon_receiver_encoder import DenonReceiverEncoder
 from smarthome_bridge.client import Client
-from gadgets.remote_gadget import RemoteGadget, Gadget
+from gadgets.remote.remote_gadget import RemoteGadget, Gadget
 from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer

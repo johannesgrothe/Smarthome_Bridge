@@ -59,7 +59,7 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
             "saturation": self.saturation,
             "brightness": self.brightness
         }
-        self._publisher.receive_update(self.name, update_data)
+        self._publisher.receive_update_from_gadget(self.name, update_data)
 
     @property
     def status(self) -> int:

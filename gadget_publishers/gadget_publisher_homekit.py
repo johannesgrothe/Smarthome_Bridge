@@ -18,12 +18,10 @@ from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManage
 from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
 from gadget_publishers.homekit.homekit_publisher_encoder import HomekitEncodeError, HomekitPublisherFactory
 from gadget_publishers.homekit.homekit_services import SwitchService
-from gadgets.any_gadget import AnyRemoteGadget
-from gadgets.remote_gadget import Gadget
-from gadgets.lamp_neopixel_basic import LampNeopixelBasic
-from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
-from smarthome_bridge.characteristic import Characteristic
-from system.gadget_definitions import CharacteristicIdentifier
+from gadgets.remote.lamp_rgb import LampRGB
+from gadgets.remote.remote_gadget import Gadget
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
+from lib.color_converter import ColorConverter
 
 RESTART_DELAY = 7
 HOMEKIT_SERVER_NAME = "HomekitAccessoryServer"
@@ -69,7 +67,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
     def config(self) -> HomekitConfigManager:
         return HomekitConfigManager(self._config_file)
 
-    def receive_update(self, gadget: str, update_data: dict) -> None:
+    def receive_update_from_gadget(self, gadget: str, update_data: dict) -> None:
         if gadget == self._last_published_gadget:
             return
         if self._status_supplier is None:
@@ -79,26 +77,17 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         origin_gadget = self._status_supplier.get_gadget(gadget)
         if origin_gadget is None:
             return
-        characteristics = None
-        if isinstance(origin_gadget, LampNeopixelBasic):
-            characteristics = []
-            for c_name, c_id in [
-                ("status", CharacteristicIdentifier.status),
-                ("hue", CharacteristicIdentifier.hue),
-                ("saturation", CharacteristicIdentifier.saturation),
-                ("brightness", CharacteristicIdentifier.brightness)
-            ]:
-                characteristics.append(Characteristic(c_id,
-                                                      0,
-                                                      1000,
-                                                      value=update_data[c_name]))
-        if characteristics is None:
-            return
-        out_gadget = AnyRemoteGadget(gadget,
-                                     "",
-                                     characteristics)
+        if isinstance(origin_gadget, LampRGB):
+            status = update_data["status"]
+            hue = update_data["hue"]
+            saturation = update_data["saturation"]
+            brightness = update_data["brightness"]
 
-        self._publish_gadget_update(out_gadget)
+            if not status:
+                origin_gadget.rgb = (0, 0, 0)
+            else:
+                rgb = ColorConverter.hsv_to_rgb([hue, saturation, brightness])
+                origin_gadget.rgb = (rgb[0], rgb[1], rgb[2])
 
     def stop_server(self):
         if self._server_thread is None:
@@ -153,15 +142,9 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             raise Exception(f"More than one gadget with name {gadget_name} exists")
         return found[0]
 
-    def receive_gadget(self, gadget: Gadget):
-        if self._gadget_exists(gadget.get_name()):
-            self.receive_gadget_update(gadget)
-        else:
-            self.create_gadget(gadget)
-
     def create_gadget(self, gadget: Gadget):
-        if self._gadget_exists(gadget.get_name()):
-            raise GadgetCreationError(gadget.get_name())
+        if self._gadget_exists(gadget.id):
+            raise GadgetCreationError(gadget.id)
         try:
             gadget = HomekitPublisherFactory.encode(self, gadget)
             self._homekit_server.add_accessory(gadget.accessory)
@@ -180,28 +163,28 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         except GadgetDoesNotExistError:
             raise GadgetDeletionError(gadget_name)
 
-    def receive_gadget_update(self, gadget: Gadget):
-        homekit_gadget = self._get_gadget(gadget.get_name())
-        if isinstance(homekit_gadget, HomekitRGBLamp):
-            status = gadget.get_characteristic(CharacteristicIdentifier.status)
-            hue = gadget.get_characteristic(CharacteristicIdentifier.hue)
-            brightness = gadget.get_characteristic(CharacteristicIdentifier.brightness)
-            saturation = gadget.get_characteristic(CharacteristicIdentifier.saturation)
+    def receive_gadget_update(self, update_info: dict):
+        gadget_id = update_info["id"]
+        try:
+            homekit_gadget = self._get_gadget(gadget_id)
+            if isinstance(homekit_gadget, HomekitRGBLamp):
+                if "rgb" in update_info["attributes"]:
+                    if update_info["attributes"]["rgb"] == (0, 0, 0):
+                        homekit_gadget.status = 0
+                    else:
+                        homekit_gadget.status = 1
 
-            if status is not None:
-                homekit_gadget.status = status.get_step_value()
-
-            if hue is not None:
-                homekit_gadget.hue = hue.get_step_value()
-
-            if brightness is not None:
-                homekit_gadget.brightness = brightness.get_step_value()
-
-            if saturation is not None:
-                homekit_gadget.saturation = saturation.get_step_value()
-        elif isinstance(homekit_gadget, HomekitDenonReceiver):
-            gadget: DenonRemoteControlGadget
-            homekit_gadget.status = gadget.status
+                        r, g, b = update_info["attributes"]["rgb"]
+                        hsv = ColorConverter.rgb_to_hsv([r, g, b])
+                        homekit_gadget.hue = hsv[0]
+                        homekit_gadget.saturation = hsv[1]
+                        homekit_gadget._publisher = hsv[2]
+            elif isinstance(homekit_gadget, HomekitDenonReceiver):
+                if "status" in update_info["attributes"]:
+                    homekit_gadget.status = 1 if update_info["attributes"]["status"] else 0
+        except GadgetDoesNotExistError:
+            origin_gadget = self._status_supplier.get_gadget(gadget_id)
+            self.create_gadget(origin_gadget)
 
 
 def main():

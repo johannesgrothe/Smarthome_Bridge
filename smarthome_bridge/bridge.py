@@ -4,6 +4,8 @@ import threading
 from datetime import datetime
 
 from gadget_publishers.gadget_publisher import GadgetPublisher
+from gadgets.local.local_gadget import LocalGadget
+from smarthome_bridge.local_gadget_manager import LocalGadgetManager
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
@@ -13,7 +15,7 @@ from smarthome_bridge.api_manager import ApiManager
 from smarthome_bridge.gadget_manager import GadgetManager
 
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from smarthome_bridge.client import Client
 from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools

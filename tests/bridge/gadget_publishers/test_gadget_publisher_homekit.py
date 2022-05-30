@@ -4,7 +4,7 @@ import pytest
 
 from gadget_publishers.gadget_publisher import GadgetDeletionError, GadgetCreationError
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from smarthome_bridge.characteristic import Characteristic

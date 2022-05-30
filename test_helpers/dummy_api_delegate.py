@@ -3,6 +3,7 @@ from datetime import datetime
 
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadgets.gadget import Gadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client

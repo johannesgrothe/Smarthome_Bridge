@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadgets.gadget import Gadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from smarthome_bridge.client import Client
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.gadget_update_information import GadgetUpdateInformation
@@ -20,7 +21,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def handle_gadget_sync(self, gadget: RemoteGadget):
+    def handle_gadget_sync(self, gadget: Gadget):
         """
         Handles an incoming gadget sync request by applying the changes
 
@@ -29,7 +30,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def handle_gadget_update(self, gadget: RemoteGadget):
+    def handle_gadget_update(self, gadget: Gadget):
         """
         Handles an incoming gadget update request by applying changes from the passed container to the gadget manager
 
@@ -80,7 +81,7 @@ class ApiManagerDelegate(metaclass=ABCMeta):
 	@abstractmethod
     def get_local_gadget_info(self) -> list[LocalGadget]:
         """
-        Returns information about all the gadgets
+        Returns information about all the gadget publishers
 
-        :return: All the saved gadgets
+        :return: All the gadget publishers
         """

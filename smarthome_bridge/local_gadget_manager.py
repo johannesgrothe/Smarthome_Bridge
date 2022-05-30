@@ -1,7 +1,7 @@
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from lib.logging_interface import LoggingInterface
-from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
-from local_gadgets.local_gadget import LocalGadget
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
+from gadgets.local.local_gadget import LocalGadget
 
 
 class LocalGadgetManager(LoggingInterface):

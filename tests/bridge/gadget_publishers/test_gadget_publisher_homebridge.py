@@ -6,7 +6,7 @@ from gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBri
     GadgetCreationError, GadgetDeletionError
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 
 
 HOMEBRIDGE_NETWORK_NAME = "test_network"

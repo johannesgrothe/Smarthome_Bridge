@@ -10,5 +10,5 @@ class DummyHomekitUpdateReceiver(GadgetPublisherHomekitInterface):
         super().__init__()
         self.last_update = None
 
-    def receive_update(self, gadget_name: str, update_data: dict) -> None:
+    def receive_update_from_gadget(self, gadget_name: str, update_data: dict) -> None:
         self.last_update = (gadget_name, update_data)

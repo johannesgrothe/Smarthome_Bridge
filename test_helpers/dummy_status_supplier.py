@@ -1,6 +1,6 @@
 from typing import Optional
 
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
 
 

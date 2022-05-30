@@ -1,13 +1,13 @@
 from abc import abstractmethod, ABCMeta
 
-from gadgets.remote_gadget import RemoteGadget
-from smarthome_bridge.gadget_update_information import GadgetUpdateInformation
+from gadgets.gadget import Gadget
+from gadgets.remote.remote_gadget import RemoteGadget
 
 
 class GadgetUpdateSubscriber(metaclass=ABCMeta):
 
     @abstractmethod
-    def receive_gadget(self, gadget: RemoteGadget):
+    def receive_gadget(self, gadget: Gadget):
         """
         Receive and handle a gadget
 
@@ -17,7 +17,7 @@ class GadgetUpdateSubscriber(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def receive_gadget_update(self, gadget: RemoteGadget):
+    def receive_gadget_update(self, gadget: Gadget):
         """
         Receive and handle a gadget
 
@@ -28,7 +28,6 @@ class GadgetUpdateSubscriber(metaclass=ABCMeta):
 
 
 class GadgetUpdatePublisher(metaclass=ABCMeta):
-
     __subscriber_clients: list[GadgetUpdateSubscriber]
 
     def __init__(self):
@@ -55,7 +54,7 @@ class GadgetUpdatePublisher(metaclass=ABCMeta):
         """
         self.__subscriber_clients.remove(client)
 
-    def _publish_gadget(self, gadget: RemoteGadget):
+    def _publish_gadget(self, gadget: Gadget):
         """
         Publishes a new gadget for syncing purposes
 
@@ -65,7 +64,7 @@ class GadgetUpdatePublisher(metaclass=ABCMeta):
         for subscriber in self.__subscriber_clients:
             subscriber.receive_gadget(gadget)
 
-    def _publish_gadget_update(self, gadget: RemoteGadget):
+    def _publish_gadget_update(self, gadget: Gadget):
         """
         Publishes a new gadget for syncing purposes
 
@@ -75,10 +74,6 @@ class GadgetUpdatePublisher(metaclass=ABCMeta):
         for subscriber in self.__subscriber_clients:
             subscriber.receive_gadget_update(gadget)
 
-    def get_client_number(self) -> int:
-        """
-        Returns the number of client currently subscribed
-
-        :return: The number of clients currently subscribed
-        """
+    @property
+    def client_count(self) -> int:
         return len(self.__subscriber_clients)

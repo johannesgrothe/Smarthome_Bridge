@@ -3,16 +3,17 @@ import os
 from typing import Optional, Callable
 from jsonschema import ValidationError
 
-from gadgets.any_gadget import AnyRemoteGadget
+from gadgets.gadget import Gadget, IllegalAttributeError
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
 from network.request import Request, NoClientResponseException
 from lib.pubsub import Subscriber
+from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
 from utils.json_validator import Validator
 
 from lib.logging_interface import LoggingInterface
 from smarthome_bridge.network_manager import NetworkManager
 
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 
 from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
 
@@ -43,13 +44,15 @@ class ApiManager(Subscriber, LoggingInterface):
 
     _delegate: ApiManagerDelegate
 
+    _gadget_status_supplier: Optional[GadgetStatusSupplier]
+
     _network: NetworkManager
 
     _gadget_sync_connection: Optional[str]
 
-    auth_manager: Optional[AuthManager]
+    _auth_manager: Optional[AuthManager]
 
-    def __init__(self, delegate: ApiManagerDelegate, network: NetworkManager):
+    def __init__(self, delegate: ApiManagerDelegate, gadget_supplier: GadgetStatusSupplier, network: NetworkManager):
         super().__init__()
         self._delegate = delegate
         self._network = network
@@ -57,15 +60,21 @@ class ApiManager(Subscriber, LoggingInterface):
         self._validator = Validator()
         self._gadget_sync_connection = None
         self.auth_manager = None
+        self._gadget_status_supplier = gadget_supplier
 
     def __del__(self):
         pass
 
+    @property
+    def auth_manager(self) -> AuthManager:
+        return self._auth_manager
+
+    @auth_manager.setter
+    def auth_manager(self, value: AuthManager):
+        self._auth_manager = value
+
     def receive(self, req: Request):
         self._handle_request(req)
-
-    def set_auth_manager(self, auth_manager: AuthManager):
-        self.auth_manager = auth_manager
 
     def request_sync(self, name: str):
         self._logger.info(f"Requesting client sync information from '{name}'")
@@ -287,7 +296,7 @@ class ApiManager(Subscriber, LoggingInterface):
         gadget_data = req.get_payload()["gadgets"]
 
         for gadget in gadget_data:
-            self._update_gadget(client_id, gadget)
+            self._handle_gadget(client_id, gadget)
 
         self._delegate.handle_client_sync(new_client)
 
@@ -302,14 +311,13 @@ class ApiManager(Subscriber, LoggingInterface):
         req.respond(resp_data)
 
     def _handle_info_gadgets(self, req: Request):
-        resp_data = ApiEncoder().encode_all_gadgets_info(self._delegate.get_gadget_info(),
-                                                         self._delegate.get_local_gadget_info())
+        resp_data = ApiEncoder().encode_all_gadgets_info(self._gadget_status_supplier.remote_gadgets,
+                                                         self._gadget_status_supplier.local_gadgets)
         req.respond(resp_data)
 
     def _handle_info_clients(self, req: Request):
         data = self._delegate.get_client_info()
-        encoder = ApiEncoder()
-        resp_data = encoder.encode_all_clients_info(data)
+        resp_data = ApiEncoder().encode_all_clients_info(data)
         req.respond(resp_data)
 
     def _handle_update_gadget(self, req: Request):
@@ -322,40 +330,56 @@ class ApiManager(Subscriber, LoggingInterface):
         try:
             self._validator.validate(req.get_payload(), "api_gadget_update_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
+            self._respond_with_error(req,
+                                     "ValidationError",
                                      f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
 
-        try:
-            gadget_update_info = ApiDecoder().decode_gadget_update(req.get_payload())
-        except GadgetDecodeError:
-            self._respond_with_error(req,
-                                     "GadgetDecodeError",
-                                     f"Gadget update decode error at '{ApiURIs.sync_client.uri}'")
-            return
+        gadget = self._gadget_status_supplier.get_gadget(req.get_payload()["id"])
 
-        client_id = req.get_sender()
-
-        gadget_info = [x for x in self._delegate.get_gadget_info() if x.get_name() == req.get_payload()["id"]]
-        if not gadget_info:
+        if gadget is None:
             self._respond_with_error(req, "GagdetDoesNeeExist", "Sadly, no gadget with the given id exists")
             return
 
-        gadget = gadget_info[0]
+        attributes = req.get_payload()["attributes"]
+        gadget.name = req.get_payload()["name"]
+        val_errs = []
+        attr_errs = []
+        self._logger.info(f"Updating {len(attributes)} attributes from '{req.get_sender()}'")
+        for attr, value in req.get_payload()["attributes"].items():
+            try:
+                gadget.handle_attribute_update(attr, value)
+            except ValueError as err:
+                self._logger.warning(err.args[0])
+                val_errs.append(attr)
+            except IllegalAttributeError as err:
+                self._logger.warning(err.args[0])
+                attr_errs.append(attr)
+        if val_errs or attr_errs:
+            val_str = "No Value Errors"
+            if val_errs:
+                val_str = f"Value-Errors in [{', '.join(val_errs)}]"
+            attr_str = "No Attribute Errors"
+            if attr_errs:
+                attr_str = f"Attribute-Errors in [{', '.join(attr_errs)}]"
+            self._respond_with_error(req, "GadgetUpdateError", f"Problem while applying update: {val_str}, {attr_str}")
+            return
+        self._respond_with_status(req, True)
 
-        updated_characteristics = [x.id for x in gadget_update_info.characteristics]
-        buf_characteristics = [x for x in gadget.get_characteristics() if x.get_type() in updated_characteristics]
+    def _handle_gadget(self, client_id: str, gadget_data: dict):
+        """
+        Takes the data from any sync request, creates a gadget out of it and gives it to the
+        gadget manager for evaluation
 
-        for c in buf_characteristics:
-            value = [x.step_value for x in gadget_update_info.characteristics if x.id == c.get_type()][0]
-            c.set_step_value(value)
-
-        out_gadget = AnyRemoteGadget(gadget_update_info.id,
-                                     req.get_sender(),
-                                     buf_characteristics)
-
-        self._logger.info(f"Updating {len(buf_characteristics)} gadget characteristics from '{client_id}'")
-        self._delegate.handle_gadget_update(out_gadget)
+        :param client_id: ID of the sending client
+        :param gadget_data: JSON-data describing the gadget
+        :return: None
+        """
+        try:
+            gadget = ApiDecoder().decode_remote_gadget(gadget_data, client_id)
+            self._gadget_status_supplier.
+        except GadgetDecodeError as err:
+            print(err.args[0])
 
     def _handle_client_reboot(self, req: Request):
         """
@@ -412,26 +436,6 @@ class ApiManager(Subscriber, LoggingInterface):
                                      f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
         # TODO: handle the request
-
-    def _update_gadget(self, client_id: str, gadget_data: dict):
-        """
-        Takes the data from any sync request, creates a gadget out of it and gives it to the
-        gadget manager for evaluation
-
-        :param client_id: ID of the sending client
-        :param gadget_data: JSON-data describing the gadget
-        :return: None
-        """
-
-        decoder = ApiDecoder()
-
-        try:
-            buf_gadget = decoder.decode_gadget(gadget_data, client_id)
-            self._delegate.handle_gadget_sync(buf_gadget)
-
-        except GadgetDecodeError as err:
-            self._logger.error(err.args[0])
-            return
 
     def _handle_get_all_configs(self, req: Request):
         """

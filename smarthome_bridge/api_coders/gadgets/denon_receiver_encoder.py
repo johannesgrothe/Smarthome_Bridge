@@ -1,4 +1,4 @@
-from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from smarthome_bridge.api_coders.local_gadget_api_encoder import LocalGadgetApiEncoder
 
 

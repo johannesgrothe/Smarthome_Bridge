@@ -1,7 +1,7 @@
 import logging
 import time
 
-from local_gadgets.local_gadget import LocalGadget
+from gadgets.local.local_gadget import LocalGadget
 import denonavr
 
 
@@ -10,6 +10,7 @@ class SourceError(Exception):
 
 
 class DenonRemoteControlGadget(LocalGadget):
+
     _status: bool
     _address: str
     _source: int
@@ -29,6 +30,16 @@ class DenonRemoteControlGadget(LocalGadget):
 
         self._source_names = self._controller.input_func_list
         self._source = self._get_source_index(self._controller.input_func)
+
+    def handle_attribute_update(self, attribute: str, value) -> None:
+        pass
+
+    def access_property(self, property_name: str):
+        if property_name == "status":
+            return self.status
+        elif property_name == "source":
+            return self.source
+        return super().access_property(property_name)
 
     def _get_source_index(self, name: str) -> int:
         for i, s_name in enumerate(self._source_names):
@@ -57,6 +68,7 @@ class DenonRemoteControlGadget(LocalGadget):
                 self._controller.power_on()
             else:
                 self._controller.power_off()
+            self._mark_attribute_for_update("status")
 
     @property
     def source(self):
@@ -71,6 +83,7 @@ class DenonRemoteControlGadget(LocalGadget):
             source_name = self._get_source_name(value)
             self._logger.info(f"Setting source to {source_name}")
             self._controller.set_input_func(source_name)
+        self._mark_attribute_for_update("source")
 
     @property
     def source_names(self):

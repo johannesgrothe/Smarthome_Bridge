@@ -1,11 +1,9 @@
 from lib.logging_interface import LoggingInterface
-from abc import ABCMeta, abstractmethod
+from abc import ABC
 from typing import Optional
 import threading
 
-from gadgets.remote_gadget import RemoteGadget
-from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher, GadgetUpdateSubscriber
-from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
+from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier, GadgetStatusReceiver
 
 
 class GadgetUpdateError(Exception):
@@ -23,7 +21,7 @@ class GadgetCreationError(Exception):
         super().__init__(f"Failed create gadget '{gadget_name}' on external source")
 
 
-class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubscriber, metaclass=ABCMeta):
+class GadgetPublisher(LoggingInterface, GadgetStatusReceiver, ABC):
 
     __publish_lock: threading.Lock
     _last_published_gadget: Optional[str]
@@ -40,42 +38,3 @@ class GadgetPublisher(LoggingInterface, GadgetUpdatePublisher, GadgetUpdateSubsc
 
     def set_status_supplier(self, supplier: GadgetStatusSupplier):
         self._status_supplier = supplier
-
-    @abstractmethod
-    def receive_gadget(self, gadget: RemoteGadget):
-        """
-        Updates a gadget. It will be created if it does not exist yet and it will detect which characteristics have
-        changed and update those in need of updating
-        :param gadget: The gadget the changes are made on
-        :return: None
-        :raises CharacteristicUpdateError: If any error occurred during updating
-        """
-        pass
-
-    @abstractmethod
-    def create_gadget(self, gadget: RemoteGadget):
-        """
-        Creates/Saves a new gadget
-
-        :param gadget: Gadget to create
-        :return: None
-        :raises GadgetCreationError: If any error occurs during gadget creation
-        """
-        pass
-
-    @abstractmethod
-    def remove_gadget(self, gadget_name: str):
-        """
-        Removes a gadget from the publishing interface
-
-        :param gadget_name: Name of the gadget to remove
-        :return: None
-        :raises GadgetDeletionError: If any error occurred during deleting
-        """
-        pass
-
-    def _publish_gadget(self, gadget: RemoteGadget):
-        with self.__publish_lock:
-            self._last_published_gadget = gadget.get_name()
-            super()._publish_gadget(gadget)
-            self._last_published_gadget = None

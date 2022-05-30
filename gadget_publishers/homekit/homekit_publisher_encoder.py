@@ -2,10 +2,10 @@ from gadget_publishers.homekit.homekit_accessory_denon_receiver import HomekitDe
 from gadget_publishers.homekit.homekit_accessory_rgb_lamp import HomekitRGBLamp
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
 from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
-from gadgets.lamp_neopixel_basic import LampNeopixelBasic
-from gadgets.remote_gadget import Gadget
-from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
-from system.gadget_definitions import CharacteristicIdentifier
+from gadgets.remote.lamp_rgb import LampRGB
+from gadgets.remote.remote_gadget import Gadget
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
+from lib.color_converter import ColorConverter
 
 
 class HomekitEncodeError(Exception):
@@ -24,15 +24,14 @@ class HomekitPublisherFactory:
         :return: A homekit accessory wrapper for the gadget
         :raises HomekitEncodeError: If encoding fails for any reason
         """
-        if isinstance(gadget, LampNeopixelBasic):
-            return HomekitRGBLamp(gadget.get_name(),
+        if isinstance(gadget, LampRGB):
+            hsv = ColorConverter.rgb_to_hsv([gadget.red, gadget.green, gadget.blue])
+            return HomekitRGBLamp(gadget.id,
                                   publisher,
-                                  gadget.get_characteristic(CharacteristicIdentifier.status).get_step_value(),
-                                  gadget.get_characteristic(CharacteristicIdentifier.hue).get_step_value(),
-                                  gadget.get_characteristic(
-                                      CharacteristicIdentifier.brightness).get_step_value(),
-                                  gadget.get_characteristic(
-                                      CharacteristicIdentifier.saturation).get_step_value())
+                                  0 if gadget.rgb == (0, 0, 0) else 1,
+                                  hsv[0],
+                                  hsv[1],
+                                  hsv[2])
         elif isinstance(gadget, DenonRemoteControlGadget):
             return HomekitDenonReceiver(gadget.id,
                                         publisher,

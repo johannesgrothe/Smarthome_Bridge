@@ -1,11 +1,10 @@
 from datetime import datetime
+
+from gadgets.remote.lamp_rgb import LampRGB
 from lib.logging_interface import LoggingInterface
-from gadgets.remote_gadget import RemoteGadget
-from system.gadget_definitions import GadgetIdentifier
-from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from gadgets.gadget_factory import GadgetFactory
+from gadgets.remote.remote_gadget import RemoteGadget
+from system.gadget_definitions import GadgetIdentifier, GadgetClass, GadgetClassMapping
 from smarthome_bridge.client import Client
-from smarthome_bridge.gadget_update_information import GadgetUpdateInformation, CharacteristicUpdateInformation
 from system.utils.software_version import SoftwareVersion
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -30,7 +29,7 @@ class ApiDecoder(LoggingInterface):
     def __init__(self):
         super().__init__()
 
-    def decode_gadget(self, gadget_data: dict, host: str) -> RemoteGadget:
+    def decode_remote_gadget(self, gadget_data: dict, host: str) -> RemoteGadget:
         """
         Decodes a gadget out of the data given
 
@@ -41,45 +40,23 @@ class ApiDecoder(LoggingInterface):
         """
         try:
             identifier = GadgetIdentifier(gadget_data["type"])
+            gadget_class = None
+            for g_class, types in GadgetClassMapping:
+                if identifier in types:
+                    gadget_class = g_class
 
-            self._logger.info(f"Decoding gadget of type '{identifier}'")
+            if gadget_class is None:
+                raise GadgetDecodeError()
 
-            name = gadget_data["id"]
-            characteristics = [self.decode_characteristic(data) for data in gadget_data["characteristics"]]
-            factory = GadgetFactory()
-            out_gadget = factory.create_gadget(identifier,
-                                               name,
-                                               host,
-                                               characteristics)
-            return out_gadget
-        except (KeyError, ValueError, CharacteristicDecodeError) as err:
+            if gadget_class == GadgetClass.lamp_rgb:
+                return LampRGB(gadget_data["id"],
+                               host)
+            else:
+                raise GadgetDecodeError()
+
+        except (KeyError, ValueError) as err:
             self._logger.error(err.args[0])
             raise GadgetDecodeError()
-
-    def decode_characteristic(self, characteristic_data: dict) -> Characteristic:
-        """
-        Parses a characteristic from the given data
-
-        :param characteristic_data: Data to parse the characteristic from
-        :return: The parsed Characteristic
-        :raises CharacteristicDecodeError: If anything goes wrong parsing the characteristic
-        """
-        try:
-            identifier = CharacteristicIdentifier(characteristic_data["type"])
-            min_val = characteristic_data["min"]
-            max_val = characteristic_data["max"]
-            steps = characteristic_data["steps"]
-            value = characteristic_data["step_value"]
-            return Characteristic(identifier,
-                                  min_val,
-                                  max_val,
-                                  steps,
-                                  value)
-        except KeyError:
-            self._logger.error("Missing key in data for characteristic")
-        except ValueError:
-            self._logger.error(f"Cannot create CharacteristicIdentifier out of '{characteristic_data['type']}'")
-        raise CharacteristicDecodeError
 
     def decode_client(self, client_data: dict, client_name: str) -> Client:
         """
@@ -116,42 +93,3 @@ class ApiDecoder(LoggingInterface):
             return out_client
         except KeyError as err:
             raise ClientDecodeError(f"Key Error at '{err.args[0]}'")
-
-    def decode_characteristic_update(self, characteristic_data: dict) -> CharacteristicUpdateInformation:
-        """
-        Decodes characteristic update information into an object representing the same data
-
-        :param characteristic_data: Data about the characteristic to update
-        :return: A characteristic update container
-        :raises CharacteristicDecodeError: If anything goes wrong during decoding
-        """
-
-        try:
-            identifier = CharacteristicIdentifier(characteristic_data["type"])
-            value = characteristic_data["step_value"]
-            return CharacteristicUpdateInformation(identifier,
-                                                   value)
-        except KeyError:
-            self._logger.error("Missing key in data for characteristic")
-        except ValueError:
-            self._logger.error(f"Cannot create CharacteristicIdentifier out of '{characteristic_data['type']}'")
-        raise CharacteristicDecodeError
-
-    def decode_gadget_update(self, gadget_data: dict) -> GadgetUpdateInformation:
-        """
-        Decodes a gadget update information container from a json
-
-        :param gadget_data: The json data to parse the gadget update info from
-        :return: The parsed gadget update information container
-        :raises GadgetDecodeError: If anything goes wrong decoding
-        """
-        try:
-            name = gadget_data["id"]
-
-            characteristics = [self.decode_characteristic_update(data) for data in gadget_data["characteristics"]]
-            return GadgetUpdateInformation(name,
-                                           characteristics)
-        except (KeyError, CharacteristicDecodeError) as err:
-            self._logger.error(err.args[0])
-            raise GadgetDecodeError
-

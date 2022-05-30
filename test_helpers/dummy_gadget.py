@@ -1,4 +1,4 @@
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 
 
 class DummyRemoteGadget(RemoteGadget):
