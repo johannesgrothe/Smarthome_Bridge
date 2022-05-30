@@ -11,14 +11,17 @@ from homekit.model.services import LightBulbService
 from homekit.model.services import BHSLightBulbService
 from gadget_publishers.gadget_publisher import GadgetPublisher, GadgetCreationError, GadgetDeletionError
 from gadget_publishers.homekit.homekit_accessory_constants import HomekitConstants
+from gadget_publishers.homekit.homekit_accessory_denon_receiver import HomekitDenonReceiver
 from gadget_publishers.homekit.homekit_accessory_rgb_lamp import HomekitRGBLamp
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
 from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
+from gadget_publishers.homekit.homekit_publisher_encoder import HomekitEncodeError, HomekitPublisherFactory
 from gadget_publishers.homekit.homekit_services import SwitchService
 from gadgets.any_gadget import AnyRemoteGadget
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote_gadget import Gadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
+from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
 from smarthome_bridge.characteristic import Characteristic
 from system.gadget_definitions import CharacteristicIdentifier
 
@@ -92,7 +95,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         if characteristics is None:
             return
         out_gadget = AnyRemoteGadget(gadget,
-                               "",
+                                     "",
                                      characteristics)
 
         self._publish_gadget_update(out_gadget)
@@ -150,30 +153,22 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             raise Exception(f"More than one gadget with name {gadget_name} exists")
         return found[0]
 
-    def receive_gadget(self, gadget: RemoteGadget):
+    def receive_gadget(self, gadget: Gadget):
         if self._gadget_exists(gadget.get_name()):
             self.receive_gadget_update(gadget)
         else:
             self.create_gadget(gadget)
 
-    def create_gadget(self, gadget: RemoteGadget):
+    def create_gadget(self, gadget: Gadget):
         if self._gadget_exists(gadget.get_name()):
             raise GadgetCreationError(gadget.get_name())
-        if isinstance(gadget, LampNeopixelBasic):
-            self._logger.info(f"Creating accessory for '{gadget.get_name()}'")
-            homekit_gadget = HomekitRGBLamp(gadget.get_name(),
-                                            self,
-                                            gadget.get_characteristic(CharacteristicIdentifier.status).get_step_value(),
-                                            gadget.get_characteristic(CharacteristicIdentifier.hue).get_step_value(),
-                                            gadget.get_characteristic(
-                                                CharacteristicIdentifier.brightness).get_step_value(),
-                                            gadget.get_characteristic(
-                                                CharacteristicIdentifier.saturation).get_step_value())
-            self._homekit_server.add_accessory(homekit_gadget.accessory)
-            self._gadgets.append(homekit_gadget)
+        try:
+            gadget = HomekitPublisherFactory.encode(self, gadget)
+            self._homekit_server.add_accessory(gadget.accessory)
+            self._gadgets.append(gadget)
             self._homekit_server.publish_device()
             self._schedule_restart()
-        else:
+        except HomekitEncodeError:
             self._logger.info(f"Cannot create accessory for '{gadget.__class__.__name__}'")
             return
 
@@ -185,7 +180,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         except GadgetDoesNotExistError:
             raise GadgetDeletionError(gadget_name)
 
-    def receive_gadget_update(self, gadget: RemoteGadget):
+    def receive_gadget_update(self, gadget: Gadget):
         homekit_gadget = self._get_gadget(gadget.get_name())
         if isinstance(homekit_gadget, HomekitRGBLamp):
             status = gadget.get_characteristic(CharacteristicIdentifier.status)
@@ -204,6 +199,9 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
 
             if saturation is not None:
                 homekit_gadget.saturation = saturation.get_step_value()
+        elif isinstance(homekit_gadget, HomekitDenonReceiver):
+            gadget: DenonRemoteControlGadget
+            homekit_gadget.status = gadget.status
 
 
 def main():

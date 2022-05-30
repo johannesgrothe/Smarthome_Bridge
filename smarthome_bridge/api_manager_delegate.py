@@ -76,4 +76,11 @@ class ApiManagerDelegate(metaclass=ABCMeta):
         Returns information about all the gadget publishers
 
         :return: All the gadget publishers
+
+	@abstractmethod
+    def get_local_gadget_info(self) -> list[LocalGadget]:
+        """
+        Returns information about all the gadgets
+
+        :return: All the saved gadgets
         """

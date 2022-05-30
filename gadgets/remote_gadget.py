@@ -53,10 +53,6 @@ class Gadget(metaclass=ABCMeta):
             if self.get_name() != other.get_name():
                 return False
 
-        if self.get_host_client not in ignore:
-            if self.get_host_client() != other.get_host_client():
-                return False
-
         return True
 
     def equals_in_characteristics(self, other):
@@ -145,3 +141,13 @@ class RemoteGadget(Gadget):
 
     def get_host_client(self):
         return self._host_client
+
+    def equals(self, other, ignore: Optional[list[Callable]] = None) -> bool:
+        if not super().equals(other, ignore):
+            return False
+
+        if self.get_host_client not in ignore:
+            if self.get_host_client() != other.get_host_client():
+                return False
+
+        return True

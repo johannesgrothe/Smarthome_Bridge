@@ -27,6 +27,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
     _client_manager: ClientManager
     _gadget_manager: GadgetManager
     _gadget_publishers: list[GadgetPublisher]
+    _local_gadgets: LocalGadgetManager
     api: ApiManager
 
     _gadget_sync_lock: threading.Lock
@@ -40,6 +41,7 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
         self._client_manager = ClientManager()
         self._gadget_manager = GadgetManager()
         self._gadget_publishers = []
+        self._local_gadgets = LocalGadgetManager()
         self._gadget_sync_lock = threading.Lock()
         self.api = ApiManager(self, self._network_manager)
         auth_manager = AuthManager(UserManager(data_directory))
@@ -141,3 +143,6 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     def get_gadget_publisher_info(self) -> list[GadgetPublisher]:
         return self._gadget_publishers
+
+    def get_local_gadget_info(self) -> list[LocalGadget]:
+        return self._local_gadgets.gadgets

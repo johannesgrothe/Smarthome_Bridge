@@ -1,9 +1,10 @@
-from gadgets.remote_gadget import Gadget
+from abc import ABC
+
 from lib.logging_interface import LoggingInterface
-from smarthome_bridge.characteristic import Characteristic
+from smarthome_bridge.api_encodable import ApiEncodable
 
 
-class LocalGadget(LoggingInterface):
+class LocalGadget(LoggingInterface, ApiEncodable, ABC):
     _name: str
 
     def __init__(self, name: str):

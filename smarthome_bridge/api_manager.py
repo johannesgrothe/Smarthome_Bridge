@@ -302,9 +302,8 @@ class ApiManager(Subscriber, LoggingInterface):
         req.respond(resp_data)
 
     def _handle_info_gadgets(self, req: Request):
-        data = self._delegate.get_gadget_info()
-        encoder = ApiEncoder()
-        resp_data = encoder.encode_all_gadgets_info(data)
+        resp_data = ApiEncoder().encode_all_gadgets_info(self._delegate.get_gadget_info(),
+                                                         self._delegate.get_local_gadget_info())
         req.respond(resp_data)
 
     def _handle_info_clients(self, req: Request):

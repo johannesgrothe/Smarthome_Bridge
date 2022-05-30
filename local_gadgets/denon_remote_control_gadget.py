@@ -5,6 +5,10 @@ from local_gadgets.local_gadget import LocalGadget
 import denonavr
 
 
+class SourceError(Exception):
+    pass
+
+
 class DenonRemoteControlGadget(LocalGadget):
     _status: bool
     _address: str
@@ -26,14 +30,26 @@ class DenonRemoteControlGadget(LocalGadget):
         self._source_names = self._controller.input_func_list
         self._source = self._get_source_index(self._controller.input_func)
 
+    def encode_api(self) -> dict:
+        return {
+            "status": self._status,
+            "source": self._get_source_name(self.source),
+            "sources": self.source_names
+        }
+
     def _get_source_index(self, name: str) -> int:
         for i, s_name in enumerate(self._source_names):
             if name == s_name:
                 return i
-        raise IndexError()
+        raise SourceError(f"Unknown Source: {name}")
 
     def _get_source_name(self, index: int) -> str:
-        return self._source_names[index]
+        if index < 0:
+            raise SourceError(f"Index is below 0: {index}")
+        try:
+            return self._source_names[index]
+        except IndexError:
+            raise SourceError(f"Source index too high: {index}")
 
     @property
     def status(self):

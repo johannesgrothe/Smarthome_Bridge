@@ -5,6 +5,7 @@ from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from lib.logging_interface import LoggingInterface
 from datetime import datetime
 
+from local_gadgets.local_gadget import LocalGadget
 from smarthome_bridge.client import Client
 from gadgets.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier
@@ -187,15 +188,16 @@ class ApiEncoder(LoggingInterface):
                 "new_branch_release_date": new_date,
                 "num_commits_between_branches": num_commits}
 
-    @classmethod
-    def encode_all_gadgets_info(cls, gadget_info: list[Gadget]) -> dict:
-        gadget_data = []
-        for gadget in gadget_info:
+    def encode_all_gadgets_info(self, remote_gadgets: list[RemoteGadget], local_gadgets: list[LocalGadget]) -> dict:
+        remote_gadget_data = []
+        for gadget in remote_gadgets:
             try:
-                gadget_data.append(cls.encode_gadget(gadget))
+                remote_gadget_data.append(self.encode_gadget(gadget))
             except GadgetEncodeError:
-                cls._get_logger().error(f"Failed to encode gadget '{gadget.get_name()}'")
-        return {"gadgets": gadget_data}
+                self._logger.error(f"Failed to encode gadget '{gadget.get_name()}'")
+        local_gadget_data = [gadget.encode_api() for gadget in local_gadgets]
+        return {"remote": remote_gadget_data,
+                "local": local_gadget_data}
 
     @classmethod
     def encode_all_clients_info(cls, client_info: list[Client]) -> dict:
