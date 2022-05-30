@@ -16,14 +16,7 @@ class RemoteGadget(Gadget, ABC):
     def __eq__(self, other):
         if not super().__eq__(other):
             return False
-
         return self.host_client == other.host_client
-
-    @abstractmethod
-    def access_property(self, property_name: str):
-        if property_name == "host_client":
-            return self.host_client
-        return super().access_property(property_name)
 
     @property
     def host_client(self) -> str:

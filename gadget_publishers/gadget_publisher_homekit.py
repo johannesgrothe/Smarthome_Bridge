@@ -18,9 +18,10 @@ from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManage
 from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
 from gadget_publishers.homekit.homekit_publisher_encoder import HomekitEncodeError, HomekitPublisherFactory
 from gadget_publishers.homekit.homekit_services import SwitchService
-from gadgets.remote.lamp_rgb import LampRGB
+from gadgets.gadget_update_container import GadgetUpdateContainer
+from gadgets.remote.lamp_rgb import LampRGB, LampRgbUpdateContainer
 from gadgets.remote.remote_gadget import Gadget
-from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget, DenonRemoteControlGadgetUpdateContainer
 from lib.color_converter import ColorConverter
 
 RESTART_DELAY = 7
@@ -62,10 +63,6 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         super().__del__()
         self._restart_scheduled = False
         self.stop_server()
-
-    @property
-    def config(self) -> HomekitConfigManager:
-        return HomekitConfigManager(self._config_file)
 
     def receive_update_from_gadget(self, gadget: str, update_data: dict) -> None:
         if gadget == self._last_published_gadget:
@@ -163,25 +160,57 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
         except GadgetDoesNotExistError:
             raise GadgetDeletionError(gadget_name)
 
-    def receive_gadget_update(self, update_info: dict):
-        gadget_id = update_info["id"]
-        try:
-            homekit_gadget = self._get_gadget(gadget_id)
-            if isinstance(homekit_gadget, HomekitRGBLamp):
-                if "rgb" in update_info["attributes"]:
-                    if update_info["attributes"]["rgb"] == (0, 0, 0):
-                        homekit_gadget.status = 0
-                    else:
-                        homekit_gadget.status = 1
+    def _receive_gadget_update_rgb_lamp(self, origin: Gadget, wrapper: HomekitAccessoryWrapper,
+                                        container: LampRgbUpdateContainer):
 
-                        r, g, b = update_info["attributes"]["rgb"]
-                        hsv = ColorConverter.rgb_to_hsv([r, g, b])
-                        homekit_gadget.hue = hsv[0]
-                        homekit_gadget.saturation = hsv[1]
-                        homekit_gadget._publisher = hsv[2]
-            elif isinstance(homekit_gadget, HomekitDenonReceiver):
-                if "status" in update_info["attributes"]:
-                    homekit_gadget.status = 1 if update_info["attributes"]["status"] else 0
+        if not isinstance(wrapper, HomekitRGBLamp):
+            self._logger.error(
+                f"Incompatible types: {container.__class__.__name__} and {wrapper.__class__.__name__}")
+            return
+        if not isinstance(origin, LampRGB):
+            self._logger.error(
+                f"Incompatible types: {container.__class__.__name__} and {origin.__class__.__name__}")
+            return
+        if container.rgb:
+            rgb = origin.rgb
+            if rgb == (0, 0, 0):
+                wrapper.status = 0
+            else:
+                wrapper.status = 1
+
+                r, g, b = rgb
+                hsv = ColorConverter.rgb_to_hsv([r, g, b])
+                wrapper.hue = hsv[0]
+                wrapper.saturation = hsv[1]
+                wrapper._publisher = hsv[2]
+
+    def _receive_gadget_update_receiver(self, origin: Gadget, wrapper: HomekitAccessoryWrapper,
+                                        container: DenonRemoteControlGadgetUpdateContainer):
+
+        if not isinstance(wrapper, HomekitDenonReceiver):
+            self._logger.error(
+                f"Incompatible types: {container.__class__.__name__} and {wrapper.__class__.__name__}")
+            return
+        if not isinstance(origin, DenonRemoteControlGadget):
+            self._logger.error(
+                f"Incompatible types: {container.__class__.__name__} and {origin.__class__.__name__}")
+            return
+
+        if container.status:
+            wrapper.status = 1 if origin.status else 0
+
+    def receive_gadget_update(self, update_container: GadgetUpdateContainer):
+        try:
+            origin = self._status_supplier.get_gadget(update_container.origin)
+            wrapper = self._get_gadget(update_container.origin)
+
+            if isinstance(update_container, LampRgbUpdateContainer):
+                return self._receive_gadget_update_rgb_lamp(origin, wrapper, update_container)
+            elif isinstance(update_container, DenonRemoteControlGadgetUpdateContainer):
+                return self._receive_gadget_update_receiver(origin, wrapper, update_container)
+            else:
+                self._logger.error(f"Not Implemented: {update_container.__class__.__name__}")
+
         except GadgetDoesNotExistError:
             origin_gadget = self._status_supplier.get_gadget(gadget_id)
             self.create_gadget(origin_gadget)

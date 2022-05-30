@@ -3,17 +3,18 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 
 from gadgets.gadget import Gadget
+from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.local_gadget import LocalGadget
 from gadgets.remote.remote_gadget import RemoteGadget
 
 
 class GadgetStatusReceiver(metaclass=ABCMeta):
     @abstractmethod
-    def receive_gadget_update(self, update_info: dict):
+    def receive_gadget_update(self, update_container: GadgetUpdateContainer):
         """
         Receive and handle a gadget
 
-        :param update_info: Container with the update information
+        :param update_container: Container with the update information
         :return: None
         """
         pass
@@ -51,18 +52,10 @@ class GadgetStatusSupplier(metaclass=ABCMeta):
             self.__subscriber_clients.remove(subscriber)
 
     @abstractmethod
-    def publish_gadget_update(self, gadget: Gadget):
-        out_data = {
-            "id": gadget.id
-        }
-        if "name" in gadget.updated_properties:
-            out_data["name"] = gadget.name
-        out_data["attributes"] = {}
-        for attr in gadget.updated_properties:
-            out_data["attributes"][attr] = gadget.access_property(attr)
+    def publish_gadget_update(self, container: GadgetUpdateContainer):
         with self.__client_lock:
             for publisher in self.__subscriber_clients:
-                publisher.receive_gadget_update(out_data)
+                publisher.receive_gadget_update(container)
 
     @abstractmethod
     def get_gadget(self, gadget_id: str) -> Optional[Gadget]:

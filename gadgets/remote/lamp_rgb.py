@@ -1,6 +1,15 @@
 from typing import Tuple
 
+from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.remote.remote_gadget import RemoteGadget
+
+
+class LampRgbUpdateContainer(GadgetUpdateContainer):
+    rgb: bool
+
+    def __init__(self, origin: Gadget):
+        super().__init__(origin)
+        self.rgb = False
 
 
 class LampRGB(RemoteGadget):
@@ -8,6 +17,7 @@ class LampRGB(RemoteGadget):
     _red: int
     _green: int
     _blue: int
+    _update_container: LampRgbUpdateContainer
 
     def __init__(self,
                  gadget_id: str,
@@ -21,13 +31,8 @@ class LampRGB(RemoteGadget):
         self.green = value_green
         self.blue = value_blue
 
-    def handle_attribute_update(self, attribute: str, value) -> None:
-        pass
-
-    def access_property(self, property_name: str):
-        if property_name == "rgb":
-            return self.rgb
-        return super().access_property(property_name)
+    def reset_updated_properties(self):
+        self._update_container = LampRgbUpdateContainer(self.id)
 
     @staticmethod
     def _validate_rgb_value(value: int):
@@ -54,7 +59,7 @@ class LampRGB(RemoteGadget):
         self._validate_rgb_value(value)
         if self._red != value:
             self._red = value
-            self._mark_attribute_for_update("rgb")
+            self._update_container.rgb = True
 
     @property
     def green(self) -> int:
@@ -65,7 +70,7 @@ class LampRGB(RemoteGadget):
         self._validate_rgb_value(value)
         if self._green != value:
             self._green = value
-            self._mark_attribute_for_update("rgb")
+            self._update_container.rgb = True
 
     @property
     def blue(self) -> int:
@@ -76,4 +81,4 @@ class LampRGB(RemoteGadget):
         self._validate_rgb_value(value)
         if self._blue != value:
             self._blue = value
-            self._mark_attribute_for_update("rgb")
+            self._update_container.rgb = True

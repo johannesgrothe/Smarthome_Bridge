@@ -62,26 +62,3 @@ class ApiManagerDelegate(metaclass=ABCMeta):
 
         :return: All the saved clients
         """
-
-    @abstractmethod
-    def get_gadget_info(self) -> list[RemoteGadget]:
-        """
-        Returns information about all the gadgets
-
-        :return: All the saved gadgets
-        """
-
-    @abstractmethod
-    def get_gadget_publisher_info(self) -> list[GadgetPublisher]:
-        """
-        Returns information about all the gadget publishers
-
-        :return: All the gadget publishers
-
-	@abstractmethod
-    def get_local_gadget_info(self) -> list[LocalGadget]:
-        """
-        Returns information about all the gadget publishers
-
-        :return: All the gadget publishers
-        """

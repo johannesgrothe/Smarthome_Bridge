@@ -1,24 +1,21 @@
 import logging
 from abc import ABCMeta, abstractmethod
 
-
-class IllegalAttributeError(Exception):
-    pass
+from gadgets.gadget_update_container import GadgetUpdateContainer
 
 
 class Gadget(metaclass=ABCMeta):
     _id: str
     _name: str
     _logger: logging.Logger
-
-    __updatable_properties: list[str]
+    _update_container: GadgetUpdateContainer
 
     def __init__(self,
                  gadget_id: str):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._id = gadget_id
         self._name = self._id
-        self.__updatable_properties = []
+        self.reset_updated_properties()
 
     def __del__(self):
         pass
@@ -27,30 +24,6 @@ class Gadget(metaclass=ABCMeta):
         if not isinstance(other, self.__class__):
             return False
         return self.id == other.id
-
-    def _mark_attribute_for_update(self, attribute: str):
-        if attribute not in self.__updatable_properties:
-            self.__updatable_properties.append(attribute)
-
-    @abstractmethod
-    def handle_attribute_update(self, attribute: str, value) -> None:
-        """
-        Handles update information from an external source
-
-        :param attribute: Attribute to update
-        :param value: Value to set the Attribute
-        :return: None
-        :raises IllegalAttributeError: If attribute does not exist
-        :raises ValueError: If value is Illegal
-        """
-
-    @abstractmethod
-    def access_property(self, property_name: str):
-        if property_name == "id":
-            return self.id
-        elif property_name == "name":
-            return self.name
-        raise IllegalAttributeError(f"No attribute named '{property_name}' does exist")
 
     @property
     def id(self):
@@ -64,11 +37,12 @@ class Gadget(metaclass=ABCMeta):
     def name(self, value: str):
         if not self._name == value:
             self._name = value
-            self._mark_attribute_for_update("name")
+            self._update_container.name = True
 
     @property
-    def updated_properties(self) -> list[str]:
-        return self.__updatable_properties
+    def updated_properties(self) -> GadgetUpdateContainer:
+        return self._update_container
 
+    @abstractmethod
     def reset_updated_properties(self):
-        self.__updatable_properties = []
+        pass

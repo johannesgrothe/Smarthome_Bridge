@@ -1,10 +1,18 @@
 from gadgets.remote.remote_gadget import RemoteGadget
 
 
-class Fan(RemoteGadget):
+class FanUpdateContainer(GadgetUpdateContainer):
+    speed: bool
 
+    def __init__(self, origin: Gadget):
+        super().__init__(origin)
+        self.speed = False
+
+
+class Fan(RemoteGadget):
     _steps: int
     _value: int
+    _update_container: FanUpdateContainer
 
     def __init__(self,
                  name: str,
@@ -16,13 +24,8 @@ class Fan(RemoteGadget):
         self._steps = steps
         self._value = 0
 
-    def handle_attribute_update(self, attribute: str, value) -> None:
-        pass
-
-    def access_property(self, property_name: str):
-        if property_name == "speed":
-            return self.speed
-        return super().access_property(property_name)
+    def reset_updated_properties(self):
+        self._update_container = FanUpdateContainer(self.id)
 
     @property
     def speed(self) -> int:
@@ -34,7 +37,7 @@ class Fan(RemoteGadget):
             raise ValueError(f"'value' must be between 0 and {self.steps}")
         if self.speed != value:
             self._value = value
-            self._mark_attribute_for_update("speed")
+            self._update_container.speed = True
 
     @property
     def steps(self) -> int:
