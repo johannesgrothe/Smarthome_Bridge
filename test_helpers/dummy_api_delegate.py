@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 
+from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadgets.gadget import Gadget
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
@@ -8,7 +9,6 @@ from smarthome_bridge.client import Client
 
 
 class DummyApiDelegate(ApiManagerDelegate):
-
     _last_heartbeat_name = Optional[str]
     _last_heartbeat_runtime = Optional[int]
     _last_gadget: Optional[Gadget]
@@ -17,6 +17,7 @@ class DummyApiDelegate(ApiManagerDelegate):
 
     _gadgets: list[Gadget]
     _clients: list[Client]
+    _gadget_publishers: list[GadgetPublisher]
 
     def __init__(self):
         super().__init__()
@@ -30,6 +31,7 @@ class DummyApiDelegate(ApiManagerDelegate):
         self._last_client = None
         self._clients = []
         self._gadgets = []
+        self._gadget_publishers = []
 
     def handle_heartbeat(self, client_name: str, runtime_id: int):
         self._last_heartbeat_name = client_name
@@ -80,3 +82,6 @@ class DummyApiDelegate(ApiManagerDelegate):
 
     def get_gadget_info(self) -> list[Gadget]:
         return self._gadgets
+
+    def get_gadget_publisher_info(self) -> list[GadgetPublisher]:
+        return self._gadget_publishers
