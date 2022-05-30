@@ -233,6 +233,7 @@ class ApiManager(Subscriber, LoggingInterface):
             ApiURIs.info_bridge.uri: self._handle_info_bridge,
             ApiURIs.info_gadgets.uri: self._handle_info_gadgets,
             ApiURIs.info_clients.uri: self._handle_info_clients,
+            ApiURIs.info_gadget_publishers.uri: self._handle_info_gadget_publishers,
             ApiURIs.update_gadget.uri: self._handle_update_gadget,
             ApiURIs.client_reboot.uri: self._handle_client_reboot,
             ApiURIs.client_config_write.uri: self._handle_client_config_write,
@@ -292,8 +293,12 @@ class ApiManager(Subscriber, LoggingInterface):
 
     def _handle_info_bridge(self, req: Request):
         data = self._delegate.get_bridge_info()
-        encoder = ApiEncoder()
-        resp_data = encoder.encode_bridge_info(data)
+        resp_data = ApiEncoder.encode_bridge_info(data)
+        req.respond(resp_data)
+
+    def _handle_info_gadget_publishers(self, req: Request):
+        data = self._delegate.get_gadget_publisher_info()
+        resp_data = ApiEncoder.encode_gadget_publisher_list(data)
         req.respond(resp_data)
 
     def _handle_info_gadgets(self, req: Request):

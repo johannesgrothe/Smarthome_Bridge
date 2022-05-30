@@ -124,7 +124,7 @@ class BridgeLauncher:
         if homekit_active:
             config_file = os.path.join(data_directory, "homekit_server_settings.json")
             hk_publisher = GadgetPublisherHomekit(config_file)
-            bridge.get_gadget_manager().add_gadget_publisher(hk_publisher)
+            bridge.add_gadget_publisher(hk_publisher)
 
         if static_user_data is not None:
             u_name, u_passwd = static_user_data
