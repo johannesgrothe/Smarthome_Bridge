@@ -1,16 +1,15 @@
 from abc import ABC
 
 from lib.logging_interface import LoggingInterface
-from smarthome_bridge.api_encodable import ApiEncodable
 
 
-class LocalGadget(LoggingInterface, ApiEncodable, ABC):
-    _name: str
+class LocalGadget(LoggingInterface, ABC):
+    _id: str
 
     def __init__(self, name: str):
         super().__init__()
-        self._name = name
+        self._id = name
 
     @property
-    def name(self):
-        return self._name
+    def id(self):
+        return self._id

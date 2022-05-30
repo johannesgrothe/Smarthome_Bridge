@@ -5,9 +5,11 @@ from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from lib.logging_interface import LoggingInterface
 from datetime import datetime
 
+from local_gadgets.denon_remote_control_gadget import DenonRemoteControlGadget
 from local_gadgets.local_gadget import LocalGadget
+from smarthome_bridge.api_coders.gadgets.denon_receiver_encoder import DenonReceiverEncoder
 from smarthome_bridge.client import Client
-from gadgets.remote_gadget import RemoteGadget
+from gadgets.remote_gadget import RemoteGadget, Gadget
 from system.gadget_definitions import GadgetIdentifier
 from smarthome_bridge.characteristic import Characteristic
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
@@ -19,8 +21,8 @@ class IdentifierEncodeError(Exception):
 
 
 class GadgetEncodeError(Exception):
-    def __init__(self, class_name: str, gadget_name):
-        super().__init__(f"Cannot encode {class_name} '{gadget_name}'")
+    def __init__(self, class_name: str, gadget_name: str, reason: str = "unknown"):
+        super().__init__(f"Cannot encode {class_name} '{gadget_name}' because: {reason}")
 
 
 class GadgetPublisherEncodeError(Exception):
@@ -73,11 +75,24 @@ class ApiEncoder(LoggingInterface):
         :return: The serialized version of the gadget as dict
         :raises GadgetEncodeError: If anything goes wrong during the serialization process
         """
+
+        if isinstance(gadget, RemoteGadget):
+            return self._encode_remote_gadget(gadget)
+        elif isinstance(gadget, LocalGadget):
+            return self._encode_local_gadget(gadget)
+        raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name(), f"Gadget has unsupported type")
+
+    def _encode_local_gadget(self, gadget: LocalGadget) -> dict:
+        if isinstance(gadget, DenonRemoteControlGadget):
+            return DenonReceiverEncoder.encode(gadget)
+        raise GadgetEncodeError(gadget.__class__.__name__, gadget.id, f"LocalGadget has unsupported type")
+
+    def _encode_remote_gadget(self, gadget: RemoteGadget) -> dict:
         try:
             identifier = cls.encode_gadget_identifier(gadget)
         except IdentifierEncodeError as err:
-            cls._get_logger().error(err.args[0])
-            raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name())
+            self._logger.error(err.args[0])
+            raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name(), f"Identifier is unknown")
 
         characteristics_json = [cls.encode_characteristic(x) for x in gadget.get_characteristics()]
 
@@ -193,9 +208,16 @@ class ApiEncoder(LoggingInterface):
         for gadget in remote_gadgets:
             try:
                 remote_gadget_data.append(self.encode_gadget(gadget))
-            except GadgetEncodeError:
-                self._logger.error(f"Failed to encode gadget '{gadget.get_name()}'")
-        local_gadget_data = [gadget.encode_api() for gadget in local_gadgets]
+            except GadgetEncodeError as err:
+                self._logger.error(err.args[0])
+
+        local_gadget_data = []
+        for gadget in local_gadgets:
+            try:
+                local_gadget_data.append(self.encode_gadget(gadget))
+            except GadgetEncodeError as err:
+                self._logger.error(err.args[0])
+
         return {"remote": remote_gadget_data,
                 "local": local_gadget_data}
 

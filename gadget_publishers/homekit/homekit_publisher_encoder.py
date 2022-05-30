@@ -34,7 +34,7 @@ class HomekitPublisherFactory:
                                   gadget.get_characteristic(
                                       CharacteristicIdentifier.saturation).get_step_value())
         elif isinstance(gadget, DenonRemoteControlGadget):
-            return HomekitDenonReceiver(gadget.name,
+            return HomekitDenonReceiver(gadget.id,
                                         publisher,
                                         gadget.status)
         raise HomekitEncodeError(f"Cannot encode gadget of type {gadget.__class__.__name__}")

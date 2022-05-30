@@ -30,13 +30,6 @@ class DenonRemoteControlGadget(LocalGadget):
         self._source_names = self._controller.input_func_list
         self._source = self._get_source_index(self._controller.input_func)
 
-    def encode_api(self) -> dict:
-        return {
-            "status": self._status,
-            "source": self._get_source_name(self.source),
-            "sources": self.source_names
-        }
-
     def _get_source_index(self, name: str) -> int:
         for i, s_name in enumerate(self._source_names):
             if name == s_name:
