@@ -1,3 +1,4 @@
+from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.remote.remote_gadget import RemoteGadget
 
 

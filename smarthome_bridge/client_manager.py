@@ -29,6 +29,10 @@ class ClientManager:
             client = self._clients[0]
             self.remove_client(client.get_name())
 
+    @property
+    def clients(self) -> list[Client]:
+        return self._clients
+
     def add_client(self, client: Client):
         """
         Adds a client to the database and takes ownership of it
@@ -55,7 +59,6 @@ class ClientManager:
         if client is None:
             raise ClientDoesntExistsError(client_id)
         self._clients.remove(client)
-        # client.__del__()
 
     def get_client(self, client_id: str) -> Optional[Client]:
         """

@@ -98,13 +98,6 @@ class Bridge(ApiManagerDelegate):
         with self._gadget_sync_lock:
             self._gadget_manager.receive_gadget_update(gadget)
 
-    def handle_client_sync(self, client: Client):
-        try:
-            self._client_manager.remove_client(client.get_name())
-        except ClientDoesntExistsError:
-            pass
-        self._client_manager.add_client(client)
-
     def get_bridge_info(self) -> BridgeInformationContainer:
         return self._bridge_info
 

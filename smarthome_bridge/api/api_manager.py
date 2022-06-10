@@ -3,26 +3,29 @@ import os
 from typing import Optional, Callable
 from jsonschema import ValidationError
 
+from gadgets.gadget import Gadget
+from lib.validator_interface import IValidator
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
-from network.request import Request, NoClientResponseException
+from network.request import Request
 from lib.pubsub import Subscriber
+from smarthome_bridge.api.request_handler_bridge import RequestHandlerBridge
+from smarthome_bridge.api.request_handler_client import RequestHandlerClient
+from smarthome_bridge.api.request_handler_gadget import RequestHandlerGadget
+from smarthome_bridge.api.response_creator import ResponseCreator
+from smarthome_bridge.client_manager import ClientManager
 from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
-from utils.json_validator import Validator
 
 from lib.logging_interface import ILogging
 from smarthome_bridge.network_manager import NetworkManager
 
-from gadgets.remote.remote_gadget import RemoteGadget
-
 from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
 
-from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
+from smarthome_bridge.api_encoder import ApiEncoder
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
 from system.api_definitions import ApiURIs, ApiAccessLevel
 from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
-from clients.client_controller import ClientController, ClientRebootError
 from utils.user_manager import UserDoesNotExistException
 
 from utils.bridge_update_manager import BridgeUpdateManager, UpdateNotPossibleException, NoUpdateAvailableException, \
@@ -38,9 +41,7 @@ class AuthError(Exception):
     """Error raised if anything failed checking the authentication of an incoming request"""
 
 
-class ApiManager(Subscriber, ILogging):
-    _validator: Validator
-
+class ApiManager(Subscriber, ILogging, IValidator):
     _delegate: ApiManagerDelegate
 
     _gadget_status_supplier: Optional[GadgetStatusSupplier]
@@ -51,15 +52,20 @@ class ApiManager(Subscriber, ILogging):
 
     _auth_manager: Optional[AuthManager]
 
-    def __init__(self, delegate: ApiManagerDelegate, gadget_supplier: GadgetStatusSupplier, network: NetworkManager):
+    _bridge_request_handler: RequestHandlerBridge
+    _client_request_handler: RequestHandlerClient
+    _gadget_request_handler: RequestHandlerGadget
+
+    def __init__(self, network: NetworkManager, gadgets: GadgetStatusSupplier, clients: ClientManager):
         super().__init__()
-        self._delegate = delegate
         self._network = network
         self._network.subscribe(self)
-        self._validator = Validator()
         self._gadget_sync_connection = None
-        self.auth_manager = None
-        self._gadget_status_supplier = gadget_supplier
+        self._auth_manager = None
+
+        self._bridge_request_handler = RequestHandlerBridge(self._network)
+        self._client_request_handler = RequestHandlerClient(self._network, clients, gadgets)
+        self._gadget_request_handler = RequestHandlerGadget(self._network, gadgets)
 
     def __del__(self):
         pass
@@ -79,89 +85,6 @@ class ApiManager(Subscriber, ILogging):
         self._logger.info(f"Requesting client sync information from '{name}'")
         self._network.send_request(ApiURIs.sync_request.uri, name, {}, 0)
 
-    def _respond_with_error(self, req: Request, err_type: str, message: str):
-        message = message.replace("\"", "'")
-        req.respond({"error_type": err_type, "message": message})
-        self._logger.error(f"{err_type}: {message}")
-
-    def _respond_with_status(self, req: Request, ack: bool, message: Optional[str] = None):
-        out_payload = {"ack": ack, "message": message}
-        req.respond(out_payload)
-        self._logger.info(f"Responding with status: {ack} to request: {req.get_path()}")
-
-    def send_gadget_update(self, gadget: RemoteGadget):
-        self._logger.info(f"Broadcasting gadget update information for '{gadget.get_name()}'")
-        try:
-            gadget_data = ApiEncoder().encode_gadget_update(gadget)
-            self._network.send_broadcast(ApiURIs.update_gadget.uri,
-                                         gadget_data,
-                                         0)
-        except GadgetEncodeError as err:
-            self._logger.error(err.args[0])
-
-    def send_client_reboot(self, client_id: str):
-        """
-        Triggers the reboot of the specified client
-
-        :param client_id: ID of the client
-        :return: None
-        :raises UnknownClientException: If client id is unknown to the system
-        :raises NoClientResponseException: If client did not respond to the request
-        :raises ClientRebootError: If client could not be rebooted for aby reason
-        """
-        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
-            raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
-        writer.reboot_client()
-
-    def send_client_system_config_write(self, client_id: str, config: dict):
-        """
-        Sends a request to write a system config to a client
-
-        :param client_id: ID of the client to send the config to
-        :param config: Config to write
-        :return: None
-        :raises UnknownClientException: If client id is unknown to the system
-        :raises ConfigWriteError: If client did not acknowledge config writing success
-        :raises ValidationError: If passed config was faulty
-        """
-        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
-            raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
-        writer.write_system_config(config)
-
-    def send_client_event_config_write(self, client_id: str, config: dict):
-        """
-        Sends a request to write a event config to a client
-
-        :param client_id: ID of the client to send the config to
-        :param config: Config to write
-        :return: None
-        :raises UnknownClientException: If client id is unknown to the system
-        :raises ConfigWriteError: If client did not acknowledge config writing success
-        :raises ValidationError: If passed config was faulty
-        """
-        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
-            raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
-        writer.write_event_config(config)
-
-    def send_client_gadget_config_write(self, client_id: str, config: dict):
-        """
-        Sends a request to write a gadget config to a client
-
-        :param client_id: ID of the client to send the config to
-        :param config: Config to write
-        :return: None
-        :raises UnknownClientException: If client id is unknown to the system
-        :raises ConfigWriteError: If client did not acknowledge config writing success
-        :raises ValidationError: If passed config was faulty
-        """
-        if client_id not in [x.get_name() for x in self._delegate.get_client_info()]:
-            raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
-        writer.write_gadget_config(config)
-
     def _log_request(self, req: Request):
         short_json = json.dumps(req.get_payload())
         if len(short_json) > 35:
@@ -175,7 +98,9 @@ class ApiManager(Subscriber, ILogging):
             return
 
         if req.get_auth() is None:
-            self._respond_with_error(req, "NeAuthError", "The bridge only accepts requests based on privileges")
+            ResponseCreator.respond_with_error(req,
+                                               "NeAuthError",
+                                               "The bridge only accepts requests based on privileges")
             raise AuthError()
 
         auth = req.get_auth()
@@ -191,16 +116,16 @@ class ApiManager(Subscriber, ILogging):
                 self.auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
                                                           req.get_path())
             else:
-                self._respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
+                ResponseCreator.respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
                 raise AuthError()
         except AuthenticationFailedException:
-            self._respond_with_error(req, "WrongAuthError", "illegal combination of username and password")
+            ResponseCreator.respond_with_error(req, "WrongAuthError", "illegal combination of username and password")
             raise AuthError()
         except UserDoesNotExistException:
-            self._respond_with_error(req, "UserDoesntExistError", "User does not exist")
+            ResponseCreator.respond_with_error(req, "UserDoesntExistError", "User does not exist")
             raise AuthError()
         except InsufficientAccessPrivilegeException:
-            self._respond_with_error(req, "AccessLevelError", "Insufficient privileges")
+            ResponseCreator.respond_with_error(req, "AccessLevelError", "Insufficient privileges")
             raise AuthError()
         except UnknownUriException:
             self._handle_unknown(req)
@@ -257,7 +182,9 @@ class ApiManager(Subscriber, ILogging):
         handler(req)
 
     def _handle_unknown(self, req: Request):
-        self._respond_with_error(req, "UnknownUriError", f"The URI requested ({req.get_path()}) does not exist")
+        ResponseCreator.respond_with_error(req,
+                                           "UnknownUriError",
+                                           f"The URI requested ({req.get_path()}) does not exist")
 
     def _handle_info_bridge(self, req: Request):
         data = self._delegate.get_bridge_info()
@@ -268,133 +195,6 @@ class ApiManager(Subscriber, ILogging):
         data = self._delegate.get_gadget_publisher_info()
         resp_data = ApiEncoder.encode_gadget_publisher_list(data)
         req.respond(resp_data)
-
-    def _handle_info_gadgets(self, req: Request):
-        resp_data = ApiEncoder().encode_all_gadgets_info(self._gadget_status_supplier.remote_gadgets,
-                                                         self._gadget_status_supplier.local_gadgets)
-        req.respond(resp_data)
-
-    def _handle_info_clients(self, req: Request):
-        data = self._delegate.get_client_info()
-        resp_data = ApiEncoder().encode_all_clients_info(data)
-        req.respond(resp_data)
-
-    def _handle_update_gadget(self, req: Request):
-        """
-        Handles a characteristic update request, for a gadget, from any foreign source
-
-        :param req: Request containing the gadget update request
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_gadget_update_request")
-        except ValidationError:
-            self._respond_with_error(req,
-                                     "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
-            return
-
-        gadget = self._gadget_status_supplier.get_gadget(req.get_payload()["id"])
-
-        if gadget is None:
-            self._respond_with_error(req, "GagdetDoesNeeExist", "Sadly, no gadget with the given id exists")
-            return
-
-        attributes = req.get_payload()["attributes"]
-        gadget.name = req.get_payload()["name"]
-        val_errs = []
-        attr_errs = []
-        self._logger.info(f"Updating {len(attributes)} attributes from '{req.get_sender()}'")
-        for attr, value in req.get_payload()["attributes"].items():
-            try:
-                gadget.handle_attribute_update(attr, value)
-            except ValueError as err:
-                self._logger.warning(err.args[0])
-                val_errs.append(attr)
-            except IllegalAttributeError as err:
-                self._logger.warning(err.args[0])
-                attr_errs.append(attr)
-        if val_errs or attr_errs:
-            val_str = "No Value Errors"
-            if val_errs:
-                val_str = f"Value-Errors in [{', '.join(val_errs)}]"
-            attr_str = "No Attribute Errors"
-            if attr_errs:
-                attr_str = f"Attribute-Errors in [{', '.join(attr_errs)}]"
-            self._respond_with_error(req, "GadgetUpdateError", f"Problem while applying update: {val_str}, {attr_str}")
-            return
-        self._respond_with_status(req, True)
-
-    def _handle_gadget(self, client_id: str, gadget_data: dict):
-        """
-        Takes the data from any sync request, creates a gadget out of it and gives it to the
-        gadget manager for evaluation
-
-        :param client_id: ID of the sending client
-        :param gadget_data: JSON-data describing the gadget
-        :return: None
-        """
-        try:
-            gadget = ApiDecoder().decode_remote_gadget(gadget_data, client_id)
-            self._gadget_status_supplier.
-        except GadgetDecodeError as err:
-            print(err.args[0])
-
-    def _handle_client_reboot(self, req: Request):
-        """
-        Handles a client reboot request
-
-        :param req: Request containing the client id to reboot
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_client_reboot_request")
-        except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
-            return
-        try:
-            self.send_client_reboot(req.get_payload()["id"])
-        except UnknownClientException:
-            self._respond_with_error(req,
-                                     "UnknownClientException",
-                                     f"Nee client with the id: {req.get_payload()['id']} exists")
-        except NoClientResponseException:
-            self._respond_with_error(req,
-                                     "NoClientResponseException",
-                                     f"Client did not respond to reboot request")
-        except ClientRebootError:
-            self._respond_with_error(req,
-                                     "ClientRebootError",
-                                     f"Client could not be rebooted for some reason")
-
-    def _handle_client_config_write(self, req: Request):
-        """
-        Handles a client config write request
-        :param req: Request containing the client config to write
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_client_config_write")
-        except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
-            return
-        # TODO: handle the request
-
-    def _handle_client_config_delete(self, req: Request):
-        """
-        Handles a client config delete request
-        :param req: Request containing the client config to delete
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_client_config_delete")
-        except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.update_gadget.uri}'")
-            return
-        # TODO: handle the request
 
     def _handle_get_all_configs(self, req: Request):
         """

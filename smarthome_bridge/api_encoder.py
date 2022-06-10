@@ -1,7 +1,8 @@
-from typing import Tuple, Type
+from typing import Tuple
 
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
+from gadgets.gadget_update_container import GadgetUpdateContainer
 from lib.logging_interface import ILogging
 from datetime import datetime
 
@@ -11,7 +12,6 @@ from smarthome_bridge.api_coders.gadgets.denon_receiver_encoder import DenonRece
 from smarthome_bridge.client import Client
 from gadgets.remote.remote_gadget import RemoteGadget, Gadget
 from system.gadget_definitions import GadgetIdentifier
-from smarthome_bridge.characteristic import Characteristic
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 
 
@@ -29,10 +29,6 @@ class GadgetPublisherEncodeError(Exception):
     def __init__(self, class_name: str):
         super().__init__(f"Cannot encode {class_name}")
 
-
-_gadget_publisher_name_mapping: dict[Type[GadgetPublisher], str] = {
-    GadgetPublisherHomekit: "homekit"
-}
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -80,11 +76,11 @@ class ApiEncoder(ILogging):
             return self._encode_remote_gadget(gadget)
         elif isinstance(gadget, LocalGadget):
             return self._encode_local_gadget(gadget)
-        raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name(), f"Gadget has unsupported type")
+        raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, f"Gadget has unsupported type")
 
     def _encode_local_gadget(self, gadget: LocalGadget) -> dict:
         if isinstance(gadget, DenonRemoteControlGadget):
-            return DenonReceiverEncoder.encode(gadget)
+            return DenonReceiverEncoder.encode_gadget(gadget)
         raise GadgetEncodeError(gadget.__class__.__name__, gadget.id, f"LocalGadget has unsupported type")
 
     def _encode_remote_gadget(self, gadget: RemoteGadget) -> dict:
@@ -92,7 +88,7 @@ class ApiEncoder(ILogging):
             identifier = cls.encode_gadget_identifier(gadget)
         except IdentifierEncodeError as err:
             self._logger.error(err.args[0])
-            raise GadgetEncodeError(gadget.__class__.__name__, gadget.get_name(), f"Identifier is unknown")
+            raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, f"Identifier is unknown")
 
         characteristics_json = [cls.encode_characteristic(x) for x in gadget.get_characteristics()]
 
@@ -111,7 +107,7 @@ class ApiEncoder(ILogging):
         return gadget_json
 
     @classmethod
-    def encode_gadget_update(cls, gadget: Gadget) -> dict:
+    def encode_gadget_update(cls, gadget: GadgetUpdateContainer) -> dict:
         """
         Serializes gadget update information according to api specification
 
@@ -136,7 +132,6 @@ class ApiEncoder(ILogging):
         :raises IdentifierEncodeError: If no Identifier for the gadget can be found
         """
         switcher = {
-            "AnyGadget": GadgetIdentifier.any_gadget,
             "FanWestinghouseIR": GadgetIdentifier.fan_westinghouse_ir,
             "LampNeopixelBasic": GadgetIdentifier.lamp_neopixel_rgb_basic
         }
@@ -144,31 +139,6 @@ class ApiEncoder(ILogging):
         if identifier is None:
             raise IdentifierEncodeError(gadget.__class__.__name__)
         return identifier
-
-    @staticmethod
-    def encode_characteristic(characteristic: Characteristic) -> dict:
-        """
-        Serializes a characteristic according to api specification
-
-        :param characteristic: The characteristic to serialize
-        :return: The serialized version of the characteristic as dict
-        """
-        return {"type": int(characteristic.get_type()),
-                "min": characteristic.get_min(),
-                "max": characteristic.get_max(),
-                "steps": characteristic.get_steps(),
-                "step_value": characteristic.get_step_value()}
-
-    @staticmethod
-    def encode_characteristic_update(characteristic: Characteristic) -> dict:
-        """
-        Serializes a characteristic update information according to api specification
-
-        :param characteristic: The characteristic to serialize
-        :return: The serialized version of the the changeable characteristic information as dict
-        """
-        return {"type": int(characteristic.get_type()),
-                "step_value": characteristic.get_step_value()}
 
     @staticmethod
     def encode_bridge_info(bridge_info: BridgeInformationContainer) -> dict:
