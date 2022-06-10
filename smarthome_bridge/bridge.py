@@ -6,10 +6,9 @@ from datetime import datetime
 from smarthome_bridge.local_gadget_manager import LocalGadgetManager
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
-from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
-from smarthome_bridge.api_manager import ApiManager
+from smarthome_bridge.api.api_manager import ApiManager
 from smarthome_bridge.gadget_manager import GadgetManager
 
 from smarthome_bridge.api_manager_delegate import ApiManagerDelegate

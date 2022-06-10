@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from smarthome_bridge.api_manager import ApiManager
+from smarthome_bridge.api.api_manager import ApiManager
 from smarthome_bridge.network_manager import NetworkManager
 from test_helpers.dummy_api_delegate import DummyApiDelegate
 from test_helpers.dummy_network_connector import DummyNetworkConnector
