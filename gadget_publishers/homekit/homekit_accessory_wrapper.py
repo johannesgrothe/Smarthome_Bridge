@@ -5,11 +5,11 @@ from homekit.model import Accessory
 
 from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
 from gadget_publishers.homekit.homekit_accessory_constants import HomekitConstants
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher
 
 
-class HomekitAccessoryWrapper(LoggingInterface, metaclass=ABCMeta):
+class HomekitAccessoryWrapper(ILogging, metaclass=ABCMeta):
     """Superclass for all specific accessory wrappers"""
     _name: str
     _accessory: Accessory

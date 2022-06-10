@@ -3,12 +3,12 @@ from abc import abstractmethod
 from network.request import Request
 from lib.pubsub import Publisher, Subscriber
 from utils.json_validator import Validator
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 REQ_VALIDATION_SCHEME_NAME = "request_basic_structure"
 
 
-class NetworkConnector(Publisher, Subscriber, LoggingInterface):
+class NetworkConnector(Publisher, Subscriber, ILogging):
     """Class to implement an network interface prototype"""
 
     _validator: Validator

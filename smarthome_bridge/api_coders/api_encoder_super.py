@@ -1,9 +1,9 @@
 from abc import abstractmethod, ABCMeta
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 
-class ApiEncoderSuper(LoggingInterface, metaclass=ABCMeta):
+class ApiEncoderSuper(ILogging, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod

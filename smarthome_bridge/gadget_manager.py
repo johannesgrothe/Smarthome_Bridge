@@ -1,6 +1,6 @@
 from typing import Optional
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from gadget_publishers.gadget_publisher import GadgetPublisher
 
 from gadgets.remote.remote_gadget import RemoteGadget, Gadget
@@ -14,7 +14,7 @@ class GadgetDoesntExistError(Exception):
         super().__init__(f"Gadget '{gadget_name}' does not exist")
 
 
-class GadgetManager(LoggingInterface, GadgetUpdatePublisher, GadgetStatusSupplier):
+class GadgetManager(ILogging, GadgetUpdatePublisher, GadgetStatusSupplier):
 
     _gadgets: list[Gadget]
     _gadget_publishers: list[GadgetPublisher]

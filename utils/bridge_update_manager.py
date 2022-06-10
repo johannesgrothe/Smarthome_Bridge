@@ -1,7 +1,7 @@
 import sys
 from typing import Tuple
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from utils.repository_manager import RepositoryManager, RepositoryFetchException, RepositoryStatusException
 
 _default_branch = "master"
@@ -22,7 +22,7 @@ class UpdateNotPossibleException(Exception):
         super().__init__("Update not possible")
 
 
-class BridgeUpdateManager(LoggingInterface):
+class BridgeUpdateManager(ILogging):
     _repo_manager: RepositoryManager
     _bridge_path: str
 

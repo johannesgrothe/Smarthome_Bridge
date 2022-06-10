@@ -1,4 +1,4 @@
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from system.api_definitions import ApiAccessLevel
 import json
 
@@ -40,7 +40,7 @@ def _create_user_dict(password: str, access_level: ApiAccessLevel, persistent: b
     }
 
 
-class UserManager(LoggingInterface):
+class UserManager(ILogging):
     _users: dict
     _persistent_user_path: str
 

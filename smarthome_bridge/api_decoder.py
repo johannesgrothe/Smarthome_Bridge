@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from gadgets.remote.lamp_rgb import LampRGB
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from gadgets.remote.remote_gadget import RemoteGadget
 from system.gadget_definitions import GadgetIdentifier, GadgetClass, GadgetClassMapping
 from smarthome_bridge.client import Client
@@ -25,7 +25,7 @@ class ClientDecodeError(Exception):
         super().__init__(f"Error decoding client: {message}")
 
 
-class ApiDecoder(LoggingInterface):
+class ApiDecoder(ILogging):
     def __init__(self):
         super().__init__()
 

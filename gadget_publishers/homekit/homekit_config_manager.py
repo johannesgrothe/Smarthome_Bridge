@@ -3,14 +3,14 @@ import random
 import socket
 from typing import Optional
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 
 class NoConfigFoundError(Exception):
     pass
 
 
-class HomekitConfigManager(LoggingInterface):
+class HomekitConfigManager(ILogging):
     _config_path: str
     _data: Optional[dict]
 

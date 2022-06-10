@@ -1,4 +1,4 @@
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from abc import ABC
 from typing import Optional
 import threading
@@ -21,7 +21,7 @@ class GadgetCreationError(Exception):
         super().__init__(f"Failed create gadget '{gadget_name}' on external source")
 
 
-class GadgetPublisher(LoggingInterface, GadgetStatusReceiver, ABC):
+class GadgetPublisher(ILogging, GadgetStatusReceiver, ABC):
 
     __publish_lock: threading.Lock
     _last_published_gadget: Optional[str]

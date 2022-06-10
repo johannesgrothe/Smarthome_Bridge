@@ -1,7 +1,7 @@
 import os
 from jsonschema import validate
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 from system.utils.schema_loader import SchemaLoader
 
@@ -15,7 +15,7 @@ class SchemaDoesNotExistError(Exception):
         super().__init__(f"Schema with the name '{schema_name}' does not exist.")
 
 
-class Validator(LoggingInterface):
+class Validator(ILogging):
 
     def __init__(self):
         super().__init__()

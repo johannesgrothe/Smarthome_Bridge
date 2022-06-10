@@ -3,7 +3,7 @@ import os
 import logging
 from typing import Optional
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 
 class RepositoryUnsafeToDeleteException(Exception):
@@ -36,7 +36,7 @@ class RepositoryPullException(Exception):
         super().__init__(f"Pulling repository failed.")
 
 
-class RepositoryManager(LoggingInterface):
+class RepositoryManager(ILogging):
     """
     Class that allows for management of a git repository
     """

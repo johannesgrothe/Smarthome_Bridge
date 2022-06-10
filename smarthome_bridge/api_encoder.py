@@ -2,7 +2,7 @@ from typing import Tuple, Type
 
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from datetime import datetime
 
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
@@ -37,7 +37,7 @@ _gadget_publisher_name_mapping: dict[Type[GadgetPublisher], str] = {
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
-class ApiEncoder(LoggingInterface):
+class ApiEncoder(ILogging):
     def __init__(self):
         super().__init__()
 

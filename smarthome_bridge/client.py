@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from system.utils.software_version import SoftwareVersion
 from smarthome_bridge.client_event_mapping import ClientEventMapping
 
@@ -10,7 +10,7 @@ from smarthome_bridge.client_event_mapping import ClientEventMapping
 DEFAULT_TIMEOUT = 17
 
 
-class Client(LoggingInterface):
+class Client(ILogging):
     """Smarthome client information"""
 
     # The name of the client

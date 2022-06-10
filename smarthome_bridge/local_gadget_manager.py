@@ -1,10 +1,10 @@
 from gadget_publishers.gadget_publisher import GadgetPublisher
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from gadgets.local.local_gadget import LocalGadget
 
 
-class LocalGadgetManager(LoggingInterface):
+class LocalGadgetManager(ILogging):
     _gadgets: list[LocalGadget]
     _gadget_publishers: list[GadgetPublisher]
 

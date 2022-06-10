@@ -4,7 +4,7 @@ from typing import Optional
 from jsonschema import ValidationError
 
 from utils.json_validator import Validator
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 _config_path = "configs"
 _validation_schema_name = "client_config"
@@ -25,7 +25,7 @@ class ConfigDoesNotExistException(Exception):
         super().__init__(f"Config {name} does not exist")
 
 
-class ClientConfigManager(LoggingInterface):
+class ClientConfigManager(ILogging):
     _config_data: dict
     _validator: Validator
 

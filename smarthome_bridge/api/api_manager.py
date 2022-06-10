@@ -9,7 +9,7 @@ from lib.pubsub import Subscriber
 from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
 from utils.json_validator import Validator
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from smarthome_bridge.network_manager import NetworkManager
 
 from gadgets.remote.remote_gadget import RemoteGadget
@@ -38,7 +38,7 @@ class AuthError(Exception):
     """Error raised if anything failed checking the authentication of an incoming request"""
 
 
-class ApiManager(Subscriber, LoggingInterface):
+class ApiManager(Subscriber, ILogging):
     _validator: Validator
 
     _delegate: ApiManagerDelegate

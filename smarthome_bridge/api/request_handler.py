@@ -1,10 +1,10 @@
 from abc import abstractmethod, ABCMeta
 
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from network.request import Request
 
 
-class RequestHandler(metaclass=ABCMeta, LoggingInterface):
+class RequestHandler(metaclass=ABCMeta, ILogging):
 
     def __init__(self):
 
