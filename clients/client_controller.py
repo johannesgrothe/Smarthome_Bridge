@@ -1,5 +1,5 @@
 """Module to contain the ClientController and its exceptions"""
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from network.request import NoClientResponseException
 
 from system.api_definitions import ApiURIs
@@ -28,7 +28,7 @@ class ConfigWriteError(Exception):
         super().__init__(f"Error writing config on {client_id}")
 
 
-class ClientController(LoggingInterface):
+class ClientController(ILogging):
     """Class to control all means of a hardware client connected to the network"""
 
     _client_id: str

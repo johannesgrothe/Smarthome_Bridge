@@ -1,7 +1,7 @@
 import logging
 
 
-class LoggingInterface:
+class ILogging:
     _logger: logging.Logger
 
     def __init__(self):

@@ -1,10 +1,10 @@
 from network.network_connector import NetworkConnector
 from lib.pubsub import Subscriber
 from network.request import Request
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 
 
-class EchoClient(Subscriber, LoggingInterface):
+class EchoClient(Subscriber, ILogging):
 
     _network: NetworkConnector
 
