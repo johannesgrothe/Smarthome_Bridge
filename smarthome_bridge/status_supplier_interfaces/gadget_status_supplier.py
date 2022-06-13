@@ -6,7 +6,7 @@ from gadgets.gadget import Gadget
 from gadgets.local.local_gadget import LocalGadget
 from gadgets.remote.remote_gadget import RemoteGadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
-from smarthome_bridge.status_supplier_interfaces import GadgetStatusReceiver
+from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import GadgetStatusReceiver
 
 
 class GadgetStatusSupplier(metaclass=ABCMeta):

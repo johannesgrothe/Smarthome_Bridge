@@ -9,7 +9,7 @@ class UpdateApplyError(Exception):
     pass
 
 
-class GadgetUpdateApplierSuper(metaclass=ABCMeta, ILogging):
+class GadgetUpdateApplierSuper(ILogging, metaclass=ABCMeta):
 
     @classmethod
     def apply_update(cls, gadget: Gadget, update_data: dict) -> None:

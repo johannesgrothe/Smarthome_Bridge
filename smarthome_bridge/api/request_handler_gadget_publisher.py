@@ -2,9 +2,9 @@ from typing import Callable
 
 from network.request import Request
 from smarthome_bridge.api.request_handler import RequestHandler
-from smarthome_bridge.api_coders import GadgetPublisherApiEncoder
+from smarthome_bridge.api_coders.gadget_publisher_api_encoder import GadgetPublisherApiEncoder
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.status_supplier_interfaces import GadgetPublisherStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from system.api_definitions import ApiURIs
 
 

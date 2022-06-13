@@ -5,10 +5,12 @@ from gadgets.gadget_update_container import GadgetUpdateContainer
 from network.request import Request
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
-from smarthome_bridge.api_coders import GadgetApiEncoder, GadgetEncodeError
-from smarthome_bridge.status_supplier_interfaces import GadgetStatusReceiver, GadgetStatusSupplier
-from smarthome_bridge.gadget_update_appliers import GadgetUpdateApplier, UpdateApplyError
+from smarthome_bridge.api_coders.gadget_api_encoder import GadgetEncodeError, GadgetApiEncoder
+from smarthome_bridge.gadget_update_appliers.gadget_update_applier import GadgetUpdateApplier
+from smarthome_bridge.gadget_update_appliers.gadget_update_applier_super import UpdateApplyError
 from smarthome_bridge.network_manager import NetworkManager
+from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import GadgetStatusReceiver
+from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from system.api_definitions import ApiURIs
 
 

@@ -3,6 +3,8 @@ from typing import Type, Tuple, List
 from gadgets.gadget import Gadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
+from gadgets.local.local_gadget import LocalGadget
+from gadgets.remote.remote_gadget import RemoteGadget
 from lib.logging_interface import ILogging
 from smarthome_bridge.api_coders.gadgets.encoders.denon_receiver_encoder import DenonReceiverEncoder
 from smarthome_bridge.api_coders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper

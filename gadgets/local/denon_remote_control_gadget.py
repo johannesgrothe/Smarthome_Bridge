@@ -15,7 +15,7 @@ class DenonRemoteControlGadgetUpdateContainer(GadgetUpdateContainer):
     status: bool
     source: bool
 
-    def __init__(self, origin: Gadget):
+    def __init__(self, origin: str):
         super().__init__(origin)
         self.status = False
         self.source = False

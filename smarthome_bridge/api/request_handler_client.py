@@ -4,15 +4,15 @@ from jsonschema.exceptions import ValidationError
 
 from clients.client_controller import ClientRebootError, ClientController
 from network.request import Request, NoClientResponseException
-from smarthome_bridge.api.api_manager import UnknownClientException
+from smarthome_bridge.api.exceptions import UnknownClientException
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
 from smarthome_bridge.api_coders.client_encoder import ClientApiEncoder
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
 from smarthome_bridge.client_manager import ClientDoesntExistsError
-from smarthome_bridge.status_supplier_interfaces import ClientStatusSupplier
-from smarthome_bridge.status_supplier_interfaces import GadgetStatusSupplier
 from smarthome_bridge.network_manager import NetworkManager
+from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from system.api_definitions import ApiURIs
 
 

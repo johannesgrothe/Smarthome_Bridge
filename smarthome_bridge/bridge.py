@@ -60,7 +60,7 @@ class Bridge(BridgeStatusSupplier):
 
     def __del__(self):
         self._logger.info("Shutting down bridge")
-        self.api.__del__()
+        self._api.__del__()
         self._network_manager.__del__()
         self._client_manager.__del__()
         self._gadget_manager.__del__()
@@ -79,3 +79,7 @@ class Bridge(BridgeStatusSupplier):
     @property
     def gadgets(self) -> GadgetManager:
         return self._gadget_manager
+
+    @property
+    def api(self) -> ApiManager:
+        return self._api

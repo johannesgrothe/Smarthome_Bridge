@@ -4,8 +4,7 @@ from typing import Optional
 from lib.logging_interface import ILogging
 from gadget_publishers.gadget_publisher import GadgetPublisher
 
-from gadgets.remote.remote_gadget import RemoteGadget, Gadget
-from gadgets.local.local_gadget import LocalGadget
+from gadgets.remote.remote_gadget import Gadget
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 
@@ -58,8 +57,7 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
         with self._gadget_lock:
             return self._gadgets
 
-    @property
-    def publishers(self) -> list[GadgetPublisher]:
+    def _get_publishers(self) -> list[GadgetPublisher]:
         with self._publisher_lock:
             return self._publishers
 

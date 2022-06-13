@@ -5,7 +5,7 @@ from gadgets.remote.remote_gadget import RemoteGadget
 class FanUpdateContainer(GadgetUpdateContainer):
     speed: bool
 
-    def __init__(self, origin: Gadget):
+    def __init__(self, origin: str):
         super().__init__(origin)
         self.speed = False
 

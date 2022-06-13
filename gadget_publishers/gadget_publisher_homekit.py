@@ -112,7 +112,7 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             self._homekit_server.add_accessory(gadget.accessory)
         self._homekit_server.publish_device()
         self._server_thread = threading.Thread(target=self._homekit_server.serve_forever,
-                                               args=[0.5],
+                                               args=[1],
                                                name=HOMEKIT_SERVER_NAME,
                                                daemon=True)
         self._server_thread.start()

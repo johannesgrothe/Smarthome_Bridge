@@ -8,7 +8,7 @@ from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
 from smarthome_bridge.api_coders.bridge_encoder import BridgeEncoder
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.status_supplier_interfaces import BridgeStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
 from system.api_definitions import ApiURIs
 from utils.bridge_update_manager import BridgeUpdateManager, UpdateNotSuccessfulException, NoUpdateAvailableException, \
     UpdateNotPossibleException

@@ -5,6 +5,7 @@ from lib.validator_interface import IValidator
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
 from network.request import Request
 from lib.pubsub import Subscriber
+from smarthome_bridge.api.exceptions import AuthError
 from smarthome_bridge.api.request_handler_bridge import RequestHandlerBridge
 from smarthome_bridge.api.request_handler_client import RequestHandlerClient
 from smarthome_bridge.api.request_handler_configs import RequestHandlerConfigs
@@ -13,21 +14,14 @@ from smarthome_bridge.api.request_handler_gadget_publisher import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
 from lib.logging_interface import ILogging
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.status_supplier_interfaces import GadgetStatusSupplier, ClientStatusSupplier, \
-    GadgetPublisherStatusSupplier, BridgeStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from system.api_definitions import ApiURIs, ApiAccessLevel
 from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
 from utils.user_manager import UserDoesNotExistException
-
-
-class UnknownClientException(Exception):
-    def __init__(self, name: str):
-        super(UnknownClientException, self).__init__(f"client with name: {name} does nee exist")
-
-
-class AuthError(Exception):
-    """Error raised if anything failed checking the authentication of an incoming request"""
 
 
 class ApiManagerSetupContainer:
@@ -174,22 +168,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
             return
 
         switcher = {
-            ApiURIs.heartbeat.uri: self._handle_heartbeat,
-            ApiURIs.sync_client.uri: self._handle_client_sync,
-            ApiURIs.info_bridge.uri: self._handle_info_bridge,
-            ApiURIs.info_gadgets.uri: self._handle_info_gadgets,
-            ApiURIs.info_clients.uri: self._handle_info_clients,
-            ApiURIs.info_gadget_publishers.uri: self._handle_info_gadget_publishers,
-            ApiURIs.update_gadget.uri: self._handle_update_gadget,
-            ApiURIs.client_reboot.uri: self._handle_client_reboot,
-            ApiURIs.client_config_write.uri: self._handle_client_config_write,
-            ApiURIs.client_config_delete.uri: self._handle_client_config_delete,
-            ApiURIs.config_storage_get_all.uri: self._handle_get_all_configs,
-            ApiURIs.config_storage_get.uri: self._handle_get_config,
-            ApiURIs.config_storage_save.uri: self._handle_save_config,
-            ApiURIs.config_storage_delete.uri: self._handle_delete_config,
-            ApiURIs.bridge_update_check.uri: self._handle_check_bridge_for_update,
-            ApiURIs.bridge_update_execute.uri: self._handle_bridge_update
+
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
         handler(req)

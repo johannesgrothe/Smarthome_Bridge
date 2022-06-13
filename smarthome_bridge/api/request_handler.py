@@ -6,7 +6,7 @@ from network.request import Request
 from smarthome_bridge.network_manager import NetworkManager
 
 
-class RequestHandler(metaclass=ABCMeta, ILogging, IValidator):
+class RequestHandler(ILogging, IValidator, metaclass=ABCMeta):
 
     _network: NetworkManager
 

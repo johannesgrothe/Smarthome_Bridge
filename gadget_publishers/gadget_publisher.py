@@ -2,7 +2,9 @@ from lib.logging_interface import ILogging
 from abc import ABC
 from typing import Optional
 import threading
-from smarthome_bridge.status_supplier_interfaces import GadgetStatusReceiver, GadgetStatusSupplier
+
+from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import GadgetStatusReceiver
+from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 
 
 class GadgetUpdateError(Exception):

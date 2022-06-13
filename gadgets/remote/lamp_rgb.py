@@ -7,7 +7,7 @@ from gadgets.remote.remote_gadget import RemoteGadget
 class LampRgbUpdateContainer(GadgetUpdateContainer):
     rgb: bool
 
-    def __init__(self, origin: Gadget):
+    def __init__(self, origin: str):
         super().__init__(origin)
         self.rgb = False
 

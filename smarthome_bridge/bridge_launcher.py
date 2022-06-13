@@ -92,10 +92,10 @@ class BridgeLauncher:
         if static_user_data is not None:
             u_name, u_passwd = static_user_data
             if u_name and u_passwd:
-                bridge.api.auth_manager.user_manager.add_user(username=u_name,
-                                                              password=u_passwd,
-                                                              access_level=ApiAccessLevel.admin,
-                                                              persistent_user=False)
+                bridge.api.auth_manager.users.add_user(username=u_name,
+                                                       password=u_passwd,
+                                                       access_level=ApiAccessLevel.admin,
+                                                       persistent_user=False)
 
         # Insert dummy data if wanted
         if add_dummy_data:
