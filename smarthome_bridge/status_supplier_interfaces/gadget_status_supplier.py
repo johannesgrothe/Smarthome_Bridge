@@ -3,41 +3,10 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 
 from gadgets.gadget import Gadget
-from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.local_gadget import LocalGadget
 from gadgets.remote.remote_gadget import RemoteGadget
-
-
-class GadgetStatusReceiver(metaclass=ABCMeta):
-    @abstractmethod
-    def receive_gadget_update(self, update_container: GadgetUpdateContainer):
-        """
-        Receive and handle a gadget
-
-        :param update_container: Container with the update information
-        :return: None
-        """
-        pass
-
-    @abstractmethod
-    def add_gadget(self, gadget_id: str):
-        """
-        Get notified about a new gadget
-
-        :param gadget_id: ID of the new gadget
-        :return: None
-        """
-        pass
-
-    @abstractmethod
-    def remove_gadget(self, gadget_id: str):
-        """
-        Get notified about the removal of a gadget
-
-        :param gadget_id: ID of the deleted gadget
-        :return: None
-        """
-        pass
+from gadgets.gadget_update_container import GadgetUpdateContainer
+from smarthome_bridge.status_supplier_interfaces import GadgetStatusReceiver
 
 
 class GadgetStatusSupplier(metaclass=ABCMeta):
@@ -85,16 +54,17 @@ class GadgetStatusSupplier(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def _get_gadgets(self) -> list[Gadget]:
+        pass
+
     @property
     def gadgets(self) -> list[Gadget]:
-        pass
+        return self._get_gadgets()
 
-    @abstractmethod
     @property
     def local_gadgets(self) -> list[LocalGadget]:
-        pass
+        return [x for x in self.gadgets if isinstance(x, LocalGadget)]
 
-    @abstractmethod
     @property
     def remote_gadgets(self) -> list[RemoteGadget]:
-        pass
+        return [x for x in self.gadgets if isinstance(x, RemoteGadget)]

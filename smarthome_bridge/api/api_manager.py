@@ -38,6 +38,19 @@ class ApiManagerSetupContainer:
     bridge: BridgeStatusSupplier
     auth: AuthManager
 
+    def __init__(self, network: NetworkManager,
+                 gadgets: GadgetStatusSupplier,
+                 clients: ClientStatusSupplier,
+                 publishers: GadgetPublisherStatusSupplier,
+                 bridge: BridgeStatusSupplier,
+                 auth: AuthManager):
+        self.network = network
+        self.gadgets = gadgets
+        self.clients = clients
+        self.publishers = publishers
+        self.bridge = bridge
+        self.auth = auth
+
 
 class ApiManager(Subscriber, ILogging, IValidator):
     _gadget_status_supplier: Optional[GadgetStatusSupplier]

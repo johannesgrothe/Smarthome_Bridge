@@ -7,7 +7,6 @@ from smarthome_bridge.bridge_information_container import BridgeInformationConta
 
 class BridgeEncoder:
 
-
     @staticmethod
     def encode_bridge_info(bridge_info: BridgeInformationContainer) -> dict:
         """
@@ -40,4 +39,3 @@ class BridgeEncoder:
                 "current_branch_release_date": curr_date,
                 "new_branch_release_date": new_date,
                 "num_commits_between_branches": num_commits}
-

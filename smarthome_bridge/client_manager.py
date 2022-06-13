@@ -20,8 +20,7 @@ class ClientManager(ClientStatusSupplier):
             client = self._clients[0]
             self.remove_client(client.get_name())
 
-    @property
-    def clients(self) -> list[Client]:
+    def _get_clients(self) -> list[Client]:
         return self._clients
 
     def add_client(self, client: Client):

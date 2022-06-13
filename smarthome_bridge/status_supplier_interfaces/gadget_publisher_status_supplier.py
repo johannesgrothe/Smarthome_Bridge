@@ -6,7 +6,10 @@ from gadget_publishers.gadget_publisher import GadgetPublisher
 
 class GadgetPublisherStatusSupplier(metaclass=ABCMeta):
 
-    @abstractmethod
     @property
     def publishers(self) -> List[GadgetPublisher]:
+        return self._get_publishers()
+
+    @abstractmethod
+    def _get_publishers(self) -> List[GadgetPublisher]:
         pass

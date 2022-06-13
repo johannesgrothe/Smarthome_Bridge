@@ -3,13 +3,12 @@ import os
 import threading
 from datetime import datetime
 
-from smarthome_bridge.local_gadget_manager import LocalGadgetManager
 from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.client_manager import ClientManager
-from smarthome_bridge.api.api_manager import ApiManager
+from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.gadget_manager import GadgetManager
 from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools
@@ -17,16 +16,12 @@ from utils.user_manager import UserManager
 
 
 class Bridge(BridgeStatusSupplier):
-
     _logger: logging.Logger
 
     _network_manager: NetworkManager
     _client_manager: ClientManager
     _gadget_manager: GadgetManager
-    _local_gadgets: LocalGadgetManager
-    api: ApiManager
-
-    _gadget_sync_lock: threading.Lock
+    _api: ApiManager
     _bridge_info: BridgeInformationContainer
 
     def __init__(self, name: str, data_directory: str):
@@ -36,11 +31,15 @@ class Bridge(BridgeStatusSupplier):
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
         self._gadget_manager = GadgetManager()
-        self._local_gadgets = LocalGadgetManager()
-        self._gadget_sync_lock = threading.Lock()
-        self.api = ApiManager(self, self._network_manager)
-        auth_manager = AuthManager(UserManager(data_directory))
-        self.api.auth_manager = auth_manager
+
+        self._api = ApiManager(ApiManagerSetupContainer(
+            self._network_manager,
+            self._gadget_manager,
+            self._client_manager,
+            self._gadget_manager,
+            self,
+            AuthManager(UserManager(data_directory))
+        ))
 
         try:
             repo_manager = RepositoryManager(os.getcwd(), None)
@@ -66,8 +65,7 @@ class Bridge(BridgeStatusSupplier):
         self._client_manager.__del__()
         self._gadget_manager.__del__()
 
-    @property
-    def info(self) -> BridgeInformationContainer:
+    def _get_info(self) -> BridgeInformationContainer:
         return self._bridge_info
 
     @property

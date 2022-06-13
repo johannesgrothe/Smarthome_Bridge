@@ -5,7 +5,10 @@ from smarthome_bridge.bridge_information_container import BridgeInformationConta
 
 class BridgeStatusSupplier(metaclass=ABCMeta):
 
-    @abstractmethod
     @property
     def info(self) -> BridgeInformationContainer:
+        return self._get_info()
+
+    @abstractmethod
+    def _get_info(self) -> BridgeInformationContainer:
         pass

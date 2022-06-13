@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from typing import Optional
 
-from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client
 
 
@@ -17,10 +16,14 @@ class ClientDoesntExistsError(Exception):
 
 class ClientStatusSupplier(metaclass=ABCMeta):
 
-    @abstractmethod
     @property
     def clients(self) -> list[Client]:
         """All clients stored by this status supplier"""
+        return self._get_clients()
+
+    @abstractmethod
+    def _get_clients(self) -> list[Client]:
+        pass
 
     @abstractmethod
     def add_client(self, client: Client) -> None:

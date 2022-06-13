@@ -54,8 +54,7 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
             for publisher in self._publishers:
                 publisher.add_gadget(gadget.id)
 
-    @property
-    def gadgets(self) -> list[Gadget]:
+    def _get_gadgets(self) -> list[Gadget]:
         with self._gadget_lock:
             return self._gadgets
 
@@ -63,16 +62,6 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
     def publishers(self) -> list[GadgetPublisher]:
         with self._publisher_lock:
             return self._publishers
-
-    @property
-    def local_gadgets(self) -> list[LocalGadget]:
-        with self._gadget_lock:
-            return [x for x in self._gadgets if isinstance(x, LocalGadget)]
-
-    @property
-    def remote_gadgets(self) -> list[RemoteGadget]:
-        with self._gadget_lock:
-            return [x for x in self._gadgets if isinstance(x, RemoteGadget)]
 
     def add_gadget_publisher(self, publisher: GadgetPublisher):
         """

@@ -1,7 +1,7 @@
 """Module to contain the gadget class"""
-from abc import ABC, abstractmethod
+from abc import ABC
 
-from gadgets.gadget import Gadget, IllegalAttributeError
+from gadgets.gadget import Gadget
 
 
 class RemoteGadget(Gadget, ABC):

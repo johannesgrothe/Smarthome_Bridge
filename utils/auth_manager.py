@@ -18,10 +18,14 @@ class UnknownUriException(Exception):
 
 
 class AuthManager:
-    user_manager: UserManager
+    _user_manager: UserManager
 
     def __init__(self, user_manager: UserManager):
-        self.user_manager = user_manager
+        self._user_manager = user_manager
+
+    @property
+    def users(self) -> UserManager:
+        return self._user_manager
 
     def authenticate(self, username: str, password: str):
         """
@@ -32,7 +36,7 @@ class AuthManager:
         :raises AuthenticationFailedException: if authentication failed
         :raises UserDoesNotExistException: if user does not exist
         """
-        if not self.user_manager.validate_credentials(username, password):
+        if not self._user_manager.validate_credentials(username, password):
             raise AuthenticationFailedException
 
     def check_path_access_level_for_user(self, username: str, uri: str):
@@ -45,7 +49,7 @@ class AuthManager:
         :raises UserDoesNotExistException: If user does not exist
         :raises UnknownUriException: Uri requested does not exist in the definitions
         """
-        user_access_level = self.user_manager.get_access_level(username)
+        user_access_level = self._user_manager.get_access_level(username)
         return self.check_path_access_level(user_access_level, uri)
 
     @staticmethod
