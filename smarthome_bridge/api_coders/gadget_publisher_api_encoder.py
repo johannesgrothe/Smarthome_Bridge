@@ -2,12 +2,13 @@ from typing import Type, Tuple, List
 
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
+from lib.logging_interface import ILogging
 from smarthome_bridge.api_coders.api_encoder_super import ApiEncoderSuper
 from smarthome_bridge.api_coders.gadget_publishers.gadget_publisher_homekit_encoder import GadgetPublisherHomekitEncoder
-from smarthome_bridge.api_encoder import GadgetPublisherEncodeError
 
 _gadget_publisher_name_mapping: dict[Type[GadgetPublisher], str] = {
-    GadgetPublisherHomekit: "homekit"
+    GadgetPublisherHomekit: "homekit",
+
 }
 
 _gadget_publisher_type_mapping: List[Tuple[Type[GadgetPublisher], Type[ApiEncoderSuper]]] = [
@@ -15,10 +16,27 @@ _gadget_publisher_type_mapping: List[Tuple[Type[GadgetPublisher], Type[ApiEncode
 ]
 
 
-class GadgetPublisherApiEncoder(ApiEncoderSuper):
+class GadgetPublisherEncodeError(Exception):
+    def __init__(self, class_name: str):
+        super().__init__(f"Cannot encode {class_name}")
+
+
+class GadgetPublisherApiEncoder(ILogging):
 
     @classmethod
-    def encode(cls, publisher: GadgetPublisher) -> dict:
+    def encode_gadget_publisher_list(cls, publishers: list[GadgetPublisher]) -> dict:
+        buf_list = []
+        for publisher in publishers:
+            try:
+                buf_list.append(cls.encode_gadget_publisher(publisher))
+            except GadgetPublisherEncodeError as err:
+                cls._get_logger().error(err.args[0])
+        return {
+            "gadget_publishers": buf_list
+        }
+
+    @classmethod
+    def encode_gadget_publisher(cls, publisher: GadgetPublisher) -> dict:
 
         try:
             out_data = {

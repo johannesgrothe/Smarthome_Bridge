@@ -1,15 +1,11 @@
 from datetime import datetime
-
-from gadgets.gadget import Gadget
-from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.remote.lamp_rgb import LampRGB
 from lib.logging_interface import ILogging
 from gadgets.remote.remote_gadget import RemoteGadget
+from smarthome_bridge.api_coders import DATETIME_FORMAT
 from system.gadget_definitions import GadgetIdentifier, GadgetClass, GadgetClassMapping
 from smarthome_bridge.client import Client
 from system.utils.software_version import SoftwareVersion
-
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class GadgetDecodeError(Exception):
@@ -59,10 +55,6 @@ class ApiDecoder(ILogging):
         except (KeyError, ValueError) as err:
             self._logger.error(err.args[0])
             raise GadgetDecodeError()
-
-    @classmethod
-    def decode_gadget_update(cls, update_data: dict, origin: Gadget) -> GadgetUpdateContainer:
-        raise NotImplemented()  # TODO: IMPLEMENT DECODING
 
     def decode_client(self, client_data: dict, client_name: str) -> Client:
         """

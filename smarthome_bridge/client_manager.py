@@ -2,20 +2,11 @@ import logging
 from typing import Optional
 
 from smarthome_bridge.client import Client
+from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier, \
+    ClientAlreadyExistsError, ClientDoesntExistsError
 
 
-class ClientAlreadyExistsError(Exception):
-    def __init__(self, client_name: str):
-        super().__init__(f"Client '{client_name}' already exists")
-
-
-class ClientDoesntExistsError(Exception):
-    def __init__(self, client_name: str):
-        super().__init__(f"Client '{client_name}' does not exist")
-
-
-class ClientManager:
-
+class ClientManager(ClientStatusSupplier):
     _logger: logging.Logger
     _clients: list[Client]
 
@@ -70,7 +61,7 @@ class ClientManager:
         for client in self._clients:
             if client.get_name() == client_id:
                 return client
-        return None
+        raise ClientDoesntExistsError(client_id)
 
     def get_client_ids(self) -> list[str]:
         return [x.get_name() for x in self._clients]

@@ -1,35 +1,24 @@
 import json
-import os
 from typing import Optional, Callable
-from jsonschema import ValidationError
 
-from gadgets.gadget import Gadget
 from lib.validator_interface import IValidator
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
 from network.request import Request
 from lib.pubsub import Subscriber
 from smarthome_bridge.api.request_handler_bridge import RequestHandlerBridge
 from smarthome_bridge.api.request_handler_client import RequestHandlerClient
+from smarthome_bridge.api.request_handler_configs import RequestHandlerConfigs
 from smarthome_bridge.api.request_handler_gadget import RequestHandlerGadget
+from smarthome_bridge.api.request_handler_gadget_publisher import RequestHandlerGadgetPublisher
 from smarthome_bridge.api.response_creator import ResponseCreator
-from smarthome_bridge.client_manager import ClientManager
-from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
-
 from lib.logging_interface import ILogging
 from smarthome_bridge.network_manager import NetworkManager
-
-from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException, ConfigAlreadyExistsException
-
-from smarthome_bridge.api_encoder import ApiEncoder
-from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
-from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
+from smarthome_bridge.status_supplier_interfaces import GadgetStatusSupplier, ClientStatusSupplier, \
+    GadgetPublisherStatusSupplier, BridgeStatusSupplier
 from system.api_definitions import ApiURIs, ApiAccessLevel
 from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
 from utils.user_manager import UserDoesNotExistException
-
-from utils.bridge_update_manager import BridgeUpdateManager, UpdateNotPossibleException, NoUpdateAvailableException, \
-    UpdateNotSuccessfulException
 
 
 class UnknownClientException(Exception):
@@ -41,9 +30,16 @@ class AuthError(Exception):
     """Error raised if anything failed checking the authentication of an incoming request"""
 
 
-class ApiManager(Subscriber, ILogging, IValidator):
-    _delegate: ApiManagerDelegate
+class ApiManagerSetupContainer:
+    network: NetworkManager
+    gadgets: GadgetStatusSupplier
+    clients: ClientStatusSupplier
+    publishers: GadgetPublisherStatusSupplier
+    bridge: BridgeStatusSupplier
+    auth: AuthManager
 
+
+class ApiManager(Subscriber, ILogging, IValidator):
     _gadget_status_supplier: Optional[GadgetStatusSupplier]
 
     _network: NetworkManager
@@ -55,17 +51,21 @@ class ApiManager(Subscriber, ILogging, IValidator):
     _bridge_request_handler: RequestHandlerBridge
     _client_request_handler: RequestHandlerClient
     _gadget_request_handler: RequestHandlerGadget
+    _configs_request_handler: RequestHandlerConfigs
+    _gadget_publisher_request_handler: RequestHandlerGadgetPublisher
 
-    def __init__(self, network: NetworkManager, gadgets: GadgetStatusSupplier, clients: ClientManager):
+    def __init__(self, setup: ApiManagerSetupContainer):
         super().__init__()
-        self._network = network
+        self._network = setup.network
         self._network.subscribe(self)
         self._gadget_sync_connection = None
-        self._auth_manager = None
+        self._auth_manager = setup.auth
 
-        self._bridge_request_handler = RequestHandlerBridge(self._network)
-        self._client_request_handler = RequestHandlerClient(self._network, clients, gadgets)
-        self._gadget_request_handler = RequestHandlerGadget(self._network, gadgets)
+        self._bridge_request_handler = RequestHandlerBridge(self._network, setup.bridge)
+        self._client_request_handler = RequestHandlerClient(self._network, setup.clients, setup.gadgets)
+        self._gadget_request_handler = RequestHandlerGadget(self._network, setup.gadgets)
+        self._configs_request_handler = RequestHandlerConfigs(self._network)
+        self._gadget_publisher_request_handler = RequestHandlerGadgetPublisher(self._network, setup.publishers)
 
     def __del__(self):
         pass
@@ -185,162 +185,3 @@ class ApiManager(Subscriber, ILogging, IValidator):
         ResponseCreator.respond_with_error(req,
                                            "UnknownUriError",
                                            f"The URI requested ({req.get_path()}) does not exist")
-
-    def _handle_info_bridge(self, req: Request):
-        data = self._delegate.get_bridge_info()
-        resp_data = ApiEncoder.encode_bridge_info(data)
-        req.respond(resp_data)
-
-    def _handle_info_gadget_publishers(self, req: Request):
-        data = self._delegate.get_gadget_publisher_info()
-        resp_data = ApiEncoder.encode_gadget_publisher_list(data)
-        req.respond(resp_data)
-
-    def _handle_get_all_configs(self, req: Request):
-        """
-        Responds with the names and descriptions of all available configs
-
-        :param req: empty Request
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_empty_request")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at '{ApiURIs.config_storage_get_all.uri}'")
-            return
-
-        manager = ClientConfigManager()
-        config_names = manager.get_config_names()
-        all_configs = {}
-        self._logger.info("fetching all configs")
-        for config in config_names:
-            if not config == "Example":
-                try:
-                    conf = manager.get_config(config)
-                    all_configs[config] = conf["description"]
-                except ConfigDoesNotExistException:
-                    self._logger.error("congratz, something went wrong, abort, abort, return to the moon base")
-                    pass
-            else:
-                pass
-        payload = {"configs": all_configs}
-        req.respond(payload)
-
-    def _handle_get_config(self, req: Request):
-        """
-        Responds with the config for a given name, if there is none an error is returned
-
-        :param req: Request containing the name of the requested config
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_config_delete_get")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at '{ApiURIs.config_storage_get.uri}'")
-            return
-
-        try:
-            name = req.get_payload()["name"]
-            config = ClientConfigManager().get_config(name)
-            payload = {"config": config}
-            req.respond(payload)
-        except ConfigDoesNotExistException as err:
-            ResponseCreator.respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
-
-    def _handle_save_config(self, req: Request):
-        """
-        Saves the given config or overwrites an already existing config
-
-        :param req: Request containing the config
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_config_save")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at '{ApiURIs.config_storage_save.uri}'")
-            return
-
-        config = req.get_payload()["config"]
-        overwrite = req.get_payload()["overwrite"]
-        manager = ClientConfigManager()
-        try:
-            manager.write_config(config, overwrite=overwrite)
-        except ConfigAlreadyExistsException as err:
-            ResponseCreator.respond_with_error(req=req, err_type="ConfigAlreadyExistsException", message=err.args[0])
-            return
-        ResponseCreator.respond_with_success(req, "Config was saved successfully")
-
-    def _handle_delete_config(self, req: Request):
-        """
-        Deletes the config for a given name, if there is no config, an error is returned
-
-        :param req: Request containing name of the config
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_config_delete_get")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at '{ApiURIs.config_storage_delete.uri}'")
-            return
-
-        name = req.get_payload()["name"]
-        manager = ClientConfigManager()
-        try:
-            manager.delete_config_file(name)
-        except ConfigDoesNotExistException as err:
-            ResponseCreator.respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
-            return
-        ResponseCreator.respond_with_success(req, "Config was deleted successfully")
-
-    def _handle_check_bridge_for_update(self, req: Request):
-        """
-        Checks whether the remote, the bridge is currently running on, is an older version
-
-        :param req: empty request
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_empty_request")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at {ApiURIs.bridge_update_check.uri}")
-            return
-
-        encoder = ApiEncoder()
-        try:
-            updater = BridgeUpdateManager(os.getcwd())
-            bridge_meta = updater.check_for_update()
-        except UpdateNotPossibleException:
-            ResponseCreator.respond_with_error(req, "UpdateNotPossibleException", "bridge could not be updated")
-        except NoUpdateAvailableException:
-            ResponseCreator.respond_with_success(req, "Bridge is up to date")
-        else:
-            payload = encoder.encode_bridge_update_info(bridge_meta)
-            req.respond(payload)
-            return
-
-    def _handle_bridge_update(self, req: Request):
-        """
-        Updates the Bridge to a newer version or another remote, remote has to be specified in request
-
-        :param req: empty Request
-        :return: None
-        """
-        try:
-            self._validator.validate(req.get_payload(), "api_empty_request")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at {ApiURIs.bridge_update_execute.uri}")
-            return
-
-        try:
-            updater = BridgeUpdateManager(os.getcwd())
-            updater.execute_update()
-            ResponseCreator.respond_with_success(req, "Update was successful, rebooting system now...")
-            updater.reboot()
-        except UpdateNotSuccessfulException:
-            ResponseCreator.respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")

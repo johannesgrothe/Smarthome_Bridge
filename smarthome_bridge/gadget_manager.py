@@ -6,7 +6,8 @@ from gadget_publishers.gadget_publisher import GadgetPublisher
 
 from gadgets.remote.remote_gadget import RemoteGadget, Gadget
 from gadgets.local.local_gadget import LocalGadget
-from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 
 
 class GadgetDoesntExistError(Exception):
@@ -14,7 +15,7 @@ class GadgetDoesntExistError(Exception):
         super().__init__(f"Gadget '{gadget_name}' does not exist")
 
 
-class GadgetManager(ILogging, GadgetStatusSupplier):
+class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplier):
     _gadgets: list[Gadget]
     _gadget_lock: threading.Lock
 
@@ -57,6 +58,11 @@ class GadgetManager(ILogging, GadgetStatusSupplier):
     def gadgets(self) -> list[Gadget]:
         with self._gadget_lock:
             return self._gadgets
+
+    @property
+    def publishers(self) -> list[GadgetPublisher]:
+        with self._publisher_lock:
+            return self._publishers
 
     @property
     def local_gadgets(self) -> list[LocalGadget]:

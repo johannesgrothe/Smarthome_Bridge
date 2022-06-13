@@ -5,15 +5,14 @@ from gadgets.gadget_update_container import GadgetUpdateContainer
 from network.request import Request
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
-from smarthome_bridge.api_coders.gadget_api_encoder import GadgetApiEncoder
-from smarthome_bridge.api_encoder import ApiEncoder, GadgetEncodeError
-from smarthome_bridge.gadget_status_supplier import GadgetStatusReceiver, GadgetStatusSupplier
-from smarthome_bridge.gadget_update_appliers.gadget_update_applier import GadgetUpdateApplier
-from smarthome_bridge.gadget_update_appliers.gadget_update_applier_super import UpdateApplyError
+from smarthome_bridge.api_coders import GadgetApiEncoder, GadgetEncodeError
+from smarthome_bridge.status_supplier_interfaces import GadgetStatusReceiver, GadgetStatusSupplier
+from smarthome_bridge.gadget_update_appliers import GadgetUpdateApplier, UpdateApplyError
 from smarthome_bridge.network_manager import NetworkManager
 from system.api_definitions import ApiURIs
 
 
+# TODO: Make RequestHandlerGadget full GadgetPublisher
 class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
     _gadget_manager: GadgetStatusSupplier
 
@@ -49,8 +48,8 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
         pass  # TODO: notify connected clients that a gadget was deleted
 
     def _handle_info_gadgets(self, req: Request):
-        resp_data = ApiEncoder().encode_all_gadgets_info(self._gadget_manager.remote_gadgets,
-                                                         self._gadget_manager.local_gadgets)
+        resp_data = GadgetApiEncoder.encode_all_gadgets_info(self._gadget_manager.remote_gadgets,
+                                                             self._gadget_manager.local_gadgets)
         req.respond(resp_data)
 
     def _handle_gadget_update(self, req: Request):

@@ -7,19 +7,20 @@ from network.request import Request, NoClientResponseException
 from smarthome_bridge.api.api_manager import UnknownClientException
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
+from smarthome_bridge.api_coders.client_encoder import ClientApiEncoder
 from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
-from smarthome_bridge.api_encoder import ApiEncoder
-from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
-from smarthome_bridge.gadget_status_supplier import GadgetStatusSupplier
+from smarthome_bridge.client_manager import ClientDoesntExistsError
+from smarthome_bridge.status_supplier_interfaces import ClientStatusSupplier
+from smarthome_bridge.status_supplier_interfaces import GadgetStatusSupplier
 from smarthome_bridge.network_manager import NetworkManager
 from system.api_definitions import ApiURIs
 
 
 class RequestHandlerClient(RequestHandler):
-    _client_manager: ClientManager
+    _client_manager: ClientStatusSupplier
     _gadget_manager: GadgetStatusSupplier
 
-    def __init__(self, network: NetworkManager, client_manager: ClientManager, gadget_manager: GadgetStatusSupplier):
+    def __init__(self, network: NetworkManager, client_manager: ClientStatusSupplier, gadget_manager: GadgetStatusSupplier):
         super().__init__(network)
         self._client_manager = client_manager
         self._gadget_manager = gadget_manager
@@ -104,7 +105,7 @@ class RequestHandlerClient(RequestHandler):
 
     def _handle_info_clients(self, req: Request):
         data = self._client_manager.clients
-        resp_data = ApiEncoder().encode_all_clients_info(data)
+        resp_data = ClientApiEncoder.encode_all_clients_info(data)
         req.respond(resp_data)
 
     def _handle_heartbeat(self, req: Request):
@@ -119,14 +120,16 @@ class RequestHandlerClient(RequestHandler):
         runtime_id = req.get_payload()["runtime_id"]
         client_name = req.get_sender()
 
-        client = self._client_manager.get_client(client_name)
-        if client:
-            if client.get_runtime_id() != runtime_id:
-                self.request_sync(client_name)
-            else:
-                client.trigger_activity()
-        else:
+        try:
+            client = self._client_manager.get_client(client_name)
+        except ClientDoesntExistsError:
             self.request_sync(client_name)
+            return
+
+        if client.get_runtime_id() != runtime_id:
+            self.request_sync(client_name)
+        else:
+            client.trigger_activity()
 
     def _handle_client_sync(self, req: Request):
         """

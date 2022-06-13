@@ -4,22 +4,19 @@ import threading
 from datetime import datetime
 
 from smarthome_bridge.local_gadget_manager import LocalGadgetManager
+from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
+from smarthome_bridge.client_manager import ClientManager
 from smarthome_bridge.api.api_manager import ApiManager
 from smarthome_bridge.gadget_manager import GadgetManager
-
-from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from gadgets.remote.remote_gadget import RemoteGadget
-from smarthome_bridge.client import Client
 from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools
 from utils.user_manager import UserManager
 
 
-class Bridge(ApiManagerDelegate):
+class Bridge(BridgeStatusSupplier):
 
     _logger: logging.Logger
 
@@ -69,40 +66,18 @@ class Bridge(ApiManagerDelegate):
         self._client_manager.__del__()
         self._gadget_manager.__del__()
 
-    def get_network_manager(self):
-        return self._network_manager
-
-    def get_client_manager(self):
-        return self._client_manager
-
-    def get_gadget_manager(self):
-        return self._gadget_manager
-
-    # API delegation
-
-    def handle_heartbeat(self, client_name: str, runtime_id: int):
-        client = self._client_manager.get_client(client_name)
-        if client:
-            if client.get_runtime_id() != runtime_id:
-                self.api.request_sync(client_name)
-            else:
-                client.trigger_activity()
-        else:
-            self.api.request_sync(client_name)
-
-    def handle_gadget_sync(self, gadget: RemoteGadget):
-        with self._gadget_sync_lock:
-            self._gadget_manager.add_gadget(gadget)
-
-    def handle_gadget_update(self, gadget: RemoteGadget):
-        with self._gadget_sync_lock:
-            self._gadget_manager.receive_gadget_update(gadget)
-
-    def get_bridge_info(self) -> BridgeInformationContainer:
+    @property
+    def info(self) -> BridgeInformationContainer:
         return self._bridge_info
 
-    def get_client_info(self) -> list[Client]:
-        return [self._client_manager.get_client(x)
-                for x
-                in self._client_manager.get_client_ids()
-                if self._client_manager.get_client(x) is not None]
+    @property
+    def network(self) -> NetworkManager:
+        return self._network_manager
+
+    @property
+    def clients(self) -> ClientManager:
+        return self._client_manager
+
+    @property
+    def gadgets(self) -> GadgetManager:
+        return self._gadget_manager
