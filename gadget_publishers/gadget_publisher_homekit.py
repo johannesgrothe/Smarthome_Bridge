@@ -156,13 +156,21 @@ class GadgetPublisherHomekit(GadgetPublisher, GadgetPublisherHomekitInterface):
             self._logger.info(f"Cannot create accessory for '{gadget.__class__.__name__}'")
             return
 
-    def remove_gadget(self, gadget_name: str):
+    def add_gadget(self, gadget_id: str):
         try:
-            found = self._get_gadget(gadget_name)
+            self.remove_gadget(gadget_id)
+        except GadgetDeletionError:
+            pass
+        origin = self._status_supplier.get_gadget(gadget_id)
+        self.create_gadget(origin)
+
+    def remove_gadget(self, gadget_id: str):
+        try:
+            found = self._get_gadget(gadget_id)
             self._gadgets.remove(found)
             self._schedule_restart()
         except GadgetDoesNotExistError:
-            raise GadgetDeletionError(gadget_name)
+            raise GadgetDeletionError(gadget_id)
 
     def _receive_gadget_update_rgb_lamp(self, origin: Gadget, wrapper: HomekitAccessoryWrapper,
                                         container: LampRgbUpdateContainer):

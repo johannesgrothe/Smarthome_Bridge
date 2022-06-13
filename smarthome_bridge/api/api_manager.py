@@ -206,8 +206,8 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             self._validator.validate(req.get_payload(), "api_empty_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_get_all.uri}'")
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at '{ApiURIs.config_storage_get_all.uri}'")
             return
 
         manager = ClientConfigManager()
@@ -237,8 +237,8 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             self._validator.validate(req.get_payload(), "api_config_delete_get")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_get.uri}'")
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at '{ApiURIs.config_storage_get.uri}'")
             return
 
         try:
@@ -247,7 +247,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
             payload = {"config": config}
             req.respond(payload)
         except ConfigDoesNotExistException as err:
-            self._respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
+            ResponseCreator.respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
 
     def _handle_save_config(self, req: Request):
         """
@@ -259,8 +259,8 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             self._validator.validate(req.get_payload(), "api_config_save")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_save.uri}'")
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at '{ApiURIs.config_storage_save.uri}'")
             return
 
         config = req.get_payload()["config"]
@@ -269,9 +269,9 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             manager.write_config(config, overwrite=overwrite)
         except ConfigAlreadyExistsException as err:
-            self._respond_with_error(req=req, err_type="ConfigAlreadyExistsException", message=err.args[0])
+            ResponseCreator.respond_with_error(req=req, err_type="ConfigAlreadyExistsException", message=err.args[0])
             return
-        self._respond_with_status(req, True, "Config was saved successfully")
+        ResponseCreator.respond_with_success(req, "Config was saved successfully")
 
     def _handle_delete_config(self, req: Request):
         """
@@ -283,8 +283,8 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             self._validator.validate(req.get_payload(), "api_config_delete_get")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at '{ApiURIs.config_storage_delete.uri}'")
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at '{ApiURIs.config_storage_delete.uri}'")
             return
 
         name = req.get_payload()["name"]
@@ -292,9 +292,9 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             manager.delete_config_file(name)
         except ConfigDoesNotExistException as err:
-            self._respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
+            ResponseCreator.respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
             return
-        self._respond_with_status(req, True, "Config was deleted successfully")
+        ResponseCreator.respond_with_success(req, "Config was deleted successfully")
 
     def _handle_check_bridge_for_update(self, req: Request):
         """
@@ -306,8 +306,8 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             self._validator.validate(req.get_payload(), "api_empty_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at {ApiURIs.bridge_update_check.uri}")
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at {ApiURIs.bridge_update_check.uri}")
             return
 
         encoder = ApiEncoder()
@@ -315,9 +315,9 @@ class ApiManager(Subscriber, ILogging, IValidator):
             updater = BridgeUpdateManager(os.getcwd())
             bridge_meta = updater.check_for_update()
         except UpdateNotPossibleException:
-            self._respond_with_error(req, "UpdateNotPossibleException", "bridge could not be updated")
+            ResponseCreator.respond_with_error(req, "UpdateNotPossibleException", "bridge could not be updated")
         except NoUpdateAvailableException:
-            self._respond_with_status(req, True, "Bridge is up to date")
+            ResponseCreator.respond_with_success(req, "Bridge is up to date")
         else:
             payload = encoder.encode_bridge_update_info(bridge_meta)
             req.respond(payload)
@@ -333,14 +333,14 @@ class ApiManager(Subscriber, ILogging, IValidator):
         try:
             self._validator.validate(req.get_payload(), "api_empty_request")
         except ValidationError:
-            self._respond_with_error(req, "ValidationError",
-                                     f"Request validation error at {ApiURIs.bridge_update_execute.uri}")
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at {ApiURIs.bridge_update_execute.uri}")
             return
 
         try:
             updater = BridgeUpdateManager(os.getcwd())
             updater.execute_update()
-            self._respond_with_status(req, True, "Update was successful, rebooting system now...")
+            ResponseCreator.respond_with_success(req, "Update was successful, rebooting system now...")
             updater.reboot()
         except UpdateNotSuccessfulException:
-            self._respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")
+            ResponseCreator.respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")

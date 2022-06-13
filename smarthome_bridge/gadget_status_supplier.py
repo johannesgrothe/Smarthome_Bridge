@@ -19,6 +19,26 @@ class GadgetStatusReceiver(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def add_gadget(self, gadget_id: str):
+        """
+        Get notified about a new gadget
+
+        :param gadget_id: ID of the new gadget
+        :return: None
+        """
+        pass
+
+    @abstractmethod
+    def remove_gadget(self, gadget_id: str):
+        """
+        Get notified about the removal of a gadget
+
+        :param gadget_id: ID of the deleted gadget
+        :return: None
+        """
+        pass
+
 
 class GadgetStatusSupplier(metaclass=ABCMeta):
     __subscriber_clients: list[GadgetStatusReceiver]
@@ -51,7 +71,6 @@ class GadgetStatusSupplier(metaclass=ABCMeta):
         with self.__client_lock:
             self.__subscriber_clients.remove(subscriber)
 
-    @abstractmethod
     def publish_gadget_update(self, container: GadgetUpdateContainer):
         with self.__client_lock:
             for publisher in self.__subscriber_clients:

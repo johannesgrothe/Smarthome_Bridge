@@ -12,7 +12,7 @@ class ResponseCreator(ILogging):
         cls._get_logger().error(f"{err_type}: {message}")
 
     @classmethod
-    def respond_with_status(cls, req: Request, ack: bool, message: Optional[str] = None):
-        out_payload = {"ack": ack, "message": message}
+    def respond_with_success(cls, req: Request, message: Optional[str] = None):
+        out_payload = {"ack": True, "message": message}
         req.respond(out_payload)
-        cls._get_logger().info(f"Responding with status: {ack} to request: {req.get_path()}")
+        cls._get_logger().info(f"Responding with success to request: {req.get_path()}")

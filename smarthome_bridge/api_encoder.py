@@ -8,7 +8,7 @@ from datetime import datetime
 
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from gadgets.local.local_gadget import LocalGadget
-from smarthome_bridge.api_coders.gadgets.denon_receiver_encoder import DenonReceiverEncoder
+from smarthome_bridge.api_coders.gadgets.encoders.denon_receiver_encoder import DenonReceiverEncoder
 from smarthome_bridge.client import Client
 from gadgets.remote.remote_gadget import RemoteGadget, Gadget
 from system.gadget_definitions import GadgetIdentifier
@@ -72,39 +72,9 @@ class ApiEncoder(ILogging):
         :raises GadgetEncodeError: If anything goes wrong during the serialization process
         """
 
-        if isinstance(gadget, RemoteGadget):
-            return self._encode_remote_gadget(gadget)
-        elif isinstance(gadget, LocalGadget):
-            return self._encode_local_gadget(gadget)
-        raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, f"Gadget has unsupported type")
-
-    def _encode_local_gadget(self, gadget: LocalGadget) -> dict:
         if isinstance(gadget, DenonRemoteControlGadget):
             return DenonReceiverEncoder.encode_gadget(gadget)
         raise GadgetEncodeError(gadget.__class__.__name__, gadget.id, f"LocalGadget has unsupported type")
-
-    def _encode_remote_gadget(self, gadget: RemoteGadget) -> dict:
-        try:
-            identifier = cls.encode_gadget_identifier(gadget)
-        except IdentifierEncodeError as err:
-            self._logger.error(err.args[0])
-            raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, f"Identifier is unknown")
-
-        characteristics_json = [cls.encode_characteristic(x) for x in gadget.get_characteristics()]
-
-        mapping_json = {}
-        for mapping in gadget.get_event_mapping():
-            if mapping.get_id() in mapping_json:
-                cls._get_logger().error(f"found double mapping for {mapping.get_id()}")
-                continue
-            mapping_json[mapping.get_id()] = mapping.get_list()
-
-        gadget_json = {"type": int(identifier),
-                       "id": gadget.get_name(),
-                       "characteristics": characteristics_json,
-                       "event_map": mapping_json}
-
-        return gadget_json
 
     @classmethod
     def encode_gadget_update(cls, gadget: GadgetUpdateContainer) -> dict:
@@ -115,10 +85,8 @@ class ApiEncoder(ILogging):
         :return: The serialized version of the changeable gadget information as dict
         :raises GadgetEncodeError: If anything goes wrong during the serialization process
         """
-        characteristics_json = [cls.encode_characteristic_update(x) for x in gadget.get_characteristics()]
-
-        gadget_json = {"id": gadget.get_name(),
-                       "characteristics": characteristics_json}
+        if isinstance(gadget, DenonRemoteControlGadget):
+            return DenonReceiverEncoder.encode_gadget_update(gadget)
 
         return gadget_json
 

@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Union, List
 
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.local_gadget import LocalGadget
@@ -60,11 +61,11 @@ class DenonRemoteControlGadget(LocalGadget):
             raise SourceError(f"Source index too high: {index}")
 
     @property
-    def status(self):
+    def status(self) -> bool:
         return self._status
 
     @status.setter
-    def status(self, value):
+    def status(self, value: bool):
         if value != self._status:
             self._status = value
             self._logger.info(f"Setting power to {'ON' if value else 'OFF'}")
@@ -75,11 +76,11 @@ class DenonRemoteControlGadget(LocalGadget):
             self._update_container.status = True
 
     @property
-    def source(self):
+    def source(self) -> int:
         return self._source
 
     @source.setter
-    def source(self, value):
+    def source(self, value: Union[int, str]):
         if isinstance(value, str):
             value = self._get_source_index(value)
         if value != self._source:
@@ -90,7 +91,7 @@ class DenonRemoteControlGadget(LocalGadget):
             self._update_container.source = True
 
     @property
-    def source_names(self):
+    def source_names(self) -> List[str]:
         return self._source_names
 
 

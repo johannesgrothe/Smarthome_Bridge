@@ -3,10 +3,10 @@ from typing import Type, Tuple, List
 from gadgets.gadget import Gadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
-from smarthome_bridge.api_coders.api_encoder_super import ApiEncoderSuper
-from smarthome_bridge.api_coders.gadgets.denon_receiver_encoder import DenonReceiverEncoder
+from smarthome_bridge.api_coders.gadgets.encoders.denon_receiver_encoder import DenonReceiverEncoder
+from smarthome_bridge.api_coders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 
-_type_mapping: List[Tuple[Type[Gadget], Type[ApiEncoderSuper]]] = [
+_type_mapping: List[Tuple[Type[Gadget], Type[GadgetApiEncoderSuper]]] = [
     (DenonRemoteControlGadget, DenonReceiverEncoder)
 ]
 
@@ -21,12 +21,12 @@ class GadgetApiEncoder:
     def encode_gadget(cls, gadget: Gadget) -> dict:
         for gadget_type, encoder_type in _type_mapping:
             if isinstance(gadget, gadget_type):
-                return encoder_type.encode(gadget)
+                return encoder_type.encode_gadget(gadget)
         raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, "No encoder found")
 
     @classmethod
     def encode_gadget_update(cls, container: GadgetUpdateContainer, gadget: Gadget) -> dict:
         for gadget_type, encoder_type in _type_mapping:
             if isinstance(gadget, gadget_type):
-                return encoder_type.encode(gadget)
+                return encoder_type.encode_gadget_update(gadget, container)
         raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, "No encoder found")
