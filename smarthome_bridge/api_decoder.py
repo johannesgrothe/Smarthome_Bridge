@@ -3,6 +3,7 @@ from gadgets.remote.lamp_rgb import LampRGB
 from lib.logging_interface import ILogging
 from gadgets.remote.remote_gadget import RemoteGadget
 from smarthome_bridge.api_coders import DATETIME_FORMAT
+from smarthome_bridge.client_information_interface import ClientInformationInterface
 from system.gadget_definitions import GadgetIdentifier, GadgetClass, GadgetClassMapping
 from smarthome_bridge.client import Client
 from system.utils.software_version import SoftwareVersion
@@ -27,7 +28,8 @@ class ApiDecoder(ILogging):
     def __init__(self):
         super().__init__()
 
-    def decode_remote_gadget(self, gadget_data: dict, host: str) -> RemoteGadget:
+    @classmethod
+    def decode_remote_gadget(cls, gadget_data: dict, host: ClientInformationInterface) -> RemoteGadget:
         """
         Decodes a gadget out of the data given
 
@@ -53,10 +55,11 @@ class ApiDecoder(ILogging):
                 raise GadgetDecodeError()
 
         except (KeyError, ValueError) as err:
-            self._logger.error(err.args[0])
+            cls._get_logger().error(err.args[0])
             raise GadgetDecodeError()
 
-    def decode_client(self, client_data: dict, client_name: str) -> Client:
+    @classmethod
+    def decode_client(cls, client_data: dict, client_name: str) -> Client:
         """
         Parses a smarthome-client from the given data
 
@@ -73,7 +76,7 @@ class ApiDecoder(ILogging):
                 try:
                     flash_date = datetime.strptime(client_data["sw_uploaded"], DATETIME_FORMAT)
                 except ValueError:
-                    self._logger.error(f"Cannot decode datetime string '{date_str}' using '{DATETIME_FORMAT}'")
+                    cls._get_logger().error(f"Cannot decode datetime string '{date_str}' using '{DATETIME_FORMAT}'")
             software_commit = client_data["sw_commit"]
             software_branch = client_data["sw_branch"]
             port_mapping = client_data["port_mapping"]

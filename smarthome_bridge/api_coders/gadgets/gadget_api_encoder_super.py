@@ -9,9 +9,9 @@ class GadgetApiEncoderSuper(metaclass=ABCMeta):
     def encode_gadget(cls, gadget: Gadget) -> dict:
         """Encodes the local Gadget for the api"""
         return {
-            "id": obj.id,
+            "id": gadget.id,
             "is_local": True,
-            "attributes": cls._encode_attributes(obj)
+            "attributes": cls._encode_attributes(gadget)
         }
 
     @classmethod

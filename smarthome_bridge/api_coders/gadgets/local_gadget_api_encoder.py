@@ -6,6 +6,6 @@ from smarthome_bridge.api_coders.gadgets.gadget_api_encoder_super import GadgetA
 
 class LocalGadgetApiEncoderSuper(GadgetApiEncoderSuper, ABC):
     @classmethod
-    def encode_gadget(cls, obj: LocalGadget) -> dict:
+    def encode_gadget(cls, gadget: LocalGadget) -> dict:
         """Encodes the local Gadget for the api"""
-        return super().encode_gadget(obj)
+        return super().encode_gadget(gadget)

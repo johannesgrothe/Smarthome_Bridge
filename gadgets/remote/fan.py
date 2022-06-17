@@ -1,13 +1,24 @@
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.remote.remote_gadget import RemoteGadget
+from smarthome_bridge.client_information_interface import ClientInformationInterface
 
 
 class FanUpdateContainer(GadgetUpdateContainer):
-    speed: bool
+    _speed: bool
 
     def __init__(self, origin: str):
         super().__init__(origin)
-        self.speed = False
+        self._speed = False
+
+    @property
+    def speed(self) -> bool:
+        with self._lock:
+            return self._speed
+
+    def set_speed(self):
+        with self._lock:
+            self._speed = True
+            self._record_change()
 
 
 class Fan(RemoteGadget):
@@ -17,7 +28,7 @@ class Fan(RemoteGadget):
 
     def __init__(self,
                  name: str,
-                 host_client: str,
+                 host_client: ClientInformationInterface,
                  steps: int):
         super().__init__(name, host_client)
         if steps < 2:
@@ -38,7 +49,7 @@ class Fan(RemoteGadget):
             raise ValueError(f"'value' must be between 0 and {self.steps}")
         if self.speed != value:
             self._value = value
-            self._update_container.speed = True
+            self._update_container.set_speed()
 
     @property
     def steps(self) -> int:

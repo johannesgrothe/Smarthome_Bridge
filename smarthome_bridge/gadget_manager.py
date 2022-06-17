@@ -1,12 +1,16 @@
+import datetime
 import threading
+import time
 from typing import Optional
 
+from gadgets.gadget_update_container import GadgetUpdateContainer
 from lib.logging_interface import ILogging
 from gadget_publishers.gadget_publisher import GadgetPublisher
 
 from gadgets.remote.remote_gadget import Gadget
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
+from utils.thread_manager import ThreadManager
 
 
 class GadgetDoesntExistError(Exception):
@@ -21,20 +25,45 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
     _publishers: list[GadgetPublisher]
     _publisher_lock: threading.Lock
 
+    _threads: ThreadManager
+
     def __init__(self):
         super().__init__()
         self._gadgets = []
         self._gadget_lock = threading.Lock()
+
         self._publishers = []
         self._publisher_lock = threading.Lock()
 
+        self._threads = ThreadManager()
+        self._threads.add_thread(f"{self.__class__.__name__}UpdateApplier", self._update_applier_thread)
+        self._threads.start_threads()
+
     def __del__(self):
+        self._threads.__del__()
         while self._gadgets:
             gadget = self._gadgets.pop()
             gadget.__del__()
         while self._publishers:
             publisher = self._publishers.pop()
             publisher.__del__()
+
+    def _update_applier_thread(self):
+        with self._gadget_lock:
+            now = datetime.datetime.now()
+            for gadget in self._gadgets:
+                container = gadget.updated_properties
+                if container.is_empty:
+                    continue
+                if (now - container.last_changed) > datetime.timedelta(seconds=0.5):
+                    gadget.reset_updated_properties()
+                    self._forward_update(container)
+        time.sleep(0.1)
+
+    def _forward_update(self, container: GadgetUpdateContainer):
+        with self._publisher_lock:
+            for publisher in self._publishers:
+                publisher.receive_gadget_update(container)
 
     def get_gadget(self, gadget_id: str) -> Optional[Gadget]:
         with self._gadget_lock:

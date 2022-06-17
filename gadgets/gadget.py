@@ -37,7 +37,7 @@ class Gadget(metaclass=ABCMeta):
     def name(self, value: str):
         if not self._name == value:
             self._name = value
-            self._update_container.name = True
+            self._update_container.set_name()
 
     @property
     def updated_properties(self) -> GadgetUpdateContainer:

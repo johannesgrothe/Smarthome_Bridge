@@ -1,8 +1,11 @@
 """Module for the SmarthomeClient Class"""
+import threading
 from datetime import datetime, timedelta
 from typing import Optional
 
+from gadgets.remote.remote_gadget import RemoteGadget
 from lib.logging_interface import ILogging
+from smarthome_bridge.client_information_interface import ClientInformationInterface
 from system.utils.software_version import SoftwareVersion
 from smarthome_bridge.client_event_mapping import ClientEventMapping
 
@@ -10,7 +13,7 @@ from smarthome_bridge.client_event_mapping import ClientEventMapping
 DEFAULT_TIMEOUT = 17
 
 
-class Client(ILogging):
+class Client(ClientInformationInterface, ILogging):
     """Smarthome client information"""
 
     # The name of the client
@@ -46,6 +49,9 @@ class Client(ILogging):
     # API version the client is running on
     _api_version: SoftwareVersion
 
+    _gadgets: list[RemoteGadget]
+    _gadgets_lock: threading.Lock
+
     def __init__(self, name: str, runtime_id: int, flash_date: Optional[datetime],
                  software_commit: Optional[str], software_branch: Optional[str],
                  port_mapping: dict, boot_mode: int, api_version: SoftwareVersion,
@@ -58,6 +64,9 @@ class Client(ILogging):
         self._timeout = connection_timeout
         self._event_mapping = []
         self._api_version = api_version
+
+        self._gadgets = []
+        self._gadgets_lock = threading.Lock()
 
         if flash_date:
             self._flash_time = flash_date - timedelta(microseconds=flash_date.microsecond)
@@ -77,7 +86,7 @@ class Client(ILogging):
     def __eq__(self, other):
         """Overrides the default implementation"""
         if isinstance(other, self.__class__):
-            return self.get_name() == other.get_name() and \
+            return self.id == other.id and \
                    self.get_runtime_id() == other.get_runtime_id() and \
                    self.get_sw_flash_time() == other.get_sw_flash_time() and \
                    self.get_sw_commit() == other.get_sw_commit() and \
@@ -110,9 +119,20 @@ class Client(ILogging):
                 has_err = True
         return has_err, out_ports
 
-    def get_name(self):
-        """Returns the name of the client"""
+    def _is_active(self) -> bool:
+        return self._last_connected + timedelta(seconds=self._timeout) > datetime.now()
+
+    def _get_id(self) -> str:
         return self._name
+
+    def add_gadget(self, gadget: RemoteGadget):
+        with self._gadgets_lock:
+            if gadget not in self._gadgets:
+                self._gadgets.append(gadget)
+
+    @property
+    def gadgets(self) -> list[RemoteGadget]:
+        return self._gadgets
 
     def get_created(self) -> datetime:
         """Gets the timestamp when the client was created in seconds since the epoch"""
@@ -129,10 +149,6 @@ class Client(ILogging):
     def trigger_activity(self):
         """Reports any activity of the client"""
         self._last_connected = datetime.now()
-
-    def is_active(self) -> bool:
-        """Returns whether the client is still considered active"""
-        return self._last_connected + timedelta(seconds=self._timeout) > datetime.now()
 
     def update_runtime_id(self, runtime_id: int):
         """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""

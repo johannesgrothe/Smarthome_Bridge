@@ -12,13 +12,31 @@ class SourceError(Exception):
 
 
 class DenonRemoteControlGadgetUpdateContainer(GadgetUpdateContainer):
-    status: bool
-    source: bool
+    _status: bool
+    _source: bool
 
     def __init__(self, origin: str):
         super().__init__(origin)
-        self.status = False
-        self.source = False
+        self._status = False
+        self._source = False
+
+    @property
+    def status(self) -> bool:
+        return self._status
+
+    def set_status(self):
+        with self._lock:
+            self._status = True
+            self._record_change()
+
+    @property
+    def source(self) -> bool:
+        return self._source
+
+    def set_source(self):
+        with self._lock:
+            self._source = True
+            self._record_change()
 
 
 class DenonRemoteControlGadget(LocalGadget):
@@ -73,7 +91,7 @@ class DenonRemoteControlGadget(LocalGadget):
                 self._controller.power_on()
             else:
                 self._controller.power_off()
-            self._update_container.status = True
+            self._update_container.set_status()
 
     @property
     def source(self) -> int:
@@ -88,7 +106,7 @@ class DenonRemoteControlGadget(LocalGadget):
             source_name = self._get_source_name(value)
             self._logger.info(f"Setting source to {source_name}")
             self._controller.set_input_func(source_name)
-            self._update_container.source = True
+            self._update_container.set_source()
 
     @property
     def source_names(self) -> List[str]:

@@ -50,7 +50,7 @@ class RequestHandlerClient(RequestHandler):
         :raises NoClientResponseException: If client did not respond to the request
         :raises ClientRebootError: If client could not be rebooted for aby reason
         """
-        if client_id not in [x.get_name() for x in self._client_manager.clients]:
+        if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
         writer = ClientController(client_id, self._network)
         writer.reboot_client()
@@ -66,7 +66,7 @@ class RequestHandlerClient(RequestHandler):
         :raises ConfigWriteError: If client did not acknowledge config writing success
         :raises ValidationError: If passed config was faulty
         """
-        if client_id not in [x.get_name() for x in self._client_manager.clients]:
+        if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
         writer = ClientController(client_id, self._network)
         writer.write_system_config(config)
@@ -82,7 +82,7 @@ class RequestHandlerClient(RequestHandler):
         :raises ConfigWriteError: If client did not acknowledge config writing success
         :raises ValidationError: If passed config was faulty
         """
-        if client_id not in [x.get_name() for x in self._client_manager.clients]:
+        if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
         writer = ClientController(client_id, self._network)
         writer.write_event_config(config)
@@ -98,7 +98,7 @@ class RequestHandlerClient(RequestHandler):
         :raises ConfigWriteError: If client did not acknowledge config writing success
         :raises ValidationError: If passed config was faulty
         """
-        if client_id not in [x.get_name() for x in self._client_manager.clients]:
+        if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
         writer = ClientController(client_id, self._network)
         writer.write_gadget_config(config)
@@ -160,13 +160,13 @@ class RequestHandlerClient(RequestHandler):
 
         for gadget_info in gadget_data:
             try:
-                gadget = ApiDecoder().decode_remote_gadget(gadget_info, client_id)
+                gadget = ApiDecoder.decode_remote_gadget(gadget_info, client_id)
                 self._gadget_manager.add_gadget(gadget)
             except GadgetDecodeError as err:
                 print(err.args[0])
 
         try:
-            self._client_manager.remove_client(new_client.get_name())
+            self._client_manager.remove_client(new_client.id)
         except ClientDoesntExistsError:
             pass
         self._client_manager.add_client(new_client)

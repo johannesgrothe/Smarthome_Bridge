@@ -2,18 +2,27 @@ from typing import Tuple
 
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.remote.remote_gadget import RemoteGadget
+from smarthome_bridge.client_information_interface import ClientInformationInterface
 
 
 class LampRgbUpdateContainer(GadgetUpdateContainer):
-    rgb: bool
+    _rgb: bool
 
     def __init__(self, origin: str):
         super().__init__(origin)
-        self.rgb = False
+        self._rgb = False
+
+    @property
+    def rgb(self) -> bool:
+        return self._rgb
+
+    def set_rgb(self):
+        with self._lock:
+            self._rgb = True
+            self._record_change()
 
 
 class LampRGB(RemoteGadget):
-
     _red: int
     _green: int
     _blue: int
@@ -21,7 +30,7 @@ class LampRGB(RemoteGadget):
 
     def __init__(self,
                  gadget_id: str,
-                 host_client: str,
+                 host_client: ClientInformationInterface,
                  value_red: int = 0,
                  value_green: int = 0,
                  value_blue: int = 0):
@@ -59,7 +68,7 @@ class LampRGB(RemoteGadget):
         self._validate_rgb_value(value)
         if self._red != value:
             self._red = value
-            self._update_container.rgb = True
+            self._update_container.set_rgb()
 
     @property
     def green(self) -> int:
@@ -70,7 +79,7 @@ class LampRGB(RemoteGadget):
         self._validate_rgb_value(value)
         if self._green != value:
             self._green = value
-            self._update_container.rgb = True
+            self._update_container.set_rgb()
 
     @property
     def blue(self) -> int:
@@ -81,4 +90,4 @@ class LampRGB(RemoteGadget):
         self._validate_rgb_value(value)
         if self._blue != value:
             self._blue = value
-            self._update_container.rgb = True
+            self._update_container.set_rgb()
