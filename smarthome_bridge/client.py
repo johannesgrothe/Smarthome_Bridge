@@ -13,11 +13,39 @@ from smarthome_bridge.client_event_mapping import ClientEventMapping
 DEFAULT_TIMEOUT = 17
 
 
+class ClientSoftwareInformationContainer:
+    _commit: str
+    _branch: str
+    _date: datetime
+
+    def __init__(self, commit: str, branch: str, date: datetime):
+        self._commit = commit
+        self._branch = branch
+        self._date = date
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ClientSoftwareInformationContainer):
+            return False
+        return self.commit == other.commit and self.branch == other.branch and self.date == other.date
+
+    @property
+    def commit(self) -> str:
+        return self._commit
+
+    @property
+    def branch(self) -> str:
+        return self._branch
+
+    @property
+    def date(self) -> datetime:
+        return self._date
+
+
 class Client(ClientInformationInterface, ILogging):
     """Smarthome client information"""
 
     # The name of the client
-    _name: str
+    _id: str
 
     # When the client was last connected
     _last_connected: datetime
@@ -28,14 +56,8 @@ class Client(ClientInformationInterface, ILogging):
     # A unique runtime id provided by the chip. Has to change on every reboot of the client
     _runtime_id: int
 
-    # Date the chip was flashed (if available)
-    _flash_time: Optional[datetime]
-
-    # Software-commit hash
-    _software_commit: Optional[str]
-
-    # Branch the current software is on
-    _software_branch: Optional[str]
+    # Information about the software the client is running
+    _software_info: Optional[ClientSoftwareInformationContainer]
 
     # Mapping for the ports on the client
     _port_mapping: dict
@@ -52,29 +74,24 @@ class Client(ClientInformationInterface, ILogging):
     _gadgets: list[RemoteGadget]
     _gadgets_lock: threading.Lock
 
-    def __init__(self, name: str, runtime_id: int, flash_date: Optional[datetime],
-                 software_commit: Optional[str], software_branch: Optional[str],
+    def __init__(self, client_id: str, runtime_id: int, software: Optional[ClientSoftwareInformationContainer],
                  port_mapping: dict, boot_mode: int, api_version: SoftwareVersion,
-                 connection_timeout: int = DEFAULT_TIMEOUT):
+                 connection_timeout: int = DEFAULT_TIMEOUT, gadgets: list[RemoteGadget] = None):
         super().__init__()
-        self._name = name
+        self._id = client_id
         self._last_connected = datetime(1900, 1, 1)
         self._created = datetime.now()
         self._runtime_id = runtime_id
         self._timeout = connection_timeout
-        self._event_mapping = []
         self._api_version = api_version
 
-        self._gadgets = []
+        if gadgets is None:
+            self._gadgets = []
+        else:
+            self._gadgets = gadgets
         self._gadgets_lock = threading.Lock()
 
-        if flash_date:
-            self._flash_time = flash_date - timedelta(microseconds=flash_date.microsecond)
-        else:
-            self._flash_time = None
-
-        self._software_commit = software_commit
-        self._software_branch = software_branch
+        self._software_info = software
 
         # Set boot mode to "Unknown_Mode"
         self._boot_mode = boot_mode
@@ -87,13 +104,11 @@ class Client(ClientInformationInterface, ILogging):
         """Overrides the default implementation"""
         if isinstance(other, self.__class__):
             return self.id == other.id and \
-                   self.get_runtime_id() == other.get_runtime_id() and \
-                   self.get_sw_flash_time() == other.get_sw_flash_time() and \
-                   self.get_sw_commit() == other.get_sw_commit() and \
-                   self.get_sw_branch() == other.get_sw_branch() and \
-                   self.get_boot_mode() == other.get_boot_mode() and \
+                   self.runtime_id == other.runtime_id and \
+                   self.software_info == other.software_info and \
+                   self.boot_mode == other.boot_mode and \
                    self.get_port_mapping() == other.get_port_mapping() and \
-                   self.get_api_version() == other.get_api_version()
+                   self.api_version == other.api_version
         return NotImplemented
 
     def _filter_mapping(self, in_map: dict) -> (bool, dict):
@@ -120,76 +135,53 @@ class Client(ClientInformationInterface, ILogging):
         return has_err, out_ports
 
     def _is_active(self) -> bool:
-        return self._last_connected + timedelta(seconds=self._timeout) > datetime.now()
+        return (self._last_connected + timedelta(seconds=self._timeout)) > datetime.now()
 
     def _get_id(self) -> str:
-        return self._name
-
-    def add_gadget(self, gadget: RemoteGadget):
-        with self._gadgets_lock:
-            if gadget not in self._gadgets:
-                self._gadgets.append(gadget)
+        return self._id
 
     @property
     def gadgets(self) -> list[RemoteGadget]:
         return self._gadgets
 
-    def get_created(self) -> datetime:
-        """Gets the timestamp when the client was created in seconds since the epoch"""
+    @property
+    def created(self) -> datetime:
+        """The timestamp when the client was created in seconds since the epoch"""
         return self._created
 
-    def get_last_connected(self) -> datetime:
-        """Returns when the client was last active in seconds since the epoch"""
+    @property
+    def last_connected(self) -> datetime:
+        """When the client was last active in seconds since the epoch"""
         return self._last_connected
 
-    def get_runtime_id(self) -> int:
-        """Returns the runtime if this client was using when last connected"""
+    @property
+    def runtime_id(self) -> int:
+        """The runtime if this client was using when last connected"""
         return self._runtime_id
+
+    @property
+    def software_info(self) -> Optional[ClientSoftwareInformationContainer]:
+        """Information about the software the client is running"""
+        return self._software_info
+
+    @property
+    def boot_mode(self) -> int:
+        """The boot mode of the chip"""
+        return self._boot_mode
+
+    @property
+    def api_version(self) -> SoftwareVersion:
+        """The api version the client is running on"""
+        return self._api_version
 
     def trigger_activity(self):
         """Reports any activity of the client"""
         self._last_connected = datetime.now()
 
-    def update_runtime_id(self, runtime_id: int):
-        """Updates the current runtime_id, sets internal 'needs_update'-flag if it changed"""
-        self._runtime_id = runtime_id
-
     def get_port_mapping(self) -> dict:
         """Returns the port mapping of the client"""
         return self._port_mapping
 
-    def get_sw_flash_time(self) -> Optional[datetime]:
-        """Returns the date, the software was written on the chip"""
-        return self._flash_time
-
-    def get_sw_commit(self) -> Optional[str]:
-        """Returns the software commit if available"""
-        return self._software_commit
-
-    def get_sw_branch(self) -> Optional[str]:
-        """Returns the software branch name if available"""
-        return self._software_branch
-
-    def get_boot_mode(self) -> int:
-        """Returns the boot mode of the chip"""
-        return self._boot_mode
-
-    def get_api_version(self) -> SoftwareVersion:
-        """Returns the api version the client is running on"""
-        return self._api_version
-
     def set_timeout(self, seconds: int):
         """Sets the timeout for this client, after which it will register as 'offline'"""
         self._timeout = seconds
-
-    def get_event_mapping(self) -> list[ClientEventMapping]:
-        """Returns the configured event mapping of the client"""
-        return self._event_mapping
-
-    def set_event_mapping(self, e_mapping: list[ClientEventMapping]):
-        """
-        Sets the event mapping for the client. The event mapping is initialized as empty list and needs to be set if wanted.
-        :param e_mapping: List of event maps this client is using
-        :return: None
-        """
-        self._event_mapping = e_mapping

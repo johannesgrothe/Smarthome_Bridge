@@ -37,7 +37,7 @@ def decoder():
 
 @pytest.fixture()
 def test_client():
-    client = Client(name=C_NAME,
+    client = Client(client_id=C_NAME,
                     runtime_id=C_RUNTIME_ID,
                     flash_date=C_FLASH_DATE,
                     software_commit=C_COMMIT,

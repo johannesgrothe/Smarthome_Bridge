@@ -12,6 +12,9 @@ from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplie
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from utils.thread_manager import ThreadManager
 
+DEFAULT_PUBLISH_DELAY: float = 0.5
+DEFAULT_PUBLISH_TASK_INTERVAL: float = 0.1
+
 
 class GadgetDoesntExistError(Exception):
     def __init__(self, gadget_name: str):
@@ -19,6 +22,9 @@ class GadgetDoesntExistError(Exception):
 
 
 class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplier):
+    _publish_delay: float
+    _task_interval: float
+
     _gadgets: list[Gadget]
     _gadget_lock: threading.Lock
 
@@ -27,8 +33,11 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
 
     _threads: ThreadManager
 
-    def __init__(self):
+    def __init__(self, publish_delay: int = DEFAULT_PUBLISH_DELAY, task_interval: int = DEFAULT_PUBLISH_TASK_INTERVAL):
         super().__init__()
+        self._publish_delay = publish_delay
+        self._task_interval = task_interval
+
         self._gadgets = []
         self._gadget_lock = threading.Lock()
 
@@ -55,10 +64,10 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
                 container = gadget.updated_properties
                 if container.is_empty:
                     continue
-                if (now - container.last_changed) > datetime.timedelta(seconds=0.5):
+                if (now - container.last_changed) > datetime.timedelta(seconds=self._publish_delay):
                     gadget.reset_updated_properties()
                     self._forward_update(container)
-        time.sleep(0.1)
+        time.sleep(self._task_interval)
 
     def _forward_update(self, container: GadgetUpdateContainer):
         with self._publisher_lock:

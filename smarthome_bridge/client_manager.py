@@ -18,7 +18,7 @@ class ClientManager(ClientStatusSupplier):
     def __del__(self):
         while self._clients:
             client = self._clients[0]
-            self.remove_client(client.get_name())
+            self.remove_client(client.id)
 
     def _get_clients(self) -> list[Client]:
         return self._clients
@@ -31,9 +31,9 @@ class ClientManager(ClientStatusSupplier):
         :return: None
         :raises ClientAlreadyExistsError: If a client with the given name is already present
         """
-        self._logger.info(f"Adding client '{client.get_name()}'")
-        if self.get_client(client.get_name()) is not None:
-            raise ClientAlreadyExistsError(client.get_name())
+        self._logger.info(f"Adding client '{client.id}'")
+        if self.get_client(client.id) is not None:
+            raise ClientAlreadyExistsError(client.id)
         self._clients.append(client)
 
     def remove_client(self, client_id: str):
@@ -58,12 +58,12 @@ class ClientManager(ClientStatusSupplier):
         :return: The client with the given name if present
         """
         for client in self._clients:
-            if client.get_name() == client_id:
+            if client.id == client_id:
                 return client
         raise ClientDoesntExistsError(client_id)
 
     def get_client_ids(self) -> list[str]:
-        return [x.get_name() for x in self._clients]
+        return [x.id for x in self._clients]
 
     def get_client_count(self) -> int:
         """

@@ -20,7 +20,7 @@ CLIENT_BOOT_MODE = 1
 
 @pytest.fixture
 def client():
-    client = Client(name=CLIENT_NAME,
+    client = Client(client_id=CLIENT_NAME,
                     runtime_id=RUNTIME_ID,
                     flash_date=CLIENT_FLASH_DATE,
                     software_commit=CLIENT_SW_COMMIT,

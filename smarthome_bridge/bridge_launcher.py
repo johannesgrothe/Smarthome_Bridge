@@ -34,7 +34,7 @@ class BridgeLauncher:
         bridge.gadgets.add_gadget(gadget2)
 
         date = datetime.utcnow()
-        client = Client(name="dummy_client",
+        client = Client(client_id="dummy_client",
                         runtime_id=18298931,
                         flash_date=date,
                         software_commit="2938479384",

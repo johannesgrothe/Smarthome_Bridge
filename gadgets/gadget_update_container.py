@@ -15,8 +15,7 @@ class GadgetUpdateContainer:
         self._last_changed = datetime.datetime.now()
 
     def _record_change(self):
-        with self._lock:
-            self._last_changed = datetime.datetime.now()
+        self._last_changed = datetime.datetime.now()
 
     @property
     def origin(self) -> str:
