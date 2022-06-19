@@ -185,3 +185,8 @@ class Client(ClientInformationInterface, ILogging):
     def set_timeout(self, seconds: int):
         """Sets the timeout for this client, after which it will register as 'offline'"""
         self._timeout = seconds
+
+    def add_gadget(self, gadget: RemoteGadget):
+        if not gadget.host_client == self:
+            raise Exception("U stupid m8?")
+        self._gadgets.append(gadget)

@@ -13,3 +13,9 @@ class SwitchService(AbstractService, OnCharacteristicMixin):
         """
         AbstractService.__init__(self, ServicesTypes.get_uuid('public.hap.service.switch'), get_id())
         OnCharacteristicMixin.__init__(self, get_id())
+
+
+class DenonReceiverService(AbstractService, OnCharacteristicMixin):
+    def __init__(self):
+        AbstractService.__init__(self, ServicesTypes.get_uuid('public.hap.service.switch'), get_id())
+        OnCharacteristicMixin.__init__(self, get_id())

@@ -4,34 +4,28 @@ from typing import Callable
 from homekit.model import BHSLightBulbService
 
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
-from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
+from gadgets.remote.lamp_rgb import LampRGB
+from lib.color_converter import ColorConverter
 
 
 class HomekitRGBLamp(HomekitAccessoryWrapper):
     """Class that realized a homekit rgb lamp"""
-    _status: int
-    _hue: int
-    _brightness: int
-    _saturation: int
 
-    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface, status: int, hue: int, brightness: int,
-                 saturation: int):
+    _origin: LampRGB
+
+    def __init__(self, origin: LampRGB):
         """
         Constructor for the homekit rgb lamp
 
-        :param name: Name of the accessory
-        :param publisher: Publisher for this gadget
-        :param status: Initial value for the status
-        :param hue: Initial value for the hue
-        :param brightness: Initial value for the brightness
-        :param saturation: Initial value for the saturation
+        :param origin: Gadget represented by this wrapper class
         """
-        super().__init__(name, publisher)
+        super().__init__(origin)
 
-        self._status = status
-        self._hue = hue
-        self._brightness = brightness
-        self._saturation = saturation
+        self._status = origin.rgb != (0, 0, 0)
+        hsv = ColorConverter.rgb_to_hsv([origin.red, origin.green, origin.blue])
+        self._hue = hsv[0]
+        self._brightness = hsv[1]
+        self._saturation = hsv[2]
 
         rgb_light_service = BHSLightBulbService()
 
@@ -47,112 +41,61 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
         self._accessory.add_service(rgb_light_service)
 
-    def _trigger_update(self) -> None:
-        """
-        Updates the publisher with the characteristics
-
-        :return: None
-        """
-        update_data = {
-            "status": self.status,
-            "hue": self.hue,
-            "saturation": self.saturation,
-            "brightness": self.brightness
-        }
-        self._publisher.receive_update_from_gadget(self.name, update_data)
-
-    @property
-    def status(self) -> int:
-        """Value of the status characteristic"""
-        return self._status
-
-    @status.setter
-    def status(self, value: int):
-        """Sets the status characteristic"""
-        if self._status != value:
-            self._status = value
-            self._trigger_update()
-
-    @property
-    def hue(self) -> int:
-        """Value of the hue characteristic"""
-        return self._hue
-
-    @hue.setter
-    def hue(self, value: int):
-        """Sets the hue characteristic"""
-        if self._hue != value:
-            self._hue = value
-            self._trigger_update()
-
-    @property
-    def saturation(self) -> int:
-        """Value of the saturation characteristic"""
-        return self._saturation
-
-    @saturation.setter
-    def saturation(self, value: int):
-        """Sets the saturation characteristic"""
-        if self._saturation != value:
-            self._saturation = value
-            self._trigger_update()
-
-    @property
-    def brightness(self) -> int:
-        """Value of the brightness characteristic"""
-        return self._brightness
-
-    @brightness.setter
-    def brightness(self, value: int):
-        """Sets the brightness characteristic"""
-        if self._brightness != value:
-            self._brightness = value
-            self._trigger_update()
-
     def _callback_set_status(self) -> Callable:
         def func(new_value):
-            self.status = new_value
+            print(new_value)
+            if not new_value:
+                self._origin.rgb = (0, 0, 0)
 
         return func
 
     def _callback_set_hue(self) -> Callable:
         def func(new_value):
-            self.hue = new_value
+            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
+            rgb = ColorConverter.hsv_to_rgb([new_value, hsv[1], hsv[2]])
+            self._origin.rgb = (rgb[0], rgb[1], rgb[2])
 
         return func
 
     def _callback_set_brightness(self) -> Callable:
         def func(new_value):
-            self.brightness = new_value
+            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
+            rgb = ColorConverter.hsv_to_rgb([hsv[0], hsv[1], new_value])
+            self._origin.rgb = (rgb[0], rgb[1], rgb[2])
 
         return func
 
     def _callback_set_saturation(self) -> Callable:
         def func(new_value):
-            self.saturation = new_value
+            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
+            rgb = ColorConverter.hsv_to_rgb([hsv[0], new_value, hsv[2]])
+            self._origin.rgb = (rgb[0], rgb[1], rgb[2])
 
         return func
 
     def _callback_get_status(self) -> Callable:
         def func():
-            return self.status
+            return self._origin.rgb != (0, 0, 0)
 
         return func
 
     def _callback_get_hue(self) -> Callable:
         def func():
-            return self.hue
+            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
+            return hsv[0]
 
         return func
 
     def _callback_get_brightness(self) -> Callable:
         def func():
-            return self.brightness
+            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
+            return hsv[1]
 
         return func
 
     def _callback_get_saturation(self) -> Callable:
         def func():
-            return self.saturation
+            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
+            return hsv[2]
 
         return func

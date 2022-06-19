@@ -6,7 +6,7 @@ class ILogging:
 
     def __init__(self):
         super().__init__()
-        self._logger = self._get_logger()
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
     def _get_logger(cls):

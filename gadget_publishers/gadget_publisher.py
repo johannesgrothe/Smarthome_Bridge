@@ -1,7 +1,6 @@
 from lib.logging_interface import ILogging
 from abc import ABC
 from typing import Optional
-import threading
 
 from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import GadgetStatusReceiver
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
@@ -24,13 +23,11 @@ class GadgetCreationError(Exception):
 
 class GadgetPublisher(ILogging, GadgetStatusReceiver, ABC):
 
-    __publish_lock: threading.Lock
     _last_published_gadget: Optional[str]
     _status_supplier: Optional[GadgetStatusSupplier]
 
     def __init__(self):
         super().__init__()
-        self.__publish_lock = threading.Lock()
         self._last_published_gadget = None
         self._status_supplier = None
 

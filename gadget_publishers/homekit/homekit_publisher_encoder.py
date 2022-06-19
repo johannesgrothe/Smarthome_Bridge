@@ -25,15 +25,7 @@ class HomekitPublisherFactory:
         :raises HomekitEncodeError: If encoding fails for any reason
         """
         if isinstance(gadget, LampRGB):
-            hsv = ColorConverter.rgb_to_hsv([gadget.red, gadget.green, gadget.blue])
-            return HomekitRGBLamp(gadget.id,
-                                  publisher,
-                                  0 if gadget.rgb == (0, 0, 0) else 1,
-                                  hsv[0],
-                                  hsv[1],
-                                  hsv[2])
+            return HomekitRGBLamp(gadget)
         elif isinstance(gadget, DenonRemoteControlGadget):
-            return HomekitDenonReceiver(gadget.id,
-                                        publisher,
-                                        gadget.status)
+            return HomekitDenonReceiver(gadget)
         raise HomekitEncodeError(f"Cannot encode gadget of type {gadget.__class__.__name__}")

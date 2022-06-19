@@ -1,65 +1,37 @@
 """Module for the homekit rgb lamp"""
 from typing import Callable
 
-from homekit.model import BHSLightBulbService
-
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
-from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
+from gadget_publishers.homekit.homekit_services import DenonReceiverService
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 
 
 class HomekitDenonReceiver(HomekitAccessoryWrapper):
     """Class that realized a homekit rgb lamp"""
-    _status: int
+    _origin: DenonRemoteControlGadget
 
-    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface, status: int):
+    def __init__(self, origin: DenonRemoteControlGadget):
         """
         Constructor for the homekit rgb lamp
 
-        :param name: Name of the accessory
-        :param publisher: Publisher for this gadget
-        :param status: Initial value for the status
+        :param origin: Publisher for this gadget
         """
-        super().__init__(name, publisher)
+        super().__init__(origin)
 
-        self._status = status
+        service = DenonReceiverService()
+        service.set_on_set_callback(self._callback_set_status())
+        service.set_on_get_callback(self._callback_get_status())
 
-        rgb_light_service = BHSLightBulbService()
-        rgb_light_service.set_on_set_callback(self._callback_set_status())
-        rgb_light_service.set_on_get_callback(self._callback_get_status())
-
-        self._accessory.add_service(rgb_light_service)
-
-    def _trigger_update(self) -> None:
-        """
-        Updates the publisher with the characteristics
-
-        :return: None
-        """
-        update_data = {
-            "status": self.status
-        }
-        self._publisher.receive_update_from_gadget(self.name, update_data)
-
-    @property
-    def status(self) -> int:
-        """Value of the status characteristic"""
-        return self._status
-
-    @status.setter
-    def status(self, value: int):
-        """Sets the status characteristic"""
-        if self._status != value:
-            self._status = value
-            self._trigger_update()
+        self._accessory.add_service(service)
 
     def _callback_set_status(self) -> Callable:
         def func(new_value):
-            self.status = new_value
+            self._origin.status = new_value
 
         return func
 
     def _callback_get_status(self) -> Callable:
         def func():
-            return self.status
+            return self._origin.status
 
         return func

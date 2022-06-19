@@ -32,9 +32,12 @@ class ClientManager(ClientStatusSupplier):
         :raises ClientAlreadyExistsError: If a client with the given name is already present
         """
         self._logger.info(f"Adding client '{client.id}'")
-        if self.get_client(client.id) is not None:
+        try:
+            self.get_client(client.id)
+        except ClientDoesntExistsError:
+            self._clients.append(client)
+        else:
             raise ClientAlreadyExistsError(client.id)
-        self._clients.append(client)
 
     def remove_client(self, client_id: str):
         """

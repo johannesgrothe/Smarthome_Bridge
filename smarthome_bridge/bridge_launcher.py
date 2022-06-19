@@ -1,6 +1,7 @@
 import os
 
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from gadgets.remote.fan import Fan
 from gadgets.remote.lamp_rgb import LampRGB
 from system.api_definitions import ApiAccessLevel
@@ -14,7 +15,7 @@ from network.mqtt_credentials_container import MqttCredentialsContainer
 from network.mqtt_connector import MQTTConnector
 from network.rest_server import RestServer
 
-from smarthome_bridge.client import Client
+from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
 from datetime import datetime
 
 
@@ -23,26 +24,33 @@ class BridgeLauncher:
     @staticmethod
     def _add_dummy_data(bridge: Bridge):
 
-        gadget = Fan("dummy_fan",
-                     "bridge",
-                     3)
-        bridge.gadgets.add_gadget(gadget)
-
-        gadget2 = LampRGB("dummy_lamp",
-                          "bridge")
-
-        bridge.gadgets.add_gadget(gadget2)
-
         date = datetime.utcnow()
         client = Client(client_id="dummy_client",
                         runtime_id=18298931,
-                        flash_date=date,
-                        software_commit="2938479384",
-                        software_branch="spongo",
+                        software=ClientSoftwareInformationContainer(
+                            "2938479384",
+                            "spongo",
+                            date
+                        ),
                         port_mapping={},
                         boot_mode=1,
                         api_version=SoftwareVersion(0, 0, 1))
         bridge.clients.add_client(client)
+
+        # gadget = Fan("dummy_fan",
+        #              client,
+        #              3)
+        # bridge.gadgets.add_gadget(gadget)
+        # client.add_gadget(gadget)
+        #
+        # gadget2 = LampRGB("dummy_lamp",
+        #                   client)
+        #
+        # bridge.gadgets.add_gadget(gadget2)
+        # client.add_gadget(gadget2)
+
+        gadget3 = DenonRemoteControlGadget("denon_tester", "192.168.178.155")
+        bridge.gadgets.add_gadget(gadget3)
 
     def launch(self,
                name: str,
