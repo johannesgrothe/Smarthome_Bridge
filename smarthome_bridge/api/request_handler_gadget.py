@@ -62,7 +62,7 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
         :return: None
         """
         try:
-            self._validator.validate(req.get_payload(), "api_gadget_update_request")
+            self._validator.validate(req.get_payload(), "api_gadget_update")
         except ValidationError:
             ResponseCreator.respond_with_error(req,
                                                "ValidationError",

@@ -20,6 +20,19 @@ class GadgetApiEncoderSuper(metaclass=ABCMeta):
         """Encodes attributes specific to this gadget"""
 
     @classmethod
-    @abstractmethod
     def encode_gadget_update(cls, gadget: Gadget, container: GadgetUpdateContainer) -> dict:
-        """Encodes the local Gadget for the api"""
+        """Encodes the update data for the api"""
+        data = {
+            "id": gadget.id,
+            "attributes": cls._encode_update_attributes(gadget, container)
+        }
+
+        if container.name:
+            data["name"] = gadget.name
+
+        return data
+
+    @classmethod
+    @abstractmethod
+    def _encode_update_attributes(cls, gadget: Gadget, container: GadgetUpdateContainer) -> dict:
+        """Encodes update data fpr the gadgets attributes"""

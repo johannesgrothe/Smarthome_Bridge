@@ -4,8 +4,8 @@ from smarthome_bridge.api_coders.gadgets.local_gadget_api_encoder import LocalGa
 
 class DenonReceiverEncoder(LocalGadgetApiEncoderSuper):
     @classmethod
-    def encode_gadget_update(cls, gadget: DenonRemoteControlGadget,
-                             container: DenonRemoteControlGadgetUpdateContainer) -> dict:
+    def _encode_update_attributes(cls, gadget: DenonRemoteControlGadget,
+                                  container: DenonRemoteControlGadgetUpdateContainer) -> dict:
         out_data = {}
         if container.name:
             out_data["name"] = gadget.name
