@@ -37,12 +37,12 @@ class BridgeLauncher:
                         api_version=SoftwareVersion(0, 0, 1))
         bridge.clients.add_client(client)
 
-        # gadget = Fan("dummy_fan",
-        #              client,
-        #              3)
-        # bridge.gadgets.add_gadget(gadget)
-        # client.add_gadget(gadget)
-        #
+        gadget = Fan("dummy_fan",
+                     client,
+                     3)
+        bridge.gadgets.add_gadget(gadget)
+        client.add_gadget(gadget)
+
         # gadget2 = LampRGB("dummy_lamp",
         #                   client)
         #

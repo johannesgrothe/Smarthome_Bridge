@@ -23,7 +23,7 @@ class RequestHandlerBridge(RequestHandler):
 
     def handle_request(self, req: Request) -> None:
         switcher = {
-            ApiURIs.info_bridge: self._handle_info_bridge,
+            ApiURIs.info_bridge.uri: self._handle_info_bridge,
             ApiURIs.bridge_update_check.uri: self._handle_check_bridge_for_update,
             ApiURIs.bridge_update_execute.uri: self._handle_bridge_update
         }

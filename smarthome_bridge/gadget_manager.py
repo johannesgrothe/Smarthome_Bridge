@@ -50,12 +50,14 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
 
     def __del__(self):
         self._threads.__del__()
-        while self._gadgets:
-            gadget = self._gadgets.pop()
-            gadget.__del__()
-        while self._publishers:
-            publisher = self._publishers.pop()
-            publisher.__del__()
+        with self._publisher_lock:
+            while self._publishers:
+                publisher = self._publishers.pop()
+                publisher.__del__()
+        with self._gadget_lock:
+            while self._gadgets:
+                gadget = self._gadgets.pop()
+                gadget.__del__()
 
     def _update_applier_thread(self):
         with self._gadget_lock:

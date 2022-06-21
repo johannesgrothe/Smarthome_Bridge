@@ -36,9 +36,9 @@ class LampRGB(RemoteGadget):
                  value_blue: int = 0):
         super().__init__(gadget_id,
                          host_client)
-        self.red = value_red
-        self.green = value_green
-        self.blue = value_blue
+        self._red = value_red
+        self._green = value_green
+        self._blue = value_blue
 
     def reset_updated_properties(self):
         self._update_container = LampRgbUpdateContainer(self.id)

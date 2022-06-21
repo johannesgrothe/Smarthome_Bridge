@@ -5,6 +5,7 @@ from typing import Union, List
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.local_gadget import LocalGadget
 import denonavr
+from denonavr.exceptions import AvrTimoutError
 
 from utils.thread_manager import ThreadManager
 
@@ -67,15 +68,21 @@ class DenonRemoteControlGadget(LocalGadget):
         self._threads.add_thread(f"{self.__class__.__name__}UpdateThread", self._apply_updates)
         self._threads.start_threads()
 
-    def _apply_updates(self):
-        self._controller.update()
-        power = self._controller.power
-        if power is not None:
-            self.status = True if power == "ON" else False
+    def __del__(self):
+        self._threads.__del__()
 
-        source = self._controller.input_func
-        if source is not None:
-            self.source = source
+    def _apply_updates(self):
+        try:
+            self._controller.update()
+            power = self._controller.power
+            if power is not None:
+                self.status = True if power == "ON" else False
+
+            source = self._controller.input_func
+            if source is not None:
+                self.source = source
+        except AvrTimoutError:
+            pass
         time.sleep(1)
 
     def reset_updated_properties(self):

@@ -1,11 +1,11 @@
 """Module for the homekit rgb lamp"""
+import colorsys
 from typing import Callable
 
 from homekit.model import BHSLightBulbService
 
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
 from gadgets.remote.lamp_rgb import LampRGB
-from lib.color_converter import ColorConverter
 
 
 class HomekitRGBLamp(HomekitAccessoryWrapper):
@@ -22,10 +22,10 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
         super().__init__(origin)
 
         self._status = origin.rgb != (0, 0, 0)
-        hsv = ColorConverter.rgb_to_hsv([origin.red, origin.green, origin.blue])
-        self._hue = hsv[0]
-        self._brightness = hsv[1]
-        self._saturation = hsv[2]
+        hue, saturation, value = colorsys.rgb_to_hsv(origin.red, origin.green, origin.blue)
+        self._hue = hue
+        self._brightness = value
+        self._saturation = saturation
 
         rgb_light_service = BHSLightBulbService()
 
@@ -43,7 +43,6 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     def _callback_set_status(self) -> Callable:
         def func(new_value):
-            print(new_value)
             if not new_value:
                 self._origin.rgb = (0, 0, 0)
 
@@ -51,25 +50,25 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     def _callback_set_hue(self) -> Callable:
         def func(new_value):
-            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
-            rgb = ColorConverter.hsv_to_rgb([new_value, hsv[1], hsv[2]])
-            self._origin.rgb = (rgb[0], rgb[1], rgb[2])
+            h, s, v = colorsys.rgb_to_hsv(self._origin.red, self._origin.green, self._origin.blue)
+            rgb = colorsys.hsv_to_rgb(new_value, s, v)
+            self._origin.rgb = rgb
 
         return func
 
     def _callback_set_brightness(self) -> Callable:
         def func(new_value):
-            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
-            rgb = ColorConverter.hsv_to_rgb([hsv[0], hsv[1], new_value])
-            self._origin.rgb = (rgb[0], rgb[1], rgb[2])
+            h, s, v = colorsys.rgb_to_hsv(self._origin.red, self._origin.green, self._origin.blue)
+            rgb = colorsys.hsv_to_rgb(h, s, new_value)
+            self._origin.rgb = rgb
 
         return func
 
     def _callback_set_saturation(self) -> Callable:
         def func(new_value):
-            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
-            rgb = ColorConverter.hsv_to_rgb([hsv[0], new_value, hsv[2]])
-            self._origin.rgb = (rgb[0], rgb[1], rgb[2])
+            h, s, v = colorsys.rgb_to_hsv(self._origin.red, self._origin.green, self._origin.blue)
+            rgb = colorsys.hsv_to_rgb(h, new_value, v)
+            self._origin.rgb = rgb
 
         return func
 
@@ -81,21 +80,21 @@ class HomekitRGBLamp(HomekitAccessoryWrapper):
 
     def _callback_get_hue(self) -> Callable:
         def func():
-            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
-            return hsv[0]
+            hue, _, _ = colorsys.rgb_to_hsv(self._origin.red, self._origin.green, self._origin.blue)
+            return hue
 
         return func
 
     def _callback_get_brightness(self) -> Callable:
         def func():
-            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
-            return hsv[1]
+            _, _, value = colorsys.rgb_to_hsv(self._origin.red, self._origin.green, self._origin.blue)
+            return value
 
         return func
 
     def _callback_get_saturation(self) -> Callable:
         def func():
-            hsv = ColorConverter.rgb_to_hsv([self._origin.red, self._origin.green, self._origin.blue])
-            return hsv[2]
+            _, saturation, _ = colorsys.rgb_to_hsv(self._origin.red, self._origin.green, self._origin.blue)
+            return saturation
 
         return func

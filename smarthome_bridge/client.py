@@ -176,7 +176,12 @@ class Client(ClientInformationInterface, ILogging):
 
     def trigger_activity(self):
         """Reports any activity of the client"""
+        present_activity = self.is_active
         self._last_connected = datetime.now()
+        if present_activity != self.is_active:
+            with self._gadgets_lock:
+                for gadget in self._gadgets:
+                    gadget.record_client_change()
 
     def get_port_mapping(self) -> dict:
         """Returns the port mapping of the client"""

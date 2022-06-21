@@ -3,7 +3,6 @@ from abc import ABCMeta
 
 from homekit.model import Accessory
 
-from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
 from gadget_publishers.homekit.homekit_accessory_constants import HomekitConstants
 from gadgets.gadget import Gadget
 from lib.logging_interface import ILogging
@@ -29,6 +28,9 @@ class HomekitAccessoryWrapper(ILogging, metaclass=ABCMeta):
                                     HomekitConstants().serial_number,
                                     HomekitConstants().revision)
         # self._accessory.set_identify_callback(status_cb)
+
+    def __del__(self):
+        self._logger.debug(f"Destructing Homekit Accessory Wrapper for {self._origin.id}")
 
     @property
     def name(self) -> str:

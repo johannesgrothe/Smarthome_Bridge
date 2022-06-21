@@ -28,6 +28,7 @@ class RequestHandlerClient(RequestHandler):
     def handle_request(self, req: Request) -> None:
         switcher = {
             ApiURIs.heartbeat.uri: self._handle_heartbeat,
+            ApiURIs.info_clients.uri: self._handle_info_clients,
             ApiURIs.sync_client.uri: self._handle_client_sync,
             ApiURIs.client_config_write.uri: self._handle_client_config_write,
             ApiURIs.client_config_delete.uri: self._handle_client_config_delete

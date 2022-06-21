@@ -6,6 +6,7 @@ from network.auth_container import CredentialsAuthContainer, SerialAuthContainer
 from network.request import Request
 from lib.pubsub import Subscriber
 from smarthome_bridge.api.exceptions import AuthError
+from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.request_handler_bridge import RequestHandlerBridge
 from smarthome_bridge.api.request_handler_client import RequestHandlerClient
 from smarthome_bridge.api.request_handler_configs import RequestHandlerConfigs
@@ -18,7 +19,7 @@ from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import B
 from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
-from system.api_definitions import ApiURIs, ApiAccessLevel
+from system.api_definitions import ApiURIs, ApiAccessLevel, ApiEndpointCategory
 from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
 from utils.user_manager import UserDoesNotExistException
@@ -168,12 +169,24 @@ class ApiManager(Subscriber, ILogging, IValidator):
             return
 
         switcher = {
-
+            ApiEndpointCategory.System: self._bridge_request_handler,
+            ApiEndpointCategory.Gadgets: self._gadget_request_handler,
+            ApiEndpointCategory.Publishers: self._gadget_publisher_request_handler,
+            ApiEndpointCategory.Clients: self._client_request_handler,
+            ApiEndpointCategory.Configs: self._configs_request_handler
         }
-        handler: Callable[[Request], None] = switcher.get(req.get_path(), self._handle_unknown)
-        handler(req)
 
-    def _handle_unknown(self, req: Request):
-        ResponseCreator.respond_with_error(req,
-                                           "UnknownUriError",
-                                           f"The URI requested ({req.get_path()}) does not exist")
+        endpoint_definition = ApiURIs.get_definition_for_uri(req.get_path())
+        handler: RequestHandler = switcher.get(endpoint_definition.category)
+        if handler is None:
+            ResponseCreator.respond_with_error(req,
+                                               "UnknownUriError",
+                                               f"The URI requested ({req.get_path()}) does not exist")
+            return
+
+        handler.handle_request(req)
+
+        if req.can_respond:
+            ResponseCreator.respond_with_error(req,
+                                               "NotImplementedError",
+                                               f"The URI requested ({req.get_path()}) is known to the system but not implemented")
