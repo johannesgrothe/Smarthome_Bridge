@@ -1,5 +1,5 @@
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget, DenonRemoteControlGadgetUpdateContainer
-from smarthome_bridge.api_coders.gadgets.local_gadget_api_encoder import LocalGadgetApiEncoderSuper
+from smarthome_bridge.api_encoders.gadgets.local_gadget_api_encoder import LocalGadgetApiEncoderSuper
 
 
 class DenonReceiverEncoder(LocalGadgetApiEncoderSuper):

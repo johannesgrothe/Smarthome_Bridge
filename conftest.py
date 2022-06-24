@@ -1,7 +1,6 @@
 import os
 
-from system.exporters.temp_dir_manager import TempDirManager
-from test_helpers.gadget_fixtures import *
+from system.utils.temp_dir_manager import TempDirManager
 from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer

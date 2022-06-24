@@ -21,12 +21,17 @@ class ClientSoftwareInformationContainer:
     def __init__(self, commit: str, branch: str, date: datetime):
         self._commit = commit
         self._branch = branch
-        self._date = date
+        self._date = date.replace(microsecond=0)
 
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, ClientSoftwareInformationContainer):
-            return False
-        return self.commit == other.commit and self.branch == other.branch and self.date == other.date
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, self.__class__):
+            return self.commit == other.commit and self.branch == other.branch and self.date == other.date
+        return NotImplemented
+
+    def __str__(self):
+        time_str = self._date.strftime("%m-%d %H:%M")
+        return f"{self._branch} @ {self._commit} / {time_str}"
 
     @property
     def commit(self) -> str:
@@ -110,6 +115,9 @@ class Client(ClientInformationInterface, ILogging):
                    self.get_port_mapping() == other.get_port_mapping() and \
                    self.api_version == other.api_version
         return NotImplemented
+
+    def __str__(self):
+        return f"{self.id} / {self.runtime_id} @ {self.api_version}"
 
     def _filter_mapping(self, in_map: dict) -> (bool, dict):
         """

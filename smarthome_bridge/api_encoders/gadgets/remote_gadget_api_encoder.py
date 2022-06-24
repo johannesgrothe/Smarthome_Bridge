@@ -1,7 +1,7 @@
 from abc import ABC
 
 from gadgets.remote.remote_gadget import RemoteGadget
-from smarthome_bridge.api_coders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
+from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 from smarthome_bridge.client_information_interface import ClientInformationInterface
 
 

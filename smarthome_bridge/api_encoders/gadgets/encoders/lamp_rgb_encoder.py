@@ -1,5 +1,5 @@
 from gadgets.remote.lamp_rgb import LampRGB, LampRgbUpdateContainer
-from smarthome_bridge.api_coders.gadgets.remote_gadget_api_encoder import RemoteGadgetApiEncoderSuper
+from smarthome_bridge.api_encoders.gadgets.remote_gadget_api_encoder import RemoteGadgetApiEncoderSuper
 
 
 class LampRgbEncoder(RemoteGadgetApiEncoderSuper):

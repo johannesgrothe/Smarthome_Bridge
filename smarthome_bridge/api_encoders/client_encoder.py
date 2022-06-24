@@ -1,6 +1,6 @@
 from lib.logging_interface import ILogging
-from smarthome_bridge.api_coders import DATETIME_FORMAT
-from smarthome_bridge.api_coders.gadget_api_encoder import GadgetEncodeError
+from smarthome_bridge.api_encoders import DATETIME_FORMAT
+from smarthome_bridge.api_encoders.gadget_api_encoder import GadgetEncodeError
 from smarthome_bridge.client import Client
 
 
@@ -34,7 +34,7 @@ class ClientApiEncoder(ILogging):
                 "branch": client.software_info.branch,
             }
 
-        return {"name": client.id,
+        return {"id": client.id,
                 "created": client.created.strftime(DATETIME_FORMAT),
                 "last_connected": client.last_connected.strftime(DATETIME_FORMAT),
                 "runtime_id": client.runtime_id,

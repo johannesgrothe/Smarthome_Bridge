@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Tuple
 
-from smarthome_bridge.api_coders import DATETIME_FORMAT
+from smarthome_bridge.api_encoders import DATETIME_FORMAT
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 
 

@@ -3,8 +3,8 @@ from typing import Type, Tuple, List
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from lib.logging_interface import ILogging
-from smarthome_bridge.api_coders.api_encoder_super import ApiEncoderSuper
-from smarthome_bridge.api_coders.gadget_publishers.gadget_publisher_homekit_encoder import GadgetPublisherHomekitEncoder
+from smarthome_bridge.api_encoders.api_encoder_super import ApiEncoderSuper
+from smarthome_bridge.api_encoders.gadget_publishers.gadget_publisher_homekit_encoder import GadgetPublisherHomekitEncoder
 
 _gadget_publisher_name_mapping: dict[Type[GadgetPublisher], str] = {
     GadgetPublisherHomekit: "homekit",

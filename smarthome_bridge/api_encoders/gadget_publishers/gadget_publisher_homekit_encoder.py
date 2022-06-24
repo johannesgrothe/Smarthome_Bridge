@@ -1,5 +1,5 @@
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
-from smarthome_bridge.api_coders.api_encoder_super import ApiEncoderSuper
+from smarthome_bridge.api_encoders.api_encoder_super import ApiEncoderSuper
 
 
 class GadgetPublisherHomekitEncoder(ApiEncoderSuper):

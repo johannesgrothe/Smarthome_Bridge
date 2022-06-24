@@ -1,7 +1,7 @@
 from abc import ABC
 
 from gadgets.local.local_gadget import LocalGadget
-from smarthome_bridge.api_coders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
+from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 
 
 class LocalGadgetApiEncoderSuper(GadgetApiEncoderSuper, ABC):

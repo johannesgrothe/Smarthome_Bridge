@@ -7,8 +7,8 @@ from network.request import Request, NoClientResponseException
 from smarthome_bridge.api.exceptions import UnknownClientException
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
-from smarthome_bridge.api_coders.client_encoder import ClientApiEncoder
-from smarthome_bridge.api_decoder import ApiDecoder, GadgetDecodeError
+from smarthome_bridge.api_encoders.client_encoder import ClientApiEncoder
+from smarthome_bridge.api_decoders.api_decoder import ApiDecoder, GadgetDecodeError
 from smarthome_bridge.client_manager import ClientDoesntExistsError
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
