@@ -23,9 +23,11 @@ class RemoteGadgetDecoder(ApiDecoderSuper):
         try:
             identifier = RemoteGadgetIdentifier(gadget_data["type"])
             gadget_class = None
-            for g_class, types in GadgetClassMapping:
-                if identifier in types:
+            for g_class, types in GadgetClassMapping.items():
+                remote_types = [x for x in types if isinstance(x, RemoteGadgetIdentifier)]
+                if identifier in remote_types:
                     gadget_class = g_class
+                    break
 
             if gadget_class is None:
                 raise GadgetDecodeError()
@@ -33,9 +35,9 @@ class RemoteGadgetDecoder(ApiDecoderSuper):
             if gadget_class == GadgetClass.lamp_rgb:
                 return LampRGB(gadget_data["id"],
                                host,
-                               gadget_data["red"],
-                               gadget_data["green"],
-                               gadget_data["blue"])
+                               gadget_data["attributes"]["red"],
+                               gadget_data["attributes"]["green"],
+                               gadget_data["attributes"]["blue"])
             else:
                 raise GadgetDecodeError()
 

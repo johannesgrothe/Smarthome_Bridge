@@ -2,6 +2,7 @@ from abc import abstractmethod, ABCMeta
 
 from gadgets.gadget import Gadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
+from system.gadget_definitions import GadgetClass
 
 
 class GadgetApiEncoderSuper(metaclass=ABCMeta):
@@ -11,8 +12,14 @@ class GadgetApiEncoderSuper(metaclass=ABCMeta):
         return {
             "id": gadget.id,
             "is_local": True,
+            "class": cls._encode_class().value,
             "attributes": cls._encode_attributes(gadget)
         }
+
+    @classmethod
+    @abstractmethod
+    def _encode_class(cls) -> GadgetClass:
+        """Encodes the class of the gadget"""
 
     @classmethod
     @abstractmethod

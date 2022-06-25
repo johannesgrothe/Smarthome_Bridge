@@ -1,8 +1,13 @@
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget, DenonRemoteControlGadgetUpdateContainer
 from smarthome_bridge.api_encoders.gadgets.local_gadget_api_encoder import LocalGadgetApiEncoderSuper
+from system.gadget_definitions import GadgetClass
 
 
 class DenonReceiverEncoder(LocalGadgetApiEncoderSuper):
+    @classmethod
+    def _encode_class(cls) -> GadgetClass:
+        return GadgetClass.tv
+
     @classmethod
     def _encode_update_attributes(cls, gadget: DenonRemoteControlGadget,
                                   container: DenonRemoteControlGadgetUpdateContainer) -> dict:

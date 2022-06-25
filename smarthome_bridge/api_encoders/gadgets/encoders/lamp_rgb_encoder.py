@@ -1,8 +1,13 @@
 from gadgets.remote.lamp_rgb import LampRGB, LampRgbUpdateContainer
 from smarthome_bridge.api_encoders.gadgets.remote_gadget_api_encoder import RemoteGadgetApiEncoderSuper
+from system.gadget_definitions import GadgetClass
 
 
 class LampRgbEncoder(RemoteGadgetApiEncoderSuper):
+    @classmethod
+    def _encode_class(cls) -> GadgetClass:
+        return GadgetClass.lamp_rgb
+
     @classmethod
     def _encode_update_attributes(cls, gadget: LampRGB, container: LampRgbUpdateContainer) -> dict:
         out_data = {}

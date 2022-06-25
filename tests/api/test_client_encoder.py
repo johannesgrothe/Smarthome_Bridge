@@ -42,7 +42,7 @@ def client_software_info():
 
 
 @pytest.fixture()
-def test_client(client_software_info: ClientSoftwareInformationContainer, client_api_version: SoftwareVersion):
+def client(client_software_info: ClientSoftwareInformationContainer, client_api_version: SoftwareVersion):
     client = Client(client_id=C_NAME,
                     runtime_id=C_RUNTIME_ID,
                     software=client_software_info,
@@ -53,7 +53,7 @@ def test_client(client_software_info: ClientSoftwareInformationContainer, client
 
 
 @pytest.mark.bridge
-def test_api_client_de_serialization(f_validator: Validator, test_client: Client, client_encoder: ClientApiEncoder,
+def test_api_client_de_serialization(f_validator: Validator, client: Client, client_encoder: ClientApiEncoder,
                                      client_decoder: ClientDecoder):
     serialized_data = client_encoder.encode_client(test_client)
     f_validator.validate(serialized_data, "api_client_data")
