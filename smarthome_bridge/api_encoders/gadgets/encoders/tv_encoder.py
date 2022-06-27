@@ -3,7 +3,7 @@ from smarthome_bridge.api_encoders.gadgets.local_gadget_api_encoder import Local
 from system.gadget_definitions import GadgetClass
 
 
-class DenonReceiverEncoder(LocalGadgetApiEncoderSuper):
+class TvEncoder(LocalGadgetApiEncoderSuper):
     @classmethod
     def _encode_class(cls) -> GadgetClass:
         return GadgetClass.tv

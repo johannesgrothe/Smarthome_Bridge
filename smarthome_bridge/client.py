@@ -3,7 +3,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Optional
 
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 from lib.logging_interface import ILogging
 from smarthome_bridge.client_information_interface import ClientInformationInterface
 from system.utils.software_version import SoftwareVersion
@@ -76,12 +76,12 @@ class Client(ClientInformationInterface, ILogging):
     # API version the client is running on
     _api_version: SoftwareVersion
 
-    _gadgets: list[RemoteGadget]
+    _gadgets: list[IRemoteGadget]
     _gadgets_lock: threading.Lock
 
     def __init__(self, client_id: str, runtime_id: int, software: Optional[ClientSoftwareInformationContainer],
                  port_mapping: dict, boot_mode: int, api_version: SoftwareVersion,
-                 connection_timeout: int = DEFAULT_TIMEOUT, gadgets: list[RemoteGadget] = None):
+                 connection_timeout: int = DEFAULT_TIMEOUT, gadgets: list[IRemoteGadget] = None):
         super().__init__()
         self._id = client_id
         self._last_connected = datetime(1900, 1, 1)
@@ -149,7 +149,7 @@ class Client(ClientInformationInterface, ILogging):
         return self._id
 
     @property
-    def gadgets(self) -> list[RemoteGadget]:
+    def gadgets(self) -> list[IRemoteGadget]:
         return self._gadgets
 
     @property
@@ -199,7 +199,7 @@ class Client(ClientInformationInterface, ILogging):
         """Sets the timeout for this client, after which it will register as 'offline'"""
         self._timeout = seconds
 
-    def add_gadget(self, gadget: RemoteGadget):
+    def add_gadget(self, gadget: IRemoteGadget):
         if not gadget.host_client == self:
             raise Exception("U stupid m8?")
         self._gadgets.append(gadget)

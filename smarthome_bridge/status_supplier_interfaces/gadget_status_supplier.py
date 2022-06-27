@@ -3,8 +3,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 
 from gadgets.gadget import Gadget
-from gadgets.local.local_gadget import LocalGadget
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.local.i_local_gadget import ILocalGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import GadgetStatusReceiver
 
@@ -62,9 +62,9 @@ class GadgetStatusSupplier(metaclass=ABCMeta):
         return self._get_gadgets()
 
     @property
-    def local_gadgets(self) -> list[LocalGadget]:
-        return [x for x in self.gadgets if isinstance(x, LocalGadget)]
+    def local_gadgets(self) -> list[ILocalGadget]:
+        return [x for x in self.gadgets if isinstance(x, ILocalGadget)]
 
     @property
-    def remote_gadgets(self) -> list[RemoteGadget]:
-        return [x for x in self.gadgets if isinstance(x, RemoteGadget)]
+    def remote_gadgets(self) -> list[IRemoteGadget]:
+        return [x for x in self.gadgets if isinstance(x, IRemoteGadget)]

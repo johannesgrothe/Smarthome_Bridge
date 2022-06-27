@@ -7,7 +7,7 @@ from gadgets.gadget_update_container import GadgetUpdateContainer
 from lib.logging_interface import ILogging
 from gadget_publishers.gadget_publisher import GadgetPublisher
 
-from gadgets.remote.remote_gadget import Gadget
+from gadgets.remote.i_remote_gadget import Gadget
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from utils.thread_manager import ThreadManager

@@ -1,39 +1,49 @@
 import datetime
 import threading
 
+from gadgets.i_update_container import IUpdateContainer
 
-class GadgetUpdateContainer:
-    _lock: threading.Lock
+
+class GadgetUpdateContainer(IUpdateContainer):
+    __lock: threading.Lock
+    __last_changed: datetime.datetime
     _source_id: str
-    _last_changed: datetime.datetime
     _name: bool
 
     def __init__(self, origin_id: str):
+        super().__init__()
+        self.__lock = threading.Lock()
+        self.__last_changed = datetime.datetime.now()
         self._source_id = origin_id
-        self._lock = threading.Lock()
         self._name = False
-        self._last_changed = datetime.datetime.now()
+
+    def _get_lock(self):
+        return self.__lock
 
     def _record_change(self):
-        self._last_changed = datetime.datetime.now()
+        self.__last_changed = datetime.datetime.now()
+
+    def _get_last_change(self):
+        return self.__last_changed
 
     @property
     def origin(self) -> str:
-        with self._lock:
+        with self._get_lock():
             return self._source_id
 
     @property
     def last_changed(self) -> datetime.datetime:
-        with self._lock:
-            return self._last_changed
+        with self._get_lock():
+            return self.__last_changed
 
     @property
-    def is_empty(self):
-        with self._lock:
+    def is_empty(self) -> bool:
+        with self._get_lock():
             is_empty = True
             for key, value in self.__dict__.items():
-                if key not in ["_lock", "_source_id", "_last_changed", "_name"]:
-                    is_empty &= value
+                if not key.startswith("_GadgetUpdateContainer") and key not in ["__lock", "_source_id",
+                                                                                "__last_changed", "_name"]:
+                    is_empty &= not value
             return is_empty
 
     @property
@@ -41,6 +51,6 @@ class GadgetUpdateContainer:
         return self._name
 
     def set_name(self):
-        with self._lock:
+        with self._get_lock():
             self._name = True
             self._record_change()

@@ -4,7 +4,7 @@ import pytest
 
 from gadget_publishers.gadget_publisher import GadgetDeletionError, GadgetCreationError
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from smarthome_bridge.characteristic import Characteristic
@@ -62,7 +62,7 @@ def publisher(config: str):
 
 
 @pytest.mark.bridge
-def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: RemoteGadget, status_supplier: DummyStatusSupplier):
+def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: IRemoteGadget, status_supplier: DummyStatusSupplier):
     with pytest.raises(GadgetDeletionError):
         publisher.remove_gadget(gadget.get_name())
 

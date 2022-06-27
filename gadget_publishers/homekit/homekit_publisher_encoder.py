@@ -2,9 +2,9 @@ from gadget_publishers.homekit.homekit_accessory_denon_receiver import HomekitDe
 from gadget_publishers.homekit.homekit_accessory_fan import HomekitFan
 from gadget_publishers.homekit.homekit_accessory_rgb_lamp import HomekitRGBLamp
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
-from gadgets.remote.fan import Fan
-from gadgets.remote.lamp_rgb import LampRGB
-from gadgets.remote.remote_gadget import Gadget
+from gadgets.remote.remote_fan import Fan
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
+from gadgets.remote.i_remote_gadget import Gadget
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 
 
@@ -23,7 +23,7 @@ class HomekitPublisherFactory:
         :return: A homekit accessory wrapper for the gadget
         :raises HomekitEncodeError: If encoding fails for any reason
         """
-        if isinstance(gadget, LampRGB):
+        if isinstance(gadget, RemoteLampRGB):
             return HomekitRGBLamp(gadget)
         elif isinstance(gadget, DenonRemoteControlGadget):
             return HomekitDenonReceiver(gadget)

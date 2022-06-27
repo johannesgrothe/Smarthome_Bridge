@@ -1,4 +1,4 @@
-from gadgets.remote.lamp_rgb import LampRGB
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 from smarthome_bridge.api_decoders.api_decoder_super import ApiDecoderSuper
 from smarthome_bridge.client_information_interface import ClientInformationInterface
 from system.gadget_definitions import RemoteGadgetIdentifier, GadgetClass, GadgetClassMapping
@@ -33,11 +33,11 @@ class RemoteGadgetDecoder(ApiDecoderSuper):
                 raise GadgetDecodeError()
 
             if gadget_class == GadgetClass.lamp_rgb:
-                return LampRGB(gadget_data["id"],
-                               host,
-                               gadget_data["attributes"]["red"],
-                               gadget_data["attributes"]["green"],
-                               gadget_data["attributes"]["blue"])
+                return RemoteLampRGB(gadget_data["id"],
+                                     host,
+                                     gadget_data["attributes"]["red"],
+                                     gadget_data["attributes"]["green"],
+                                     gadget_data["attributes"]["blue"])
             else:
                 raise GadgetDecodeError()
 

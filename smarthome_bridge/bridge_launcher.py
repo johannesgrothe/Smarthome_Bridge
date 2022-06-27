@@ -2,8 +2,8 @@ import os
 
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
-from gadgets.remote.fan import Fan
-from gadgets.remote.lamp_rgb import LampRGB
+from gadgets.remote.remote_fan import Fan
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 

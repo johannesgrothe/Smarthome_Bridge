@@ -12,7 +12,7 @@ from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessory
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
 from gadget_publishers.homekit.homekit_publisher_encoder import HomekitEncodeError, HomekitPublisherFactory
 from gadgets.gadget_update_container import GadgetUpdateContainer
-from gadgets.remote.remote_gadget import Gadget
+from gadgets.remote.i_remote_gadget import Gadget
 
 RESTART_DELAY = 7
 HOMEKIT_SERVER_NAME = "HomekitAccessoryServer"

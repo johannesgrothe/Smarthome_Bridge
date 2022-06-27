@@ -6,7 +6,7 @@ from gadget_publishers.gadget_publisher_homebridge import GadgetPublisherHomeBri
     GadgetCreationError, GadgetDeletionError
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 
 
 HOMEBRIDGE_NETWORK_NAME = "test_network"
@@ -57,7 +57,7 @@ def publisher_network(homebridge_network: HomebridgeNetworkConnector, gadget: Fa
 
 @pytest.mark.network
 @pytest.mark.bridge
-def test_gadget_publisher_homebridge_network(publisher_network: GadgetPublisherHomeBridge, gadget: RemoteGadget):
+def test_gadget_publisher_homebridge_network(publisher_network: GadgetPublisherHomeBridge, gadget: IRemoteGadget):
     with pytest.raises(GadgetDeletionError):
         publisher_network.remove_gadget(gadget.get_name())
 

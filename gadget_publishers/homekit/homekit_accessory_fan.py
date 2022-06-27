@@ -4,7 +4,7 @@ from typing import Callable
 from homekit.model import FanService
 
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
-from gadgets.remote.fan import Fan
+from gadgets.remote.remote_fan import Fan
 
 
 class HomekitFan(HomekitAccessoryWrapper):

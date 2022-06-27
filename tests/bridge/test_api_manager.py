@@ -9,7 +9,7 @@ from test_helpers.dummy_network_connector import DummyNetworkConnector
 from gadgets.fan_westinghouse_ir import FanWestinghouseIR
 from smarthome_bridge.client import Client
 from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 from system.api_definitions import ApiURIs
 from system.utils.software_version import SoftwareVersion
 from utils.client_config_manager import ClientConfigManager, ConfigDoesNotExistException
@@ -253,7 +253,7 @@ def test_api_heartbeat(api: ApiManager, network: DummyNetworkConnector, delegate
 
 @pytest.mark.bridge
 def test_api_handle_gadget_update(api: ApiManager, network: DummyNetworkConnector, delegate: DummyApiDelegate):
-    delegate.add_gadget(RemoteGadget(
+    delegate.add_gadget(IRemoteGadget(
         GADGET_NAME,
         "spongolopolus",
         [Characteristic(

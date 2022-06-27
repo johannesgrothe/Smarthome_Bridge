@@ -1,4 +1,4 @@
-from gadgets.remote.fan import Fan, FanUpdateContainer
+from gadgets.remote.remote_fan import Fan, FanUpdateContainer
 from smarthome_bridge.api_encoders.gadgets.remote_gadget_api_encoder import RemoteGadgetApiEncoderSuper
 from system.gadget_definitions import GadgetClass
 

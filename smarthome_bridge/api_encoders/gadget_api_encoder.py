@@ -3,14 +3,14 @@ from typing import Type, Tuple, List
 from gadgets.gadget import Gadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
-from gadgets.local.local_gadget import LocalGadget
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.local.i_local_gadget import ILocalGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 from lib.logging_interface import ILogging
-from smarthome_bridge.api_encoders.gadgets.encoders.denon_receiver_encoder import DenonReceiverEncoder
+from smarthome_bridge.api_encoders.gadgets.encoders.tv_encoder import TvEncoder
 from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 
 _type_mapping: List[Tuple[Type[Gadget], Type[GadgetApiEncoderSuper]]] = [
-    (DenonRemoteControlGadget, DenonReceiverEncoder)
+    (DenonRemoteControlGadget, TvEncoder)
 ]
 
 
@@ -35,7 +35,7 @@ class GadgetApiEncoder(ILogging):
         raise GadgetEncodeError(gadget.__class__.__name__, gadget.name, "No encoder found")
 
     @classmethod
-    def encode_all_gadgets_info(cls, remote_gadgets: list[RemoteGadget], local_gadgets: list[LocalGadget]) -> dict:
+    def encode_all_gadgets_info(cls, remote_gadgets: list[IRemoteGadget], local_gadgets: list[ILocalGadget]) -> dict:
         remote_gadget_data = []
         for gadget in remote_gadgets:
             try:

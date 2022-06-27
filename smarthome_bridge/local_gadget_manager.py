@@ -1,11 +1,11 @@
 from gadget_publishers.gadget_publisher import GadgetPublisher
 from lib.logging_interface import ILogging
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
-from gadgets.local.local_gadget import LocalGadget
+from gadgets.local.i_local_gadget import ILocalGadget
 
 
 class LocalGadgetManager(ILogging):
-    _gadgets: list[LocalGadget]
+    _gadgets: list[ILocalGadget]
     _gadget_publishers: list[GadgetPublisher]
 
     def __init__(self):
@@ -20,5 +20,5 @@ class LocalGadgetManager(ILogging):
         pass
 
     @property
-    def gadgets(self) -> list[LocalGadget]:
+    def gadgets(self) -> list[ILocalGadget]:
         return self._gadgets

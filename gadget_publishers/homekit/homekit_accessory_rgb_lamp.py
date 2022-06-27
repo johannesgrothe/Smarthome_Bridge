@@ -5,15 +5,15 @@ from typing import Callable
 from homekit.model import BHSLightBulbService
 
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
-from gadgets.remote.lamp_rgb import LampRGB
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 
 
 class HomekitRGBLamp(HomekitAccessoryWrapper):
     """Class that realized a homekit rgb lamp"""
 
-    _origin: LampRGB
+    _origin: RemoteLampRGB
 
-    def __init__(self, origin: LampRGB):
+    def __init__(self, origin: RemoteLampRGB):
         """
         Constructor for the homekit rgb lamp
 

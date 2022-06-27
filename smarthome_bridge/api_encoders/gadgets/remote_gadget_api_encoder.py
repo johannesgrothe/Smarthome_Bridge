@@ -1,13 +1,13 @@
 from abc import ABC
 
-from gadgets.remote.remote_gadget import RemoteGadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 from smarthome_bridge.client_information_interface import ClientInformationInterface
 
 
 class RemoteGadgetApiEncoderSuper(GadgetApiEncoderSuper, ABC):
     @classmethod
-    def encode_gadget(cls, gadget: RemoteGadget) -> dict:
+    def encode_gadget(cls, gadget: IRemoteGadget) -> dict:
         """Encodes the local Gadget for the api"""
         data = super().encode_gadget(gadget)
         data["host_client"] = cls._encode_host(gadget.host_client)

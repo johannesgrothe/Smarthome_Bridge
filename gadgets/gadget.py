@@ -1,17 +1,18 @@
 import logging
-from abc import ABCMeta, abstractmethod
+from abc import ABC
 
 from gadgets.gadget_update_container import GadgetUpdateContainer
+from gadgets.i_updatable_gadget import IUpdatableGadget
 
 
-class Gadget(metaclass=ABCMeta):
+class Gadget(IUpdatableGadget, ABC):
     _id: str
     _name: str
     _logger: logging.Logger
-    _update_container: GadgetUpdateContainer
 
     def __init__(self,
                  gadget_id: str):
+        super().__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
         self._id = gadget_id
         self._name = self._id
@@ -42,7 +43,3 @@ class Gadget(metaclass=ABCMeta):
     @property
     def updated_properties(self) -> GadgetUpdateContainer:
         return self._update_container
-
-    @abstractmethod
-    def reset_updated_properties(self):
-        pass
