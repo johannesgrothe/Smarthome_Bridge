@@ -6,7 +6,7 @@ from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from gadgets.local.i_local_gadget import ILocalGadget
 from gadgets.remote.i_remote_gadget import IRemoteGadget
 from lib.logging_interface import ILogging
-from smarthome_bridge.api_encoders.gadgets.encoders.tv_encoder import TvEncoder
+from smarthome_bridge.api_encoders.gadgets.implementations.local_tv_encoder import TvEncoder
 from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 
 _type_mapping: List[Tuple[Type[Gadget], Type[GadgetApiEncoderSuper]]] = [

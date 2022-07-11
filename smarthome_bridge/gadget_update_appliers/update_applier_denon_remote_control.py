@@ -1,4 +1,5 @@
-from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget, SourceError
+from gadgets.classes.tv import SourceError
+from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from smarthome_bridge.gadget_update_appliers.gadget_update_applier_super import GadgetUpdateApplierSuper, \
     UpdateApplyError
 

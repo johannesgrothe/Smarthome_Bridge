@@ -55,8 +55,8 @@ def client(client_software_info: ClientSoftwareInformationContainer, client_api_
 @pytest.mark.bridge
 def test_api_client_de_serialization(f_validator: Validator, client: Client, client_encoder: ClientApiEncoder,
                                      client_decoder: ClientDecoder):
-    serialized_data = client_encoder.encode_client(test_client)
+    serialized_data = client_encoder.encode_client(client)
     f_validator.validate(serialized_data, "api_client_data")
     decoded_client = client_decoder.decode(serialized_data)
-    assert decoded_client.software_info == test_client.software_info
-    assert decoded_client == test_client
+    assert decoded_client.software_info == client.software_info
+    assert decoded_client == client

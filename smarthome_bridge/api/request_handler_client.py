@@ -7,8 +7,8 @@ from network.request import Request, NoClientResponseException
 from smarthome_bridge.api.exceptions import UnknownClientException
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
+from smarthome_bridge.api_decoders.remote_gadget_decoder import RemoteGadgetDecoder, GadgetDecodeError
 from smarthome_bridge.api_encoders.client_encoder import ClientApiEncoder
-from smarthome_bridge.api_decoders.api_decoder import ApiDecoder, GadgetDecodeError
 from smarthome_bridge.client_manager import ClientDoesntExistsError
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
@@ -153,15 +153,13 @@ class RequestHandlerClient(RequestHandler):
 
         self._logger.info(f"Syncing client {client_id}")
 
-        decoder = ApiDecoder()
-
         new_client = decoder.decode_client(req.get_payload()["client"], req.get_sender())
 
         gadget_data = req.get_payload()["gadgets"]
 
         for gadget_info in gadget_data:
             try:
-                gadget = ApiDecoder.decode_remote_gadget(gadget_info, client_id)
+                gadget = RemoteGadgetDecoder.decode(gadget_info, new_client)
                 self._gadget_manager.add_gadget(gadget)
             except GadgetDecodeError as err:
                 print(err.args[0])

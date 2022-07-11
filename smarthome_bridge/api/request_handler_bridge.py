@@ -25,7 +25,8 @@ class RequestHandlerBridge(RequestHandler):
         switcher = {
             ApiURIs.info_bridge.uri: self._handle_info_bridge,
             ApiURIs.bridge_update_check.uri: self._handle_check_bridge_for_update,
-            ApiURIs.bridge_update_execute.uri: self._handle_bridge_update
+            ApiURIs.bridge_update_execute.uri: self._handle_bridge_update,
+            ApiURIs.test_echo.uri: self._handle_echo
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), None)
         if handler is not None:
@@ -83,3 +84,12 @@ class RequestHandlerBridge(RequestHandler):
             updater.reboot()
         except UpdateNotSuccessfulException:
             ResponseCreator.respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")
+
+    def _handle_echo(self, req: Request):
+        """
+        Responds with the same payload as it received
+
+        :param req: any Request
+        :return: None
+        """
+        req.respond(req.get_payload())

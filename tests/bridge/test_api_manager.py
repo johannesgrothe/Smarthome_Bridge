@@ -4,11 +4,8 @@ import pytest
 
 from smarthome_bridge.api.api_manager import ApiManager
 from smarthome_bridge.network_manager import NetworkManager
-from test_helpers.dummy_api_delegate import DummyApiDelegate
 from test_helpers.dummy_network_connector import DummyNetworkConnector
-from gadgets.fan_westinghouse_ir import FanWestinghouseIR
-from smarthome_bridge.client import Client
-from smarthome_bridge.characteristic import Characteristic, CharacteristicIdentifier
+from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
 from gadgets.remote.i_remote_gadget import IRemoteGadget
 from system.api_definitions import ApiURIs
 from system.utils.software_version import SoftwareVersion
@@ -19,8 +16,9 @@ REQ_SENDER = "unittest"
 REQ_RUNTIME = 123456
 
 GADGET_NAME = "test_fan"
-GADGET_CHARACTERISTIC_TYPE = 1
 CLIENT_NAME = "test_client"
+
+T_TIMESTAMP = datetime.datetime.now()
 
 GADGET_CONFIG_OK = {
     "gadget": {
@@ -77,29 +75,29 @@ GADGET_CONFIG_ERR = {
         "percentage_value": 100
     }]
 }
-
-GADGET_UPDATE_ERR = {
-    "id": GADGET_NAME,
-    "characteristics": [{
-        "type": GADGET_CHARACTERISTIC_TYPE,
-    }]
-}
-
-GADGET_UPDATE_ERR_UNKNOWN = {
-    "id": "blubb",
-    "characteristics": [{
-        "type": GADGET_CHARACTERISTIC_TYPE,
-        "step_value": 0
-    }]
-}
-
-GADGET_UPDATE_OK = {
-    "id": GADGET_NAME,
-    "characteristics": [{
-        "type": GADGET_CHARACTERISTIC_TYPE,
-        "step_value": 0
-    }]
-}
+#
+# GADGET_UPDATE_ERR = {
+#     "id": GADGET_NAME,
+#     "characteristics": [{
+#         "type": GADGET_CHARACTERISTIC_TYPE,
+#     }]
+# }
+#
+# GADGET_UPDATE_ERR_UNKNOWN = {
+#     "id": "blubb",
+#     "characteristics": [{
+#         "type": GADGET_CHARACTERISTIC_TYPE,
+#         "step_value": 0
+#     }]
+# }
+#
+# GADGET_UPDATE_OK = {
+#     "id": GADGET_NAME,
+#     "characteristics": [{
+#         "type": GADGET_CHARACTERISTIC_TYPE,
+#         "step_value": 0
+#     }]
+# }
 
 CLIENT_CONFIG_OK = {
     "client": {
@@ -146,28 +144,28 @@ CONFIG_SAVE = {
 }
 
 
-@pytest.fixture()
-def gadget():
-    gadget = FanWestinghouseIR(GADGET_NAME,
-                               CLIENT_NAME,
-                               Characteristic(CharacteristicIdentifier.status,
-                                              0,
-                                              1),
-                               Characteristic(CharacteristicIdentifier.fan_speed,
-                                              0,
-                                              100,
-                                              4))
-    yield gadget
-    gadget.__del__()
+# @pytest.fixture()
+# def gadget():
+#     gadget = FanWestinghouseIR(GADGET_NAME,
+#                                CLIENT_NAME,
+#                                Characteristic(CharacteristicIdentifier.status,
+#                                               0,
+#                                               1),
+#                                Characteristic(CharacteristicIdentifier.fan_speed,
+#                                               0,
+#                                               100,
+#                                               4))
+#     yield gadget
+#     gadget.__del__()
 
 
 @pytest.fixture()
 def client():
     client = Client(CLIENT_NAME,
                     1773,
-                    datetime.datetime.now(),
-                    None,
-                    None,
+                    ClientSoftwareInformationContainer("t_commit",
+                                                       "t_branch",
+                                                       T_TIMESTAMP),
                     {},
                     1,
                     SoftwareVersion(1, 3, 6))

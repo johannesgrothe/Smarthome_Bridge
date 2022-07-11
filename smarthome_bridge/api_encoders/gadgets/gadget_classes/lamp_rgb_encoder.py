@@ -1,9 +1,9 @@
 from gadgets.remote.remote_lamp_rgb import RemoteLampRGB, RemoteLampRgbUpdateContainer
-from smarthome_bridge.api_encoders.gadgets.remote_gadget_api_encoder import RemoteGadgetApiEncoderSuper
+from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 from system.gadget_definitions import GadgetClass
 
 
-class LampRgbEncoder(RemoteGadgetApiEncoderSuper):
+class LampRgbEncoder(GadgetApiEncoderSuper):
     @classmethod
     def _encode_class(cls) -> GadgetClass:
         return GadgetClass.lamp_rgb

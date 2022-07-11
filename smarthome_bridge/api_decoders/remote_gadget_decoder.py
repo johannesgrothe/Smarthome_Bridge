@@ -1,3 +1,4 @@
+from gadgets.gadget import Gadget
 from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 from smarthome_bridge.api_decoders.api_decoder_super import ApiDecoderSuper
 from smarthome_bridge.client_information_interface import ClientInformationInterface
@@ -11,7 +12,7 @@ class GadgetDecodeError(Exception):
 
 class RemoteGadgetDecoder(ApiDecoderSuper):
     @classmethod
-    def decode(cls, gadget_data: dict, host: ClientInformationInterface) -> object:
+    def decode(cls, gadget_data: dict, host: ClientInformationInterface) -> Gadget:
         """
         Decodes a gadget out of the data given
 

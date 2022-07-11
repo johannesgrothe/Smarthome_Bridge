@@ -1,16 +1,16 @@
-from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget, DenonRemoteControlGadgetUpdateContainer
-from smarthome_bridge.api_encoders.gadgets.local_gadget_api_encoder import LocalGadgetApiEncoderSuper
+from gadgets.classes.tv import TvUpdateContainer, TV
+from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 from system.gadget_definitions import GadgetClass
 
 
-class TvEncoder(LocalGadgetApiEncoderSuper):
+class TvEncoder(GadgetApiEncoderSuper):
     @classmethod
     def _encode_class(cls) -> GadgetClass:
         return GadgetClass.tv
 
     @classmethod
-    def _encode_update_attributes(cls, gadget: DenonRemoteControlGadget,
-                                  container: DenonRemoteControlGadgetUpdateContainer) -> dict:
+    def _encode_update_attributes(cls, gadget: TV,
+                                  container: TvUpdateContainer) -> dict:
         out_data = {}
         if container.name:
             out_data["name"] = gadget.name
@@ -21,7 +21,7 @@ class TvEncoder(LocalGadgetApiEncoderSuper):
         return out_data
 
     @classmethod
-    def _encode_attributes(cls, gadget: DenonRemoteControlGadget) -> dict:
+    def _encode_attributes(cls, gadget: TV) -> dict:
         return {
             "status": gadget.status,
             "source": gadget.source_names[gadget.source],

@@ -2,9 +2,9 @@ from gadget_publishers.homekit.homekit_accessory_denon_receiver import HomekitDe
 from gadget_publishers.homekit.homekit_accessory_fan import HomekitFan
 from gadget_publishers.homekit.homekit_accessory_rgb_lamp import HomekitRGBLamp
 from gadget_publishers.homekit.homekit_accessory_wrapper import HomekitAccessoryWrapper
+from gadgets.gadget import Gadget
 from gadgets.remote.remote_fan import Fan
 from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
-from gadgets.remote.i_remote_gadget import Gadget
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 
 

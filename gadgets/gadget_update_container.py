@@ -42,7 +42,7 @@ class GadgetUpdateContainer(IUpdateContainer):
             is_empty = True
             for key, value in self.__dict__.items():
                 if not key.startswith("_GadgetUpdateContainer") and key not in ["__lock", "_source_id",
-                                                                                "__last_changed", "_name"]:
+                                                                                "__last_changed"]:
                     is_empty &= not value
             return is_empty
 

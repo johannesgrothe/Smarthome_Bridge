@@ -1,3 +1,4 @@
+from network.auth_container import AuthContainer
 from network.network_connector import NetworkConnector
 from network.request import Request
 from typing import Optional
@@ -6,7 +7,6 @@ import time
 
 
 class DummyNetworkConnector(NetworkConnector):
-
     _mock_ack: Optional[bool]
     _last_send: Optional[Request]
     _last_response: Optional[Request]
@@ -64,7 +64,8 @@ class DummyNetworkConnector(NetworkConnector):
 
         return mock_response_function
 
-    def mock_receive(self, path: str, sender: str, payload: dict, is_response: bool = False):
+    def mock_receive(self, path: str, sender: str, payload: dict, is_response: bool = False,
+                     auth: Optional[AuthContainer] = None):
         buf_req = Request(path,
                           None,
                           sender,
@@ -72,6 +73,8 @@ class DummyNetworkConnector(NetworkConnector):
                           payload,
                           is_response=is_response)
         buf_req.set_callback_method(self._get_mock_response_function())
+        if auth:
+            buf_req.set_auth(auth)
         self.receive(buf_req)
 
     def reset(self):

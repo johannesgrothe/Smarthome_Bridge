@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Callable
+from typing import Optional
 
 from lib.validator_interface import IValidator
 from network.auth_container import CredentialsAuthContainer, SerialAuthContainer, MqttAuthContainer
@@ -86,12 +86,24 @@ class ApiManager(Subscriber, ILogging, IValidator):
     def auth_manager(self, value: AuthManager):
         self._auth_manager = value
 
+    @property
+    def request_handler_bridge(self) -> RequestHandlerBridge:
+        return self._bridge_request_handler
+
+    @property
+    def request_handler_client(self) -> RequestHandlerClient:
+        return self._client_request_handler
+
+    @property
+    def request_handler_gadget(self) -> RequestHandlerGadget:
+        return self._gadget_request_handler
+
+    @property
+    def request_handler_configs(self) -> RequestHandlerConfigs:
+        return self._configs_request_handler
+
     def receive(self, req: Request):
         self._handle_request(req)
-
-    def request_sync(self, name: str):
-        self._logger.info(f"Requesting client sync information from '{name}'")
-        self._network.send_request(ApiURIs.sync_request.uri, name, {}, 0)
 
     def _log_request(self, req: Request):
         short_json = json.dumps(req.get_payload())
@@ -136,7 +148,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
             ResponseCreator.respond_with_error(req, "AccessLevelError", "Insufficient privileges")
             raise AuthError()
         except UnknownUriException:
-            self._handle_unknown(req)
+            ResponseCreator.respond_with_error(req, "UnknownUriError", "Uri is not known")
             raise AuthError()
 
     @staticmethod
@@ -160,9 +172,6 @@ class ApiManager(Subscriber, ILogging, IValidator):
     def _handle_request(self, req: Request):
         self._log_request(req)
 
-        if not self._check_direction(req):
-            return
-
         try:
             self._check_auth(req)
         except AuthError:
@@ -182,6 +191,9 @@ class ApiManager(Subscriber, ILogging, IValidator):
             ResponseCreator.respond_with_error(req,
                                                "UnknownUriError",
                                                f"The URI requested ({req.get_path()}) does not exist")
+            return
+
+        if not self._check_direction(req):
             return
 
         handler.handle_request(req)
