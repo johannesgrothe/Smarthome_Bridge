@@ -1,5 +1,4 @@
 import pytest
-import random
 
 from smarthome_bridge.gadget_manager import GadgetManager
 
@@ -12,5 +11,5 @@ def gadget_manager():
 
 
 @pytest.mark.bridge
-def test_gadget_manager(gadget_manager, f_any_gadget):
-    assert True
+def test_gadget_manager(gadget_manager):
+    assert len(gadget_manager.gadgets) == 0

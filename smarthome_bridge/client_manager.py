@@ -53,7 +53,7 @@ class ClientManager(ClientStatusSupplier):
             raise ClientDoesntExistsError(client_id)
         self._clients.remove(client)
 
-    def get_client(self, client_id: str) -> Optional[Client]:
+    def get_client(self, client_id: str) -> Client:
         """
         Returns the client with the given name if present
 

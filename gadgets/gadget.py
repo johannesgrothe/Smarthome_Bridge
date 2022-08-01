@@ -12,7 +12,7 @@ class Gadget(IUpdatableGadget, ABC):
 
     def __init__(self,
                  gadget_id: str):
-        super().__init__()
+        IUpdatableGadget.__init__(self)
         self._logger = logging.getLogger(self.__class__.__name__)
         self._id = gadget_id
         self._name = self._id

@@ -199,6 +199,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
         handler.handle_request(req)
 
         if req.can_respond:
-            ResponseCreator.respond_with_error(req,
-                                               "NotImplementedError",
-                                               f"The URI requested ({req.get_path()}) is known to the system but not implemented")
+            ResponseCreator.respond_with_error(
+                req,
+                "NotImplementedError",
+                f"The URI requested ({req.get_path()}) is known to the system but not implemented")

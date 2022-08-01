@@ -5,6 +5,8 @@ from typing import Optional
 import threading
 import time
 
+from smarthome_bridge.network_manager import NetworkManager
+
 
 class DummyNetworkConnector(NetworkConnector):
     _mock_ack: Optional[bool]
@@ -82,3 +84,12 @@ class DummyNetworkConnector(NetworkConnector):
         self._mock_ack = None
         self._last_send = None
         self._last_response = None
+
+
+class DummyNetworkManager(NetworkManager):
+    mock_connector: DummyNetworkConnector
+
+    def __init__(self, hostname: str):
+        super().__init__()
+        self.mock_connector = DummyNetworkConnector(hostname)
+        self.add_connector(self.mock_connector)

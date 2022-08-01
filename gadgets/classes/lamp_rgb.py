@@ -27,7 +27,8 @@ class LampRGB(Gadget, ABC):
 
     def __init__(self,
                  gadget_id: str):
-        super().__init__(gadget_id)
+        Gadget.__init__(self, gadget_id)
+        # super().__init__(gadget_id)
 
     @abstractmethod
     def _get_red(self) -> int:
