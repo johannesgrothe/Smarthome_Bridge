@@ -1,3 +1,4 @@
+import enum
 import json
 from typing import Optional
 
@@ -23,6 +24,13 @@ from system.api_definitions import ApiURIs, ApiAccessLevel, ApiEndpointCategory
 from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
     UnknownUriException
 from utils.user_manager import UserDoesNotExistException
+
+
+class RequestDirection(enum.IntEnum):
+    Incoming = 0
+    Outgoing = 1
+    Illegal = 2
+    Unknown = 3
 
 
 class ApiManagerSetupContainer:
@@ -103,7 +111,15 @@ class ApiManager(Subscriber, ILogging, IValidator):
         return self._configs_request_handler
 
     def receive(self, req: Request):
-        self._handle_request(req)
+        self._log_request(req)
+
+        direction_type = self._check_direction(req)
+        if direction_type == RequestDirection.Incoming:
+            self._handle_response(req)
+        elif direction_type == RequestDirection.Outgoing:
+            self._handle_request(req)
+        elif direction_type == RequestDirection.Unknown:
+            ResponseCreator.respond_with_error(req, "UnknownUriError", "Uri is not known")
 
     def _log_request(self, req: Request):
         short_json = json.dumps(req.get_payload())
@@ -117,13 +133,14 @@ class ApiManager(Subscriber, ILogging, IValidator):
         if self.auth_manager is None:
             return
 
-        if req.get_auth() is None:
+        auth = req.get_auth()
+
+        if auth is None:
             ResponseCreator.respond_with_error(req,
                                                "NeAuthError",
                                                "The bridge only accepts requests based on privileges")
             raise AuthError()
 
-        auth = req.get_auth()
         try:
             if isinstance(auth, CredentialsAuthContainer):
                 self.auth_manager.authenticate(auth.username, auth.password)
@@ -136,8 +153,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
                 self.auth_manager.check_path_access_level(ApiAccessLevel.mqtt,
                                                           req.get_path())
             else:
-                ResponseCreator.respond_with_error(req, "UnknownAuthError", "Unknown error occurred")
-                raise AuthError()
+                raise TypeError("Illegal auth type ", auth.__class__.__name__)
         except AuthenticationFailedException:
             ResponseCreator.respond_with_error(req, "WrongAuthError", "illegal combination of username and password")
             raise AuthError()
@@ -147,31 +163,30 @@ class ApiManager(Subscriber, ILogging, IValidator):
         except InsufficientAccessPrivilegeException:
             ResponseCreator.respond_with_error(req, "AccessLevelError", "Insufficient privileges")
             raise AuthError()
-        except UnknownUriException:
-            ResponseCreator.respond_with_error(req, "UnknownUriError", "Uri is not known")
-            raise AuthError()
 
     @staticmethod
-    def _check_direction(req: Request) -> bool:
+    def _check_direction(req: Request) -> RequestDirection:
         """
         Checks the request's direction to determine if it needs handling
 
         :param req: Request to check
         :return: True if request needs to be handled
         """
+
         res_receiver_paths = [x.uri for x in ApiURIs.get_endpoints() if x.outgoing]
         if req.is_response and req.get_path() in res_receiver_paths:
-            return True
+            return RequestDirection.Incoming
 
         req_receiver_paths = [x.uri for x in ApiURIs.get_endpoints() if not x.outgoing]
         if not req.is_response and req.get_path() in req_receiver_paths:
-            return True
+            return RequestDirection.Outgoing
 
-        return False
+        if req.get_path() not in [x.uri for x in ApiURIs.get_endpoints()]:
+            return RequestDirection.Unknown
+
+        return RequestDirection.Illegal
 
     def _handle_request(self, req: Request):
-        self._log_request(req)
-
         try:
             self._check_auth(req)
         except AuthError:
@@ -187,14 +202,6 @@ class ApiManager(Subscriber, ILogging, IValidator):
 
         endpoint_definition = ApiURIs.get_definition_for_uri(req.get_path())
         handler: RequestHandler = switcher.get(endpoint_definition.category)
-        if handler is None:
-            ResponseCreator.respond_with_error(req,
-                                               "UnknownUriError",
-                                               f"The URI requested ({req.get_path()}) does not exist")
-            return
-
-        if not self._check_direction(req):
-            return
 
         handler.handle_request(req)
 
@@ -203,3 +210,6 @@ class ApiManager(Subscriber, ILogging, IValidator):
                 req,
                 "NotImplementedError",
                 f"The URI requested ({req.get_path()}) is known to the system but not implemented")
+
+    def _handle_response(self, req: Request):
+        pass  # TODO: handle responses to outgoing requests

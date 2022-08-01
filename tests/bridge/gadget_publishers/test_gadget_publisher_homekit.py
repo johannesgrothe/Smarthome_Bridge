@@ -5,11 +5,9 @@ import pytest
 from gadget_publishers.gadget_publisher import GadgetDeletionError, GadgetCreationError
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
 from gadgets.gadget import Gadget
-from gadgets.remote.i_remote_gadget import IRemoteGadget
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
 from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 from smarthome_bridge.client_information_interface import ClientInformationInterface
-from test_helpers.dummy_status_suppliers import DummyStatusSupplier
 from test_helpers.timing_organizer import TimingOrganizer
 
 CONFIG_NAME = "hb_test_cfg.json"
@@ -26,12 +24,6 @@ class DummyClient(ClientInformationInterface):
 
 
 @pytest.fixture()
-def status_supplier():
-    supplier = DummyStatusSupplier()
-    return supplier
-
-
-@pytest.fixture()
 def config(f_temp_exists: str):
     cfg_path = os.path.join(f_temp_exists, CONFIG_NAME)
     manager = HomekitConfigManager(cfg_path)
@@ -45,9 +37,9 @@ def client() -> DummyClient:
 
 
 @pytest.fixture()
-def gadget(client):
+def gadget(f_client):
     gadget = RemoteLampRGB("test_rgb_lamp",
-                           client)
+                           f_client)
     yield gadget
     gadget.__del__()
 
@@ -60,8 +52,7 @@ def publisher(config: str):
 
 
 @pytest.mark.bridge
-def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: Gadget,
-                                  status_supplier: DummyStatusSupplier):
+def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: Gadget):
     with pytest.raises(GadgetDeletionError):
         publisher.remove_gadget(gadget.name)
 

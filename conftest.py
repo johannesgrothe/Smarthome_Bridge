@@ -1,6 +1,7 @@
 import os
 import datetime
 
+from network.auth_container import CredentialsAuthContainer
 from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
@@ -9,7 +10,7 @@ from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplie
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 from system.utils.temp_dir_manager import TempDirManager
-from test_helpers.dummy_network_connector import DummyNetworkConnector
+from test_helpers.dummy_network_connector import DummyNetworkConnector, DummyNetworkManager
 from test_helpers.dummy_status_suppliers import DummyGadgetPublisherStatusSupplier, DummyBridgeStatusSupplier, \
     DummyClientStatusSupplier, DummyGadgetStatusSupplier
 from test_helpers.network_fixtures import *
@@ -79,6 +80,11 @@ HOSTNAME = "unittest_host"
 
 
 @pytest.fixture()
+def f_credentials() -> CredentialsAuthContainer:
+    return CredentialsAuthContainer(USER_NAME, USER_PW)
+
+
+@pytest.fixture()
 def f_gadgets() -> DummyGadgetStatusSupplier:
     return DummyGadgetStatusSupplier()
 
@@ -115,9 +121,7 @@ def f_auth(f_temp_exists) -> AuthManager:
 
 @pytest.fixture()
 def f_network() -> NetworkManager:
-    network = DummyNetworkConnector(HOSTNAME)
-    manager = NetworkManager()
-    manager.add_connector(network)
+    manager = DummyNetworkManager(HOSTNAME)
     yield manager
     manager.__del__()
 
