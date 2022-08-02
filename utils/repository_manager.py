@@ -2,6 +2,7 @@
 import os
 import logging
 from typing import Optional
+import datetime
 
 from lib.logging_interface import ILogging
 
@@ -207,12 +208,13 @@ class RepositoryManager(ILogging):
         os.chdir(buf_dir)
         return buf_hash
 
-    def get_branch_date(self) -> str:
+    def get_branch_date(self) -> datetime.datetime:
         """
         Gets the date of the current branch commit
         :return: The date of the current branch commit
         """
-        return os.popen(f"cd {self._path};git show -s --format=%cd --date=iso").read().strip("\n")
+        date = os.popen(f"cd {self._path};git show -s --format=%cd --date=iso").read().strip("\n")
+        return datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
 
     def get_num_commits_between_commits(self, old_commit: str, new_commit: str) -> int:
         """

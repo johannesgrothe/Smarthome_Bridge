@@ -1,5 +1,4 @@
-import os
-from typing import Callable
+from typing import Callable, Optional
 
 from jsonschema.exceptions import ValidationError
 
@@ -10,16 +9,19 @@ from smarthome_bridge.api_encoders.bridge_encoder import BridgeEncoder
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
 from system.api_definitions import ApiURIs
-from utils.bridge_update_manager import BridgeUpdateManager, UpdateNotSuccessfulException, NoUpdateAvailableException, \
-    UpdateNotPossibleException
+from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager, UpdateNotSuccessfulException, \
+    NoUpdateAvailableException, UpdateNotPossibleException
 
 
 class RequestHandlerBridge(RequestHandler):
-    _status_suppler: BridgeStatusSupplier
+    _status_supplier: BridgeStatusSupplier
+    _updater: Optional[BridgeUpdateManager]
 
-    def __init__(self, network: NetworkManager, status_supplier: BridgeStatusSupplier):
+    def __init__(self, network: NetworkManager, status_supplier: BridgeStatusSupplier,
+                 update_manager: Optional[BridgeUpdateManager]):
         super().__init__(network)
-        self._status_suppler = status_supplier
+        self._status_supplier = status_supplier
+        self._updater = update_manager
 
     def handle_request(self, req: Request) -> None:
         switcher = {
@@ -33,7 +35,7 @@ class RequestHandlerBridge(RequestHandler):
             handler(req)
 
     def _handle_info_bridge(self, req: Request):
-        data = self._status_suppler.info
+        data = self._status_supplier.info
         resp_data = BridgeEncoder.encode_bridge_info(data)
         req.respond(resp_data)
 
@@ -51,9 +53,12 @@ class RequestHandlerBridge(RequestHandler):
                                                f"Request validation error at {ApiURIs.bridge_update_check.uri}")
             return
 
+        if not self._updater:
+            ResponseCreator.respond_with_error(req, "UpdateNotPossibleException", "no updater configured")
+            return
+
         try:
-            updater = BridgeUpdateManager(os.getcwd())
-            bridge_meta = updater.check_for_update()
+            bridge_meta = self._updater.check_for_update()
         except UpdateNotPossibleException:
             ResponseCreator.respond_with_error(req, "UpdateNotPossibleException", "bridge could not be updated")
         except NoUpdateAvailableException:
@@ -77,11 +82,14 @@ class RequestHandlerBridge(RequestHandler):
                                                f"Request validation error at {ApiURIs.bridge_update_execute.uri}")
             return
 
+        if not self._updater:
+            ResponseCreator.respond_with_error(req, "UpdateNotPossibleException", "no updater configured")
+            return
+
         try:
-            updater = BridgeUpdateManager(os.getcwd())
-            updater.execute_update()
+            self._updater.execute_update()
             ResponseCreator.respond_with_success(req, "Update was successful, rebooting system now...")
-            updater.reboot()
+            self._updater.reboot()
         except UpdateNotSuccessfulException:
             ResponseCreator.respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")
 

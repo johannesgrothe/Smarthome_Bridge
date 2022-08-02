@@ -20,9 +20,9 @@ from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import B
 from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
+from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager
 from system.api_definitions import ApiURIs, ApiAccessLevel, ApiEndpointCategory
-from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException, \
-    UnknownUriException
+from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException
 from utils.user_manager import UserDoesNotExistException
 
 
@@ -40,19 +40,22 @@ class ApiManagerSetupContainer:
     publishers: GadgetPublisherStatusSupplier
     bridge: BridgeStatusSupplier
     auth: AuthManager
+    updater: Optional[BridgeUpdateManager]
 
     def __init__(self, network: NetworkManager,
                  gadgets: GadgetStatusSupplier,
                  clients: ClientStatusSupplier,
                  publishers: GadgetPublisherStatusSupplier,
                  bridge: BridgeStatusSupplier,
-                 auth: AuthManager):
+                 auth: AuthManager,
+                 updater: Optional[BridgeUpdateManager]):
         self.network = network
         self.gadgets = gadgets
         self.clients = clients
         self.publishers = publishers
         self.bridge = bridge
         self.auth = auth
+        self.updater = updater
 
 
 class ApiManager(Subscriber, ILogging, IValidator):
@@ -77,7 +80,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
         self._gadget_sync_connection = None
         self._auth_manager = setup.auth
 
-        self._bridge_request_handler = RequestHandlerBridge(self._network, setup.bridge)
+        self._bridge_request_handler = RequestHandlerBridge(self._network, setup.bridge, setup.updater)
         self._client_request_handler = RequestHandlerClient(self._network, setup.clients, setup.gadgets)
         self._gadget_request_handler = RequestHandlerGadget(self._network, setup.gadgets)
         self._configs_request_handler = RequestHandlerConfigs(self._network)

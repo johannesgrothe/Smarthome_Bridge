@@ -7,12 +7,14 @@ from smarthome_bridge.bridge_information_container import BridgeInformationConta
 from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
+from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 from system.utils.temp_dir_manager import TempDirManager
-from test_helpers.dummy_network_connector import DummyNetworkConnector, DummyNetworkManager
+from test_helpers.dummy_network_connector import DummyNetworkManager
 from test_helpers.dummy_status_suppliers import DummyGadgetPublisherStatusSupplier, DummyBridgeStatusSupplier, \
     DummyClientStatusSupplier, DummyGadgetStatusSupplier
+from test_helpers.dummy_update_manager import DummyUpdateManager
 from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
@@ -80,6 +82,11 @@ HOSTNAME = "unittest_host"
 
 
 @pytest.fixture()
+def f_update_manager() -> DummyUpdateManager:
+    return DummyUpdateManager()
+
+
+@pytest.fixture()
 def f_credentials() -> CredentialsAuthContainer:
     return CredentialsAuthContainer(USER_NAME, USER_PW)
 
@@ -128,13 +135,14 @@ def f_network() -> NetworkManager:
 
 @pytest.fixture()
 def f_api_manager_setup_data(f_network, f_gadgets, f_clients, f_bridge, f_publishers,
-                             f_auth) -> ApiManagerSetupContainer:
+                             f_auth, f_update_manager) -> ApiManagerSetupContainer:
     return ApiManagerSetupContainer(f_network,
                                     f_gadgets,
                                     f_clients,
                                     f_publishers,
                                     f_bridge,
-                                    f_auth)
+                                    f_auth,
+                                    f_update_manager)
 
 
 @pytest.fixture()

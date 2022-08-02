@@ -2,8 +2,10 @@ import logging
 import os
 import threading
 from datetime import datetime
+from typing import Optional
 
 from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
+from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.network_manager import NetworkManager
@@ -24,7 +26,7 @@ class Bridge(BridgeStatusSupplier):
     _api: ApiManager
     _bridge_info: BridgeInformationContainer
 
-    def __init__(self, name: str, data_directory: str):
+    def __init__(self, name: str, data_directory: str, update_manager: Optional[BridgeUpdateManager] = None):
         super().__init__()
         self._logger = logging.getLogger(f"{self.__class__.__name__}[{name}]")
         self._logger.info("Starting bridge")
@@ -38,7 +40,8 @@ class Bridge(BridgeStatusSupplier):
             self._client_manager,
             self._gadget_manager,
             self,
-            AuthManager(UserManager(data_directory))
+            AuthManager(UserManager(data_directory)),
+            update_manager
         ))
 
         try:

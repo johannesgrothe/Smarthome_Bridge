@@ -157,4 +157,3 @@ def test_api_manager_response(f_validator, f_api_manager: ApiManager, f_network:
                                           is_response=True)
     last_response = f_network.mock_connector.get_last_send_response()
     assert last_response is None
-    print("yolo")
