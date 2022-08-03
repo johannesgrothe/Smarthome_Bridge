@@ -23,6 +23,7 @@ from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import G
 from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager
 from system.api_definitions import ApiURIs, ApiAccessLevel, ApiEndpointCategory
 from utils.auth_manager import AuthManager, AuthenticationFailedException, InsufficientAccessPrivilegeException
+from utils.client_config_manager import ClientConfigManager
 from utils.user_manager import UserDoesNotExistException
 
 
@@ -41,6 +42,7 @@ class ApiManagerSetupContainer:
     bridge: BridgeStatusSupplier
     auth: AuthManager
     updater: Optional[BridgeUpdateManager]
+    configs: Optional[ClientConfigManager]
 
     def __init__(self, network: NetworkManager,
                  gadgets: GadgetStatusSupplier,
@@ -48,7 +50,8 @@ class ApiManagerSetupContainer:
                  publishers: GadgetPublisherStatusSupplier,
                  bridge: BridgeStatusSupplier,
                  auth: AuthManager,
-                 updater: Optional[BridgeUpdateManager]):
+                 updater: Optional[BridgeUpdateManager],
+                 configs: Optional[ClientConfigManager]):
         self.network = network
         self.gadgets = gadgets
         self.clients = clients
@@ -56,6 +59,7 @@ class ApiManagerSetupContainer:
         self.bridge = bridge
         self.auth = auth
         self.updater = updater
+        self.configs = configs
 
 
 class ApiManager(Subscriber, ILogging, IValidator):
@@ -83,7 +87,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
         self._bridge_request_handler = RequestHandlerBridge(self._network, setup.bridge, setup.updater)
         self._client_request_handler = RequestHandlerClient(self._network, setup.clients, setup.gadgets)
         self._gadget_request_handler = RequestHandlerGadget(self._network, setup.gadgets)
-        self._configs_request_handler = RequestHandlerConfigs(self._network)
+        self._configs_request_handler = RequestHandlerConfigs(self._network, setup.configs)
         self._gadget_publisher_request_handler = RequestHandlerGadgetPublisher(self._network, setup.publishers)
 
     def __del__(self):

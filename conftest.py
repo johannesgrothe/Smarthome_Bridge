@@ -7,7 +7,6 @@ from smarthome_bridge.bridge_information_container import BridgeInformationConta
 from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
-from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 from system.utils.temp_dir_manager import TempDirManager
@@ -19,6 +18,7 @@ from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from utils.auth_manager import AuthManager
+from utils.client_config_manager import ClientConfigManager, ConfigAlreadyExistsException
 from utils.json_validator import Validator
 from utils.user_manager import UserManager
 
@@ -29,6 +29,22 @@ def pytest_addoption(parser):
     parser.addoption("--mqtt_username", type=str, help="Username to connect to the mqtt broker", default=None)
     parser.addoption("--mqtt_password", type=str, help="Password to connect to the mqtt broker", default=None)
     # # name = request.config.getoption("serial_client_name")
+
+
+CLIENT_NAME = "test_client"
+CLIENT_RUNTIME_ID = 1776
+CLIENT_CONNECTION_TIMEOUT = 3
+CLIENT_FLASH_DATE = datetime.datetime(2021, 4, 25, 23, 30, 45)
+CLIENT_SW_COMMIT = "f61919a3be77d28eddf63adee43c7451b31d8f49"
+CLIENT_BRANCH_NAME = "develop"
+CLIENT_FAULTY_PORT_MAPPING = {"1": 33, "-3": 21, "yolo": 32}
+CLIENT_PORT_MAPPING = {"1": 33}
+CLIENT_BOOT_MODE = 1
+
+T_LAUNCH = datetime.datetime.now()
+USER_NAME = "testadmin"
+USER_PW = "testpw"
+HOSTNAME = "unittest_host"
 
 
 @pytest.fixture()
@@ -65,20 +81,18 @@ def f_validator():
     yield json_validator
 
 
-CLIENT_NAME = "test_client"
-CLIENT_RUNTIME_ID = 1776
-CLIENT_CONNECTION_TIMEOUT = 3
-CLIENT_FLASH_DATE = datetime.datetime(2021, 4, 25, 23, 30, 45)
-CLIENT_SW_COMMIT = "f61919a3be77d28eddf63adee43c7451b31d8f49"
-CLIENT_BRANCH_NAME = "develop"
-CLIENT_FAULTY_PORT_MAPPING = {"1": 33, "-3": 21, "yolo": 32}
-CLIENT_PORT_MAPPING = {"1": 33}
-CLIENT_BOOT_MODE = 1
-
-T_LAUNCH = datetime.datetime.now()
-USER_NAME = "testadmin"
-USER_PW = "testpw"
-HOSTNAME = "unittest_host"
+@pytest.fixture()
+def f_config_manager(f_temp_exists) -> ClientConfigManager:
+    example_config = ClientConfigManager("configs").get_config("Example")
+    test_config = ClientConfigManager("configs").get_config("Example")
+    test_config["name"] = "Test"
+    manager = ClientConfigManager(os.path.join(f_temp_exists, "configs"))
+    try:
+        manager.write_config(example_config)
+        manager.write_config(test_config)
+    except ConfigAlreadyExistsException:
+        pass
+    return manager
 
 
 @pytest.fixture()
@@ -135,14 +149,15 @@ def f_network() -> NetworkManager:
 
 @pytest.fixture()
 def f_api_manager_setup_data(f_network, f_gadgets, f_clients, f_bridge, f_publishers,
-                             f_auth, f_update_manager) -> ApiManagerSetupContainer:
+                             f_auth, f_update_manager, f_config_manager) -> ApiManagerSetupContainer:
     return ApiManagerSetupContainer(f_network,
                                     f_gadgets,
                                     f_clients,
                                     f_publishers,
                                     f_bridge,
                                     f_auth,
-                                    f_update_manager)
+                                    f_update_manager,
+                                    f_config_manager)
 
 
 @pytest.fixture()

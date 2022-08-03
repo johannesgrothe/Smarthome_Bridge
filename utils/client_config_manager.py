@@ -6,7 +6,6 @@ from jsonschema import ValidationError
 from utils.json_validator import Validator
 from lib.logging_interface import ILogging
 
-_config_path = "configs"
 _validation_schema_name = "client_config"
 
 
@@ -28,10 +27,14 @@ class ConfigDoesNotExistException(Exception):
 class ClientConfigManager(ILogging):
     _config_data: dict
     _validator: Validator
+    _directory: str
 
-    def __init__(self):
+    def __init__(self, directory: str):
         super().__init__()
         self._validator = Validator()
+        self._directory = directory
+        if not os.path.isdir(self._directory):
+            os.mkdir(self._directory)
         self.reload()
 
     @staticmethod
@@ -77,14 +80,14 @@ class ClientConfigManager(ILogging):
 
     def reload(self):
         self._config_data = {}
-        for file_name in os.listdir(_config_path):
-            data = self._load_config_from_path(os.path.join(_config_path, file_name))
+        for file_name in os.listdir(self._directory):
+            data = self._load_config_from_path(os.path.join(self._directory, file_name))
             if data is not None:
                 self._config_data[file_name] = data
 
     def delete_config_file(self, name: str):
         filename = self._get_filename_for_config(name)
-        path = os.path.join(_config_path, filename)
+        path = os.path.join(self._directory, filename)
         if os.path.isfile(path):
             os.remove(path)
         self.reload()
@@ -100,7 +103,7 @@ class ClientConfigManager(ILogging):
         try:
             self._validator.validate(config, _validation_schema_name)
         except ValidationError:
-            raise ConfigNotValidException
+            raise ConfigNotValidException()
         config_name = config["name"]
 
         try:
@@ -111,9 +114,9 @@ class ClientConfigManager(ILogging):
             if overwrite:
                 self.delete_config_file(config_name)
             else:
-                raise ConfigAlreadyExistsException
+                raise ConfigAlreadyExistsException()
 
-        with open(os.path.join(_config_path, self._generate_filename_for_config(config)), 'w') as file_h:
+        with open(os.path.join(self._directory, self._generate_filename_for_config(config)), 'w') as file_h:
             json.dump(config, file_h)
 
         self.reload()

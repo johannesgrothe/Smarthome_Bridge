@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 from jsonschema.exceptions import ValidationError
 
@@ -11,9 +11,11 @@ from utils.client_config_manager import ClientConfigManager, ConfigAlreadyExists
 
 
 class RequestHandlerConfigs(RequestHandler):
+    _configs: Optional[ClientConfigManager]
 
-    def __init__(self, network: NetworkManager):
+    def __init__(self, network: NetworkManager, configs: Optional[ClientConfigManager]):
         super().__init__(network)
+        self._configs = configs
 
     def handle_request(self, req: Request) -> None:
         switcher = {
@@ -40,20 +42,18 @@ class RequestHandlerConfigs(RequestHandler):
                                                f"Request validation error at '{ApiURIs.config_storage_get_all.uri}'")
             return
 
-        manager = ClientConfigManager()
-        config_names = manager.get_config_names()
+        if not self._configs:
+            ResponseCreator.respond_with_error(req, "ConfigsNotAvailableError",
+                                               f"Config-Storage is not available")
+            return
+
+        config_names = self._configs.get_config_names()
         all_configs = {}
         self._logger.info("fetching all configs")
         for config in config_names:
             if not config == "Example":
-                try:
-                    conf = manager.get_config(config)
-                    all_configs[config] = conf["description"]
-                except ConfigDoesNotExistException:
-                    self._logger.error("congratz, something went wrong, abort, abort, return to the moon base")
-                    pass
-            else:
-                pass
+                conf = self._configs.get_config(config)
+                all_configs[config] = conf["description"]
         payload = {"configs": all_configs}
         req.respond(payload)
 
@@ -65,15 +65,20 @@ class RequestHandlerConfigs(RequestHandler):
         :return: None
         """
         try:
-            self._validator.validate(req.get_payload(), "api_config_delete_get")
+            self._validator.validate(req.get_payload(), "api_config_get_request")
         except ValidationError:
             ResponseCreator.respond_with_error(req, "ValidationError",
                                                f"Request validation error at '{ApiURIs.config_storage_get.uri}'")
             return
 
+        if not self._configs:
+            ResponseCreator.respond_with_error(req, "ConfigsNotAvailableError",
+                                               f"Config-Storage is not available")
+            return
+
         try:
-            name = req.get_payload()["name"]
-            config = ClientConfigManager().get_config(name)
+            name = req.get_payload()["config"]
+            config = self._configs.get_config(name)
             payload = {"config": config}
             req.respond(payload)
         except ConfigDoesNotExistException as err:
@@ -93,11 +98,15 @@ class RequestHandlerConfigs(RequestHandler):
                                                f"Request validation error at '{ApiURIs.config_storage_save.uri}'")
             return
 
+        if not self._configs:
+            ResponseCreator.respond_with_error(req, "ConfigsNotAvailableError",
+                                               f"Config-Storage is not available")
+            return
+
         config = req.get_payload()["config"]
         overwrite = req.get_payload()["overwrite"]
-        manager = ClientConfigManager()
         try:
-            manager.write_config(config, overwrite=overwrite)
+            self._configs.write_config(config, overwrite=overwrite)
         except ConfigAlreadyExistsException as err:
             ResponseCreator.respond_with_error(req=req, err_type="ConfigAlreadyExistsException", message=err.args[0])
             return
@@ -117,10 +126,14 @@ class RequestHandlerConfigs(RequestHandler):
                                                f"Request validation error at '{ApiURIs.config_storage_delete.uri}'")
             return
 
+        if not self._configs:
+            ResponseCreator.respond_with_error(req, "ConfigsNotAvailableError",
+                                               f"Config-Storage is not available")
+            return
+
         name = req.get_payload()["name"]
-        manager = ClientConfigManager()
         try:
-            manager.delete_config_file(name)
+            self._configs.delete_config_file(name)
         except ConfigDoesNotExistException as err:
             ResponseCreator.respond_with_error(req=req, err_type="ConfigDoesNotExistException", message=err.args[0])
             return
