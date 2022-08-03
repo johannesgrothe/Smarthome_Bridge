@@ -77,7 +77,7 @@ class RequestHandlerConfigs(RequestHandler):
             return
 
         try:
-            name = req.get_payload()["config"]
+            name = req.get_payload()["name"]
             config = self._configs.get_config(name)
             payload = {"config": config}
             req.respond(payload)
