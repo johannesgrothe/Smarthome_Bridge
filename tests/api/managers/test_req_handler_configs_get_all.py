@@ -1,9 +1,8 @@
 from smarthome_bridge.api.api_manager import ApiManager
 from system.api_definitions import ApiURIs
 from test_helpers.dummy_network_connector import DummyNetworkManager
-from copy import deepcopy
 
-from tests.api.managers.api_test_templates import request_execute_payload, request_execute_error, request_execute_status
+from tests.api.managers.api_test_templates import request_execute_payload, request_execute_error
 
 
 def test_req_handler_configs_get_all(f_validator, f_api_manager: ApiManager, f_network: DummyNetworkManager,
