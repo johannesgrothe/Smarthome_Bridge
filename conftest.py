@@ -111,8 +111,10 @@ def f_gadgets() -> DummyGadgetStatusSupplier:
 
 
 @pytest.fixture()
-def f_clients() -> DummyClientStatusSupplier:
-    return DummyClientStatusSupplier()
+def f_clients(f_client) -> DummyClientStatusSupplier:
+    supplier = DummyClientStatusSupplier()
+    supplier.add_client(f_client)
+    return supplier
 
 
 @pytest.fixture()
