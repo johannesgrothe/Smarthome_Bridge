@@ -12,7 +12,7 @@ from smarthome_bridge.network_manager import NetworkManager
 TEST_SENDER_NAME = "pytest_sender"
 TEST_CLIENT_NAME = "pytest_client"
 BROKEN_CONFIG = {"status": "broken af"}
-WORKING_CONFIG_NAME = "Example"
+WORKING_CONFIG_NAME = "Test"
 
 
 def config_write_test_helper(write_method: Callable[[dict], None], config: dict, connector: DummyNetworkConnector):
@@ -55,18 +55,12 @@ def network(connector):
 
 
 @pytest.fixture
-def manager():
-    manager = ClientConfigManager()
-    yield manager
-
-
-@pytest.fixture
 def controller(network):
     controller = ClientController(TEST_CLIENT_NAME, network)
     yield controller
 
 
-def test_client_controller_reboot(controller: ClientController, manager: ClientConfigManager,
+def test_client_controller_reboot(controller: ClientController, f_config_manager: ClientConfigManager,
                                   connector: DummyNetworkConnector):
     with pytest.raises(NoClientResponseException):
         controller.reboot_client()
@@ -84,7 +78,7 @@ def test_client_controller_reboot(controller: ClientController, manager: ClientC
 
 
 def test_client_controller_reset_config(controller: ClientController, connector: DummyNetworkConnector,
-                                        manager: ClientConfigManager):
+                                        f_config_manager: ClientConfigManager):
     with pytest.raises(NoClientResponseException):
         controller.erase_config()
 
@@ -101,18 +95,18 @@ def test_client_controller_reset_config(controller: ClientController, connector:
 
 
 def test_client_controller_write_system_config(controller: ClientController, connector: DummyNetworkConnector,
-                                               manager: ClientConfigManager):
-    working_config = manager.get_config(WORKING_CONFIG_NAME)["system"]
+                                               f_config_manager: ClientConfigManager):
+    working_config = f_config_manager.get_config(WORKING_CONFIG_NAME)["system"]
     config_write_test_helper(controller.write_system_config, working_config, connector)
 
 
 def test_client_controller_write_gadget_config(controller: ClientController, connector: DummyNetworkConnector,
-                                               manager: ClientConfigManager):
-    working_config = manager.get_config(WORKING_CONFIG_NAME)["gadgets"]
+                                               f_config_manager: ClientConfigManager):
+    working_config = f_config_manager.get_config(WORKING_CONFIG_NAME)["gadgets"]
     config_write_test_helper(controller.write_gadget_config, working_config, connector)
 
 
 def test_client_controller_write_event_config(controller: ClientController, connector: DummyNetworkConnector,
-                                              manager: ClientConfigManager):
-    working_config = manager.get_config(WORKING_CONFIG_NAME)["events"]
+                                              f_config_manager: ClientConfigManager):
+    working_config = f_config_manager.get_config(WORKING_CONFIG_NAME)["events"]
     config_write_test_helper(controller.write_event_config, working_config, connector)

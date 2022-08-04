@@ -12,6 +12,7 @@ from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.client_manager import ClientManager
 from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.gadget_manager import GadgetManager
+from utils.client_config_manager import ClientConfigManager
 from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools
 from utils.user_manager import UserManager
@@ -41,7 +42,8 @@ class Bridge(BridgeStatusSupplier):
             self._gadget_manager,
             self,
             AuthManager(UserManager(data_directory)),
-            update_manager
+            update_manager,
+            ClientConfigManager(os.path.join(data_directory, "configs"))
         ))
 
         try:
