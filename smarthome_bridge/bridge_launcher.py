@@ -47,8 +47,8 @@ class BridgeLauncher:
         # bridge.gadgets.add_gadget(gadget2)
         # client.add_gadget(gadget2)
 
-        gadget3 = DenonRemoteControlGadget("denon_tester", "192.168.178.155")
-        bridge.gadgets.add_gadget(gadget3)
+        # gadget3 = DenonRemoteControlGadget("denon_tester", "192.168.178.155")
+        # bridge.gadgets.add_gadget(gadget3)
 
     def launch(self,
                name: str,
