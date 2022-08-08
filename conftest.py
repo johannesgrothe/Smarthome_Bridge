@@ -10,6 +10,7 @@ from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplie
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 from system.utils.temp_dir_manager import TempDirManager
+from test_helpers.dummy_client_controller import DummyClientController
 from test_helpers.dummy_network_connector import DummyNetworkManager
 from test_helpers.dummy_status_suppliers import DummyGadgetPublisherStatusSupplier, DummyBridgeStatusSupplier, \
     DummyClientStatusSupplier, DummyGadgetStatusSupplier
@@ -165,6 +166,7 @@ def f_api_manager_setup_data(f_network, f_gadgets, f_clients, f_bridge, f_publis
 @pytest.fixture()
 def f_api_manager(f_api_manager_setup_data) -> ApiManager:
     manager = ApiManager(f_api_manager_setup_data)
+    manager.request_handler_client._client_controller_type = DummyClientController
     yield manager
     manager.__del__()
 

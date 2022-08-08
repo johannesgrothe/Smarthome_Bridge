@@ -20,12 +20,14 @@ from system.api_definitions import ApiURIs
 class RequestHandlerClient(RequestHandler):
     _client_manager: ClientStatusSupplier
     _gadget_manager: GadgetStatusSupplier
+    _client_controller_type: type(ClientController)
 
     def __init__(self, network: NetworkManager, client_manager: ClientStatusSupplier,
                  gadget_manager: GadgetStatusSupplier):
         super().__init__(network)
         self._client_manager = client_manager
         self._gadget_manager = gadget_manager
+        self._client_controller_type = ClientController
 
     def handle_request(self, req: Request) -> None:
         switcher = {
@@ -55,7 +57,7 @@ class RequestHandlerClient(RequestHandler):
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
+        writer = self._client_controller_type(client_id, self._network)
         writer.reboot_client()
 
     def send_client_system_config_write(self, client_id: str, config: dict):
@@ -71,7 +73,7 @@ class RequestHandlerClient(RequestHandler):
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
+        writer = self._client_controller_type(client_id, self._network)
         writer.write_system_config(config)
 
     def send_client_event_config_write(self, client_id: str, config: dict):
@@ -87,7 +89,7 @@ class RequestHandlerClient(RequestHandler):
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
+        writer = self._client_controller_type(client_id, self._network)
         writer.write_event_config(config)
 
     def send_client_gadget_config_write(self, client_id: str, config: dict):
@@ -103,7 +105,7 @@ class RequestHandlerClient(RequestHandler):
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
-        writer = ClientController(client_id, self._network)
+        writer = self._client_controller_type(client_id, self._network)
         writer.write_gadget_config(config)
 
     def _handle_info_clients(self, req: Request):
