@@ -157,7 +157,7 @@ class RequestHandlerClient(RequestHandler):
 
         self._logger.info(f"Syncing client {client_id}")
 
-        new_client = ClientDecoder.decode(req.get_payload()["client"])
+        new_client = ClientDecoder.decode(req.get_payload()["client"], client_id)
 
         gadget_data = req.get_payload()["gadgets"]
 

@@ -57,6 +57,6 @@ def test_api_client_de_serialization(f_validator: Validator, client: Client, cli
                                      client_decoder: ClientDecoder):
     serialized_data = client_encoder.encode_client(client)
     f_validator.validate(serialized_data, "api_client_data")
-    decoded_client = client_decoder.decode(serialized_data)
+    decoded_client = client_decoder.decode(serialized_data, serialized_data["id"])
     assert decoded_client.software_info == client.software_info
     assert decoded_client == client

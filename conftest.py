@@ -32,6 +32,8 @@ def pytest_addoption(parser):
     # # name = request.config.getoption("serial_client_name")
 
 
+GADGET_NAME = "test_gadget"
+
 CLIENT_NAME = "test_client"
 CLIENT_RUNTIME_ID = 1776
 CLIENT_CONNECTION_TIMEOUT = 3
@@ -46,6 +48,49 @@ T_LAUNCH = datetime.datetime.now()
 USER_NAME = "testadmin"
 USER_PW = "testpw"
 HOSTNAME = "unittest_host"
+
+
+@pytest.fixture()
+def f_gadget_config_broken() -> dict:
+    return {
+        "gadget": {
+            "type": 3,
+            "id": GADGET_NAME + "_2",
+            "attributes": {}
+        }
+    }
+
+
+@pytest.fixture()
+def f_gadget_config() -> dict:
+    return {
+        "gadget": {
+            "type": 0,
+            "id": GADGET_NAME + "_2",
+            "attributes": {
+                "red": 11,
+                "green": 22,
+                "blue": 33
+            }
+        }
+    }
+
+
+@pytest.fixture()
+def f_client_config(f_gadget_config, f_gadget_config_broken) -> dict:
+    return {
+        "client": {
+            "runtime_id": CLIENT_RUNTIME_ID,
+            "port_mapping": {},
+            "boot_mode": 1,
+            "software": None,
+            "api_version": "1.3.7"
+        },
+        "gadgets": [
+            f_gadget_config["gadget"],
+            f_gadget_config_broken["gadget"]
+        ]
+    }
 
 
 @pytest.fixture()

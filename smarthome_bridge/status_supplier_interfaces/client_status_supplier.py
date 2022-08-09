@@ -46,7 +46,7 @@ class ClientStatusSupplier(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_client(self, client_id: str) -> Optional[Client]:
+    def get_client(self, client_id: str) -> Client:
         """
         Returns the client with the given name if present
 

@@ -7,7 +7,8 @@ from gadgets.gadget_update_container import GadgetUpdateContainer
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client
 from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
-from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier
+from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier, \
+    ClientDoesntExistsError
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 
@@ -52,17 +53,17 @@ class DummyClientStatusSupplier(ClientStatusSupplier):
         self.mock_clients.append(client)
 
     def remove_client(self, client_id: str) -> None:
-        found = None
         for client in self.mock_clients:
             if client.id == client_id:
-                found = client
-        self.mock_clients.remove(found)
+                self.mock_clients.remove(client)
+                return
+        raise ClientDoesntExistsError(client_id)
 
-    def get_client(self, client_id: str) -> Optional[Client]:
+    def get_client(self, client_id: str) -> Client:
         for client in self.mock_clients:
             if client.id == client_id:
                 return client
-        return None
+        raise ClientDoesntExistsError(client_id)
 
 
 class DummyBridgeStatusSupplier(BridgeStatusSupplier):

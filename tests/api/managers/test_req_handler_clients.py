@@ -1,11 +1,8 @@
 import pytest
 
-from clients.client_controller import ClientRebootError
-from network.request import NoClientResponseException
 from smarthome_bridge.api.api_manager import ApiManager
 from smarthome_bridge.api.exceptions import UnknownClientException
 from system.api_definitions import ApiURIs
-from test_helpers.dummy_client_controller import DummyClientController
 from test_helpers.dummy_network_connector import DummyNetworkManager
 from tests.api.managers.api_test_templates import request_execute_payload
 

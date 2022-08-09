@@ -25,7 +25,8 @@ def add_uri_not_implemented() -> str:
                                                     [ApiAccessLevel.admin],
                                                     ApiEndpointCategory.System,
                                                     ApiAccessType.read,
-                                                    False)
+                                                    False,
+                                                    True)
     yield ApiURIs.not_implemented.uri
     del ApiURIs.not_implemented
 

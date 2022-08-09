@@ -212,7 +212,7 @@ class ApiManager(Subscriber, ILogging, IValidator):
 
         handler.handle_request(req)
 
-        if req.can_respond:
+        if ApiURIs.get_definition_for_uri(req.get_path()).requires_response and req.can_respond:
             ResponseCreator.respond_with_error(
                 req,
                 "NotImplementedError",

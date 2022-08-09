@@ -51,7 +51,7 @@ class ClientController(ILogging):
 
         payload = {"subject": "reboot"}
 
-        res = self._network.send_request(ApiURIs.client_reboot.uri, self._client_id, payload)
+        res = self._network.send_request(ApiURIs.system_ctrl.uri, self._client_id, payload)
         if not res:
             raise NoClientResponseException()
         if not res.get_ack():
