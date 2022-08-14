@@ -211,8 +211,10 @@ def f_api_manager_setup_data(f_network, f_gadgets, f_clients, f_bridge, f_publis
 @pytest.fixture()
 def f_api_manager(f_api_manager_setup_data) -> ApiManager:
     manager = ApiManager(f_api_manager_setup_data)
+    DummyClientController.set_error(None)
     manager.request_handler_client._client_controller_type = DummyClientController
     yield manager
+    DummyClientController.set_error(None)
     manager.__del__()
 
 

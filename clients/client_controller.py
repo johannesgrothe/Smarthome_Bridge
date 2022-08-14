@@ -67,7 +67,7 @@ class ClientController(ILogging):
         """
         res = self._network.send_request(ApiURIs.client_config_delete.uri, self._client_id, {})
         if not res:
-            raise NoClientResponseException
+            raise NoClientResponseException()
         if not res.get_ack():
             raise ConfigEraseError(self._client_id)
 

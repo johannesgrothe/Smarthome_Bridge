@@ -2,7 +2,7 @@ from typing import Callable
 
 from jsonschema.exceptions import ValidationError
 
-from clients.client_controller import ClientRebootError, ClientController
+from clients.client_controller import ClientRebootError, ClientController, ConfigEraseError
 from network.request import Request, NoClientResponseException
 from smarthome_bridge.api.exceptions import UnknownClientException
 from smarthome_bridge.api.request_handler import RequestHandler
@@ -34,6 +34,7 @@ class RequestHandlerClient(RequestHandler):
             ApiURIs.heartbeat.uri: self._handle_heartbeat,
             ApiURIs.info_clients.uri: self._handle_info_clients,
             ApiURIs.sync_client.uri: self._handle_client_sync,
+            ApiURIs.reboot_connected_client.uri: self._handle_client_reboot,
             ApiURIs.client_config_write.uri: self._handle_client_config_write,
             ApiURIs.client_config_delete.uri: self._handle_client_config_delete
         }
@@ -41,11 +42,11 @@ class RequestHandlerClient(RequestHandler):
         if handler is not None:
             handler(req)
 
-    def request_sync(self, name: str):
+    def request_sync(self, name: str) -> None:
         self._logger.info(f"Requesting client sync information from '{name}'")
         self._network.send_request(ApiURIs.sync_request.uri, name, {}, 0)
 
-    def send_client_reboot(self, client_id: str):
+    def send_client_reboot(self, client_id: str) -> None:
         """
         Triggers the reboot of the specified client
 
@@ -60,7 +61,7 @@ class RequestHandlerClient(RequestHandler):
         writer = self._client_controller_type(client_id, self._network)
         writer.reboot_client()
 
-    def send_client_system_config_write(self, client_id: str, config: dict):
+    def send_client_system_config_write(self, client_id: str, config: dict) -> None:
         """
         Sends a request to write a system config to a client
 
@@ -69,6 +70,7 @@ class RequestHandlerClient(RequestHandler):
         :return: None
         :raises UnknownClientException: If client id is unknown to the system
         :raises ConfigWriteError: If client did not acknowledge config writing success
+        :raises NoClientResponseException: If client did not respond to the request
         :raises ValidationError: If passed config was faulty
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
@@ -76,7 +78,7 @@ class RequestHandlerClient(RequestHandler):
         writer = self._client_controller_type(client_id, self._network)
         writer.write_system_config(config)
 
-    def send_client_event_config_write(self, client_id: str, config: dict):
+    def send_client_event_config_write(self, client_id: str, config: dict) -> None:
         """
         Sends a request to write a event config to a client
 
@@ -85,6 +87,7 @@ class RequestHandlerClient(RequestHandler):
         :return: None
         :raises UnknownClientException: If client id is unknown to the system
         :raises ConfigWriteError: If client did not acknowledge config writing success
+        :raises NoClientResponseException: If client did not respond to the request
         :raises ValidationError: If passed config was faulty
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
@@ -92,7 +95,7 @@ class RequestHandlerClient(RequestHandler):
         writer = self._client_controller_type(client_id, self._network)
         writer.write_event_config(config)
 
-    def send_client_gadget_config_write(self, client_id: str, config: dict):
+    def send_client_gadget_config_write(self, client_id: str, config: dict) -> None:
         """
         Sends a request to write a gadget config to a client
 
@@ -101,12 +104,28 @@ class RequestHandlerClient(RequestHandler):
         :return: None
         :raises UnknownClientException: If client id is unknown to the system
         :raises ConfigWriteError: If client did not acknowledge config writing success
+        :raises NoClientResponseException: If client did not respond to the request
         :raises ValidationError: If passed config was faulty
         """
         if client_id not in [x.id for x in self._client_manager.clients]:
             raise UnknownClientException(client_id)
         writer = self._client_controller_type(client_id, self._network)
         writer.write_gadget_config(config)
+
+    def send_client_gadget_config_delete(self, client_id: str) -> None:
+        """
+        Sends a request to write a gadget config to a client
+
+        :param client_id: ID of the client to send the config to
+        :return: None
+        :raises UnknownClientException: If client id is unknown to the system
+        :raises ConfigEraseError: If client did not acknowledge config writing success
+        :raises NoClientResponseException: If client did not respond to the request
+        """
+        if client_id not in [x.id for x in self._client_manager.clients]:
+            raise UnknownClientException(client_id)
+        writer = self._client_controller_type(client_id, self._network)
+        writer.erase_config()
 
     def _handle_info_clients(self, req: Request):
         data = self._client_manager.clients
@@ -187,20 +206,20 @@ class RequestHandlerClient(RequestHandler):
             ResponseCreator.respond_with_error(req, "ValidationError",
                                                f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
+        client_id = req.get_payload()["id"]
         try:
-            self.send_client_reboot(req.get_payload()["id"])
+            self.send_client_reboot(client_id)
         except UnknownClientException:
             ResponseCreator.respond_with_error(req,
                                                "UnknownClientException",
                                                f"Nee client with the id: {req.get_payload()['id']} exists")
-        except NoClientResponseException:
-            ResponseCreator.respond_with_error(req,
-                                               "NoClientResponseException",
-                                               f"Client did not respond to reboot request")
-        except ClientRebootError:
+            return
+        except (NoClientResponseException, ClientRebootError) as err:
             ResponseCreator.respond_with_error(req,
                                                "ClientRebootError",
-                                               f"Client could not be rebooted for some reason")
+                                               f"Client could not be rebooted: {err.args[0]}")
+            return
+        ResponseCreator.respond_with_success(req, f"Client with id '{client_id}' has acknowledged the reboot request")
 
     def _handle_client_config_write(self, req: Request):
         """
@@ -209,7 +228,7 @@ class RequestHandlerClient(RequestHandler):
         :return: None
         """
         try:
-            self._validator.validate(req.get_payload(), "api_client_config_write")
+            self._validator.validate(req.get_payload(), "api_client_write_config")
         except ValidationError:
             ResponseCreator.respond_with_error(req, "ValidationError",
                                                f"Request validation error at '{ApiURIs.update_gadget.uri}'")
@@ -223,9 +242,22 @@ class RequestHandlerClient(RequestHandler):
         :return: None
         """
         try:
-            self._validator.validate(req.get_payload(), "api_client_config_delete")
+            self._validator.validate(req.get_payload(), "api_client_delete_config")
         except ValidationError:
             ResponseCreator.respond_with_error(req, "ValidationError",
                                                f"Request validation error at '{ApiURIs.update_gadget.uri}'")
             return
-        # TODO: handle the request
+        client_id = req.get_payload()["id"]
+        try:
+            self.send_client_gadget_config_delete(client_id)
+        except UnknownClientException:
+            ResponseCreator.respond_with_error(req,
+                                               "UnknownClientException",
+                                               f"Nee client with the id: {client_id} exists")
+            return
+        except (NoClientResponseException, ConfigEraseError) as err:
+            ResponseCreator.respond_with_error(req,
+                                               "ConfigDeleteError",
+                                               f"Reset of the config if client: {client_id} failed: {err.args[0]}")
+            return
+        ResponseCreator.respond_with_success(req, f"Reset of config of client '{client_id}' was successful")
