@@ -5,7 +5,6 @@ from network.auth_container import CredentialsAuthContainer
 from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
-from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
@@ -18,6 +17,7 @@ from test_helpers.dummy_update_manager import DummyUpdateManager
 from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
+from tests.api.managers.api_test_templates import ReqTester
 from utils.auth_manager import AuthManager
 from utils.client_config_manager import ClientConfigManager, ConfigAlreadyExistsException
 from utils.json_validator import Validator
@@ -48,6 +48,11 @@ T_LAUNCH = datetime.datetime.now()
 USER_NAME = "testadmin"
 USER_PW = "testpw"
 HOSTNAME = "unittest_host"
+
+
+@pytest.fixture()
+def f_req_tester(f_network, f_credentials, f_validator) -> ReqTester:
+    return ReqTester(f_network, f_credentials, f_validator)
 
 
 @pytest.fixture()
@@ -189,7 +194,7 @@ def f_auth(f_temp_exists) -> AuthManager:
 
 
 @pytest.fixture()
-def f_network() -> NetworkManager:
+def f_network() -> DummyNetworkManager:
     manager = DummyNetworkManager(HOSTNAME)
     yield manager
     manager.__del__()
