@@ -3,39 +3,39 @@ from abc import ABCMeta
 
 from homekit.model import Accessory
 
-from gadget_publishers.homekit.homekit_gadget_update_interface import GadgetPublisherHomekitInterface
 from gadget_publishers.homekit.homekit_accessory_constants import HomekitConstants
-from lib.logging_interface import LoggingInterface
-from smarthome_bridge.gadget_pubsub import GadgetUpdatePublisher
+from gadgets.gadget import Gadget
+from lib.logging_interface import ILogging
 
 
-class HomekitAccessoryWrapper(LoggingInterface, metaclass=ABCMeta):
+class HomekitAccessoryWrapper(ILogging, metaclass=ABCMeta):
     """Superclass for all specific accessory wrappers"""
-    _name: str
     _accessory: Accessory
-    _publisher: GadgetPublisherHomekitInterface
+    _origin: Gadget
 
-    def __init__(self, name: str, publisher: GadgetPublisherHomekitInterface):
+    def __init__(self, origin: Gadget):
         """
         Constructor for the accessory wrapper superclass
 
-        :param name: Name of the accessory
-        :param publisher: Publisher for this gadget
+        :param origin: Gadget represented by this wrapper class
         """
         super().__init__()
-        self._name = name
-        self._publisher = publisher
-        self._accessory = Accessory(self._name,
+        self._origin = origin
+        self._logger.info(f"Creating new gadget with id '{self._origin.name}'")
+        self._accessory = Accessory(self._origin.name,
                                     HomekitConstants().manufacturer,
                                     self.__class__.__name__,
                                     HomekitConstants().serial_number,
                                     HomekitConstants().revision)
         # self._accessory.set_identify_callback(status_cb)
 
+    def __del__(self):
+        self._logger.debug(f"Destructing Homekit Accessory Wrapper for {self._origin.id}")
+
     @property
     def name(self) -> str:
         """Name of the homekit accessory"""
-        return self._name
+        return self._origin.name
 
     @property
     def accessory(self) -> Accessory:

@@ -1,7 +1,7 @@
-from gadgets.gadget import Gadget
+from gadgets.remote.i_remote_gadget import IRemoteGadget
 
 
-class DummyGadget(Gadget):
+class DummyRemoteGadget(IRemoteGadget):
 
     def __init__(self, name: str):
         super().__init__(name=name,

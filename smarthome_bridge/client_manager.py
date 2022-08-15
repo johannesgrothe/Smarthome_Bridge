@@ -2,20 +2,11 @@ import logging
 from typing import Optional
 
 from smarthome_bridge.client import Client
+from smarthome_bridge.status_supplier_interfaces.client_status_supplier import ClientStatusSupplier, \
+    ClientAlreadyExistsError, ClientDoesntExistsError
 
 
-class ClientAlreadyExistsError(Exception):
-    def __init__(self, client_name: str):
-        super().__init__(f"Client '{client_name}' already exists")
-
-
-class ClientDoesntExistsError(Exception):
-    def __init__(self, client_name: str):
-        super().__init__(f"Client '{client_name}' does not exist")
-
-
-class ClientManager:
-
+class ClientManager(ClientStatusSupplier):
     _logger: logging.Logger
     _clients: list[Client]
 
@@ -27,7 +18,10 @@ class ClientManager:
     def __del__(self):
         while self._clients:
             client = self._clients[0]
-            self.remove_client(client.get_name())
+            self.remove_client(client.id)
+
+    def _get_clients(self) -> list[Client]:
+        return self._clients
 
     def add_client(self, client: Client):
         """
@@ -37,10 +31,13 @@ class ClientManager:
         :return: None
         :raises ClientAlreadyExistsError: If a client with the given name is already present
         """
-        self._logger.info(f"Adding client '{client.get_name()}'")
-        if self.get_client(client.get_name()) is not None:
-            raise ClientAlreadyExistsError(client.get_name())
-        self._clients.append(client)
+        self._logger.info(f"Adding client '{client.id}'")
+        try:
+            self.get_client(client.id)
+        except ClientDoesntExistsError:
+            self._clients.append(client)
+        else:
+            raise ClientAlreadyExistsError(client.id)
 
     def remove_client(self, client_id: str):
         """
@@ -55,9 +52,8 @@ class ClientManager:
         if client is None:
             raise ClientDoesntExistsError(client_id)
         self._clients.remove(client)
-        # client.__del__()
 
-    def get_client(self, client_id: str) -> Optional[Client]:
+    def get_client(self, client_id: str) -> Client:
         """
         Returns the client with the given name if present
 
@@ -65,12 +61,12 @@ class ClientManager:
         :return: The client with the given name if present
         """
         for client in self._clients:
-            if client.get_name() == client_id:
+            if client.id == client_id:
                 return client
-        return None
+        raise ClientDoesntExistsError(client_id)
 
     def get_client_ids(self) -> list[str]:
-        return [x.get_name() for x in self._clients]
+        return [x.id for x in self._clients]
 
     def get_client_count(self) -> int:
         """

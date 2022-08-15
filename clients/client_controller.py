@@ -1,5 +1,5 @@
 """Module to contain the ClientController and its exceptions"""
-from lib.logging_interface import LoggingInterface
+from lib.logging_interface import ILogging
 from network.request import NoClientResponseException
 
 from system.api_definitions import ApiURIs
@@ -28,7 +28,7 @@ class ConfigWriteError(Exception):
         super().__init__(f"Error writing config on {client_id}")
 
 
-class ClientController(LoggingInterface):
+class ClientController(ILogging):
     """Class to control all means of a hardware client connected to the network"""
 
     _client_id: str
@@ -51,9 +51,9 @@ class ClientController(LoggingInterface):
 
         payload = {"subject": "reboot"}
 
-        res = self._network.send_request(ApiURIs.client_reboot.uri, self._client_id, payload)
+        res = self._network.send_request(ApiURIs.system_ctrl.uri, self._client_id, payload)
         if not res:
-            raise NoClientResponseException
+            raise NoClientResponseException()
         if not res.get_ack():
             raise ClientRebootError(self._client_id)
 
@@ -67,7 +67,7 @@ class ClientController(LoggingInterface):
         """
         res = self._network.send_request(ApiURIs.client_config_delete.uri, self._client_id, {})
         if not res:
-            raise NoClientResponseException
+            raise NoClientResponseException()
         if not res.get_ack():
             raise ConfigEraseError(self._client_id)
 

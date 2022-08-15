@@ -2,49 +2,49 @@ import logging
 import os
 import threading
 from datetime import datetime
+from typing import Optional
 
-from gadget_publishers.gadget_publisher import GadgetPublisher
+from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
+from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager
 from utils.auth_manager import AuthManager
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
-from smarthome_bridge.gadget_pubsub import GadgetUpdateSubscriber, GadgetUpdatePublisher
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.client_manager import ClientManager, ClientDoesntExistsError
-from smarthome_bridge.api_manager import ApiManager
+from smarthome_bridge.client_manager import ClientManager
+from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.gadget_manager import GadgetManager
-
-from smarthome_bridge.api_manager_delegate import ApiManagerDelegate
-from gadgets.gadget import Gadget
-from smarthome_bridge.client import Client
+from utils.client_config_manager import ClientConfigManager
 from utils.repository_manager import RepositoryManager, RepositoryStatusException
 from utils.system_info_tools import SystemInfoTools
 from utils.user_manager import UserManager
 
 
-class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
+class Bridge(BridgeStatusSupplier):
     _logger: logging.Logger
 
     _network_manager: NetworkManager
     _client_manager: ClientManager
     _gadget_manager: GadgetManager
-    _gadget_publishers: list[GadgetPublisher]
-    api: ApiManager
-
-    _gadget_sync_lock: threading.Lock
+    _api: ApiManager
     _bridge_info: BridgeInformationContainer
 
-    def __init__(self, name: str, data_directory: str):
+    def __init__(self, name: str, data_directory: str, update_manager: Optional[BridgeUpdateManager] = None):
         super().__init__()
         self._logger = logging.getLogger(f"{self.__class__.__name__}[{name}]")
         self._logger.info("Starting bridge")
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
         self._gadget_manager = GadgetManager()
-        self._gadget_publishers = []
-        self._gadget_sync_lock = threading.Lock()
-        self.api = ApiManager(self, self._network_manager)
-        auth_manager = AuthManager(UserManager(data_directory))
-        self.api.set_auth_manager(auth_manager)
-        self._gadget_manager.subscribe(self)
+
+        self._api = ApiManager(ApiManagerSetupContainer(
+            self._network_manager,
+            self._gadget_manager,
+            self._client_manager,
+            self._gadget_manager,
+            self,
+            AuthManager(UserManager(data_directory)),
+            update_manager,
+            ClientConfigManager(os.path.join(data_directory, "configs"))
+        ))
 
         try:
             repo_manager = RepositoryManager(os.getcwd(), None)
@@ -65,79 +65,26 @@ class Bridge(ApiManagerDelegate, GadgetUpdateSubscriber, GadgetUpdatePublisher):
 
     def __del__(self):
         self._logger.info("Shutting down bridge")
-        self.api.__del__()
+        self._api.__del__()
         self._network_manager.__del__()
         self._client_manager.__del__()
         self._gadget_manager.__del__()
-        for publisher in self._gadget_publishers:
-            publisher.__del__()
 
-    def get_network_manager(self):
-        return self._network_manager
-
-    def get_client_manager(self):
-        return self._client_manager
-
-    def get_gadget_manager(self):
-        return self._gadget_manager
-
-    def receive_gadget_update(self, gadget: Gadget):
-        self._logger.info(f"Forwarding update for {gadget.get_name()}")
-        self.api.send_gadget_update(gadget)
-
-    def receive_gadget(self, gadget: Gadget):
-        pass
-
-    def add_gadget_publisher(self, publisher: GadgetPublisher):
-        publisher_classes = [x.__class__ for x in self._gadget_publishers]
-        if publisher.__class__ in publisher_classes:
-            self._logger.error(f"{publisher.__class__.__name__} already present in publishers")
-            return
-        if publisher not in self._gadget_publishers:
-            self._gadget_publishers.append(publisher)
-            self._gadget_manager.add_gadget_publisher(publisher)
-
-    # API delegation
-
-    def handle_heartbeat(self, client_name: str, runtime_id: int):
-        client = self._client_manager.get_client(client_name)
-        if client:
-            if client.get_runtime_id() != runtime_id:
-                self.api.request_sync(client_name)
-            else:
-                client.trigger_activity()
-        else:
-            self.api.request_sync(client_name)
-
-    def handle_gadget_sync(self, gadget: Gadget):
-        with self._gadget_sync_lock:
-            self._gadget_manager.receive_gadget(gadget)
-
-    def handle_gadget_update(self, gadget: Gadget):
-        with self._gadget_sync_lock:
-            self._gadget_manager.receive_gadget_update(gadget)
-
-    def handle_client_sync(self, client: Client):
-        try:
-            self._client_manager.remove_client(client.get_name())
-        except ClientDoesntExistsError:
-            pass
-        self._client_manager.add_client(client)
-
-    def get_bridge_info(self) -> BridgeInformationContainer:
+    def _get_info(self) -> BridgeInformationContainer:
         return self._bridge_info
 
-    def get_client_info(self) -> list[Client]:
-        return [self._client_manager.get_client(x)
-                for x
-                in self._client_manager.get_client_ids()
-                if self._client_manager.get_client(x) is not None]
+    @property
+    def network(self) -> NetworkManager:
+        return self._network_manager
 
-    def get_gadget_info(self) -> list[Gadget]:
-        return [self._gadget_manager.get_gadget(x)
-                for x
-                in self._gadget_manager.get_gadget_ids()
-                if self._gadget_manager.get_gadget(x) is not None]
+    @property
+    def clients(self) -> ClientManager:
+        return self._client_manager
 
-    def get_gadget_publisher_info(self) -> list[GadgetPublisher]:
-        return self._gadget_publishers
+    @property
+    def gadgets(self) -> GadgetManager:
+        return self._gadget_manager
+
+    @property
+    def api(self) -> ApiManager:
+        return self._api

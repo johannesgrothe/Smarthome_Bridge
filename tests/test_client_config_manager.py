@@ -13,12 +13,6 @@ DOUBLE_CFG_PATH = os.path.join(CONFIG_PATH, DUMMY_DOUBLE_CONFIG_NAME + ".json")
 
 
 @pytest.fixture
-def config_manager():
-    manager = ClientConfigManager()
-    yield manager
-
-
-@pytest.fixture
 def test_config():
     with open(os.path.join(CONFIG_PATH, VALID_CONFIG_NAME + ".json"), "r") as file_h:
         config = json.load(file_h)
@@ -61,27 +55,27 @@ def remove_test_configs():
         pass
 
 
-def test_client_config_manager(dummy_files, config_manager: ClientConfigManager, test_config: dict):
-    assert TEST_CONFIG_NAME not in config_manager.get_config_names()
+def test_client_config_manager(dummy_files, f_config_manager: ClientConfigManager, test_config: dict):
+    assert TEST_CONFIG_NAME not in f_config_manager.get_config_names()
     with pytest.raises(ConfigDoesNotExistException):
-        config_manager.get_config(TEST_CONFIG_NAME)
+        f_config_manager.get_config(TEST_CONFIG_NAME)
 
     with pytest.raises(ConfigNotValidException):
-        config_manager.write_config(INVALID_CONFIG)
+        f_config_manager.write_config(INVALID_CONFIG)
 
-    assert TEST_CONFIG_NAME not in config_manager.get_config_names()
+    assert TEST_CONFIG_NAME not in f_config_manager.get_config_names()
     with pytest.raises(ConfigDoesNotExistException):
-        config_manager.get_config(TEST_CONFIG_NAME)
+        f_config_manager.get_config(TEST_CONFIG_NAME)
 
-    config_manager.write_config(test_config, overwrite=False)
+    f_config_manager.write_config(test_config, overwrite=False)
 
-    assert TEST_CONFIG_NAME in config_manager.get_config_names()
-    assert TEST_CONFIG_NAME + ".json" in config_manager.get_config_filenames()
-    buf_config = config_manager.get_config(TEST_CONFIG_NAME)
+    assert TEST_CONFIG_NAME in f_config_manager.get_config_names()
+    assert TEST_CONFIG_NAME + ".json" in f_config_manager.get_config_filenames()
+    buf_config = f_config_manager.get_config(TEST_CONFIG_NAME)
     assert buf_config is not None
     assert buf_config["name"] == TEST_CONFIG_NAME
 
     with pytest.raises(ConfigAlreadyExistsException):
-        config_manager.write_config(test_config, overwrite=False)
+        f_config_manager.write_config(test_config, overwrite=False)
 
-    config_manager.write_config(test_config, overwrite=True)
+    f_config_manager.write_config(test_config, overwrite=True)

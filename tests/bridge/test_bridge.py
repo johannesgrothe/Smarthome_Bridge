@@ -15,4 +15,4 @@ def bridge(f_temp_exists):
 
 @pytest.mark.bridge
 def test_bridge(bridge: Bridge):
-    assert bridge.get_bridge_info().name == BRIDGE_NAME
+    assert bridge.info.name == BRIDGE_NAME

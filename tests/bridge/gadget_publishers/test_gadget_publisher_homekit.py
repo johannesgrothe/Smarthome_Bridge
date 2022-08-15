@@ -5,21 +5,22 @@ import pytest
 from gadget_publishers.gadget_publisher import GadgetDeletionError, GadgetCreationError
 from gadget_publishers.homekit.homekit_config_manager import HomekitConfigManager
 from gadgets.gadget import Gadget
-from gadgets.lamp_neopixel_basic import LampNeopixelBasic
 from gadget_publishers.gadget_publisher_homekit import GadgetPublisherHomekit
-from smarthome_bridge.characteristic import Characteristic
-from system.gadget_definitions import CharacteristicIdentifier
-from test_helpers.dummy_status_supplier import DummyStatusSupplier
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
+from smarthome_bridge.client_information_interface import ClientInformationInterface
 from test_helpers.timing_organizer import TimingOrganizer
 
 CONFIG_NAME = "hb_test_cfg.json"
 GADGET_NAME = "unittest_gadget"
 
 
-@pytest.fixture()
-def status_supplier():
-    supplier = DummyStatusSupplier()
-    return supplier
+class DummyClient(ClientInformationInterface):
+
+    def _is_active(self) -> bool:
+        return True
+
+    def _get_id(self) -> str:
+        return "dummy_client"
 
 
 @pytest.fixture()
@@ -31,25 +32,14 @@ def config(f_temp_exists: str):
 
 
 @pytest.fixture()
-def gadget():
-    gadget = LampNeopixelBasic(GADGET_NAME,
-                               "test",
-                               Characteristic(CharacteristicIdentifier.status,
-                                              0,
-                                              1,
-                                              1),
-                               Characteristic(CharacteristicIdentifier.hue,
-                                              0,
-                                              360,
-                                              360),
-                               Characteristic(CharacteristicIdentifier.brightness,
-                                              0,
-                                              100,
-                                              100),
-                               Characteristic(CharacteristicIdentifier.saturation,
-                                              0,
-                                              100,
-                                              100))
+def client() -> DummyClient:
+    return DummyClient()
+
+
+@pytest.fixture()
+def gadget(f_client):
+    gadget = RemoteLampRGB("test_rgb_lamp",
+                           f_client)
     yield gadget
     gadget.__del__()
 
@@ -62,29 +52,21 @@ def publisher(config: str):
 
 
 @pytest.mark.bridge
-def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: Gadget, status_supplier: DummyStatusSupplier):
+def test_gadget_publisher_homekit(publisher: GadgetPublisherHomekit, gadget: Gadget):
     with pytest.raises(GadgetDeletionError):
-        publisher.remove_gadget(gadget.get_name())
+        publisher.remove_gadget(gadget.name)
 
-    publisher.receive_gadget(gadget)
+    publisher.create_gadget(gadget)
 
     with pytest.raises(GadgetCreationError):
         publisher.create_gadget(gadget)
-
-    gadget.get_characteristic(CharacteristicIdentifier.hue).set_step_value(55)
-    publisher.set_status_supplier(status_supplier)
-    gadget.get_characteristic(CharacteristicIdentifier.hue).set_step_value(65)
-    status_supplier.gadgets.append(gadget)
-    gadget.get_characteristic(CharacteristicIdentifier.hue).set_step_value(75)
-
-    publisher.receive_gadget(gadget)
 
     timer = TimingOrganizer()
 
     print("Awaiting server restart")
     timer.delay(10000)
 
-    publisher.remove_gadget(gadget.get_name())
+    publisher.remove_gadget(gadget.name)
 
     timer.delay(2000)
 

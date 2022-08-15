@@ -62,16 +62,21 @@ class Request:
         return "<'{}': {}>".format(self.get_path(), self.get_body())
 
     @property
-    def is_response(self):
+    def is_response(self) -> bool:
         return self._is_response
+
+    @property
+    def can_respond(self) -> bool:
+        return self._response_function is not None
 
     def set_callback_method(self, function: response_callback_type):
         self._response_function = function
 
     def respond(self, payload: dict, path: Optional[str] = None):
-        if self._response_function is None:
-            raise NoResponsePossibleException
+        if not self.can_respond:
+            raise NoResponsePossibleException()
         self._response_function(self, payload, path)
+        self._response_function = None
 
     def get_path(self) -> str:
         """Returns the path"""
