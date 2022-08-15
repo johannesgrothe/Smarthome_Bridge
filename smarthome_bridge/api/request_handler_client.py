@@ -227,12 +227,12 @@ class RequestHandlerClient(RequestHandler):
         :param req: Request containing the client config to write
         :return: None
         """
-        try:
-            self._validator.validate(req.get_payload(), "api_client_write_config")
-        except ValidationError:
-            ResponseCreator.respond_with_error(req, "ValidationError",
-                                               f"Request validation error at '{ApiURIs.update_gadget.uri}'")
-            return
+        # try:
+        #     self._validator.validate(req.get_payload(), "api_client_write_config")
+        # except ValidationError as err:
+        #     ResponseCreator.respond_with_error(req, "ValidationError",
+        #                                        f"Request validation error at '{ApiURIs.update_gadget.uri}'")
+        #     return
         # TODO: handle the request
 
     def _handle_client_config_delete(self, req: Request):
