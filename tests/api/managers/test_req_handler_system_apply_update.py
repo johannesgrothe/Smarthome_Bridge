@@ -1,7 +1,6 @@
 from smarthome_bridge.api.api_manager import ApiManager
 from smarthome_bridge.update.bridge_update_manager import UpdateNotSuccessfulException
 from system.api_definitions import ApiURIs
-from test_helpers.dummy_network_connector import DummyNetworkManager
 
 
 def test_req_handler_system_apply_update(f_req_tester, f_api_manager: ApiManager, f_update_manager):
