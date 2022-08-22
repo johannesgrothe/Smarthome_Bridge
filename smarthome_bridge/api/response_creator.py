@@ -9,6 +9,8 @@ class ResponseCreator(ILogging):
     def _message_format(message: Optional[str]):
         if message:
             return message.replace("\"", "'")
+        else:
+            return ""
 
     @classmethod
     def respond_with_error(cls, req: Request, err_type: str, message: Optional[str] = None):

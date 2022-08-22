@@ -13,15 +13,19 @@ from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import G
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from system.api_definitions import ApiURIs
 
-
 # TODO: Make RequestHandlerGadget full GadgetPublisher
+from test_helpers.dummy_gadget_update_applier import DummyGadgetUpdateApplier
+
+
 class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
     _gadget_manager: GadgetStatusSupplier
+    _update_applier: GadgetUpdateApplier
 
     def __init__(self, network: NetworkManager, gadget_manager: GadgetStatusSupplier):
         super().__init__(network)
         self._gadget_manager = gadget_manager
         self._gadget_manager.subscribe(self)
+        self._update_applier = GadgetUpdateApplier()
 
     def handle_request(self, req: Request) -> None:
         switcher = {
@@ -34,14 +38,11 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
 
     def receive_gadget_update(self, update_container: GadgetUpdateContainer):
         self._logger.info(f"Broadcasting gadget update information for '{update_container.origin}'")
-        try:
-            source_gadget = self._gadget_manager.get_gadget(update_container.origin)
-            gadget_data = GadgetApiEncoder.encode_gadget_update(update_container, source_gadget)
-            self._network.send_broadcast(ApiURIs.update_gadget.uri,
-                                         gadget_data,
-                                         0)
-        except GadgetEncodeError as err:
-            self._logger.error(err.args[0])
+        source_gadget = self._gadget_manager.get_gadget(update_container.origin)
+        gadget_data = GadgetApiEncoder.encode_gadget_update(update_container, source_gadget)
+        self._network.send_broadcast(ApiURIs.update_gadget.uri,
+                                     gadget_data,
+                                     0)
 
     def add_gadget(self, gadget_id: str):
         pass  # TODO: notify connected clients that a gadget was created
@@ -77,8 +78,9 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
             return
 
         try:
-            GadgetUpdateApplier.apply(gadget, payload)
+            self._update_applier.apply(gadget, payload)
         except UpdateApplyError as err:
             ResponseCreator.respond_with_error(req, "GadgetUpdateApplyError", err.args[0])
+            return
 
         ResponseCreator.respond_with_success(req)
