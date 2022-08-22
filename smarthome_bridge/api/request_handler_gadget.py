@@ -5,6 +5,7 @@ from gadgets.gadget_update_container import GadgetUpdateContainer
 from network.request import Request
 from smarthome_bridge.api.request_handler import RequestHandler
 from smarthome_bridge.api.response_creator import ResponseCreator
+from smarthome_bridge.api_decoders.local_gadget_decoder import LocalGadgetDecoder
 from smarthome_bridge.api_encoders.gadget_api_encoder import GadgetEncodeError, GadgetApiEncoder
 from smarthome_bridge.gadget_update_appliers.gadget_update_applier import GadgetUpdateApplier
 from smarthome_bridge.gadget_update_appliers.gadget_update_applier_super import UpdateApplyError
@@ -31,6 +32,7 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
         switcher = {
             ApiURIs.info_gadgets.uri: self._handle_info_gadgets,
             ApiURIs.update_gadget.uri: self._handle_gadget_update,
+            ApiURIs.add_local_gadget.uri: self._handle_add_local_gadget
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), None)
         if handler is not None:
@@ -54,6 +56,26 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
         resp_data = GadgetApiEncoder.encode_all_gadgets_info(self._gadget_manager.remote_gadgets,
                                                              self._gadget_manager.local_gadgets)
         req.respond(resp_data)
+
+    def _handle_add_local_gadget(self, req: Request):
+        try:
+            self._validator.validate(req.get_payload(), "api_gadget_local_add")
+        except ValidationError:
+            ResponseCreator.respond_with_error(req,
+                                               "ValidationError",
+                                               f"Request validation error at '{ApiURIs.update_gadget.uri}'")
+            return
+
+        try:
+            created_gadget = LocalGadgetDecoder.decode(req.get_payload())
+        except NotImplementedError:
+            ResponseCreator.respond_with_error(
+                req,
+                "NotImplementedError",
+                f"Creating a gadget of class '{req.get_payload()['type']}' is not implemented")
+            return
+
+        self._gadget_manager.add_gadget(created_gadget)
 
     def _handle_gadget_update(self, req: Request):
         """

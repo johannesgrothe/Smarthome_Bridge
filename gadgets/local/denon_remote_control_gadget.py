@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import threading
@@ -36,6 +37,8 @@ class DenonRemoteControlGadget(TV, ILocalGadget):
         self._source = 0
         self._address = address
         self._logger.info(f"Connecting to {self._address}")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         self._controller = denonavr.DenonAVR(self._address)
         self._update_lock = threading.Lock()
         self._last_write = datetime.datetime(1900, 1, 1)

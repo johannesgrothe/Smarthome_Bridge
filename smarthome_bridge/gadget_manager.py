@@ -88,6 +88,7 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
         with self._gadget_lock:
             if existing_gadget is not None:
                 self._gadgets.remove(gadget)
+                existing_gadget.__del__()
             self._gadgets.append(gadget)
         with self._publisher_lock:
             for publisher in self._publishers:

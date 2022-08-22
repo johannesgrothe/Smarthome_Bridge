@@ -31,7 +31,7 @@ class RemoteGadgetDecoder(ApiDecoderSuper):
                     break
 
             if gadget_class is None:
-                raise GadgetDecodeError()
+                raise NotImplementedError()
 
             if gadget_class == GadgetClass.lamp_rgb:
                 return RemoteLampRGB(gadget_data["id"],
