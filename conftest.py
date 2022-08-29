@@ -1,15 +1,18 @@
 import os
 import datetime
 
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 from network.auth_container import CredentialsAuthContainer
 from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
+from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
 from system.utils.temp_dir_manager import TempDirManager
 from test_helpers.dummy_client_controller import DummyClientController
+from test_helpers.dummy_gadget_update_applier import DummyGadgetUpdateApplier
 from test_helpers.dummy_network_connector import DummyNetworkManager
 from test_helpers.dummy_status_suppliers import DummyGadgetPublisherStatusSupplier, DummyBridgeStatusSupplier, \
     DummyClientStatusSupplier, DummyGadgetStatusSupplier
@@ -18,6 +21,8 @@ from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from tests.api.managers.api_test_templates import ReqTester
+from tests.bridge.gadget_publishers.test_gadget_publisher_homekit import DummyClient
+from tests.bridge.gadgets.test_gadget import DummyGadget
 from utils.auth_manager import AuthManager
 from utils.client_config_manager import ClientConfigManager, ConfigAlreadyExistsException
 from utils.json_validator import Validator
@@ -157,8 +162,16 @@ def f_credentials() -> CredentialsAuthContainer:
 
 
 @pytest.fixture()
-def f_gadgets() -> DummyGadgetStatusSupplier:
-    return DummyGadgetStatusSupplier()
+def f_gadgets(f_gadget) -> DummyGadgetStatusSupplier:
+    supplier = DummyGadgetStatusSupplier()
+    supplier.add_gadget(f_gadget)
+    return supplier
+
+
+@pytest.fixture()
+def f_gadget(f_client) -> RemoteLampRGB:
+    dummy_gadget = RemoteLampRGB(gadget_id="dummyGadget", host_client=f_client)
+    return dummy_gadget
 
 
 @pytest.fixture()
@@ -218,6 +231,7 @@ def f_api_manager(f_api_manager_setup_data) -> ApiManager:
     manager = ApiManager(f_api_manager_setup_data)
     DummyClientController.set_error(None)
     manager.request_handler_client._client_controller_type = DummyClientController
+    manager.request_handler_gadget._update_applier = DummyGadgetUpdateApplier()
     yield manager
     DummyClientController.set_error(None)
     manager.__del__()

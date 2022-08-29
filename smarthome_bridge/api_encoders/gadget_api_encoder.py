@@ -5,12 +5,16 @@ from gadgets.gadget_update_container import GadgetUpdateContainer
 from gadgets.local.denon_remote_control_gadget import DenonRemoteControlGadget
 from gadgets.local.i_local_gadget import ILocalGadget
 from gadgets.remote.i_remote_gadget import IRemoteGadget
+from gadgets.remote.remote_lamp_rgb import RemoteLampRGB
 from lib.logging_interface import ILogging
+from smarthome_bridge.api_encoders.gadgets.gadget_classes.lamp_rgb_encoder import LampRgbEncoder
 from smarthome_bridge.api_encoders.gadgets.implementations.local_tv_encoder import TvEncoder
 from smarthome_bridge.api_encoders.gadgets.gadget_api_encoder_super import GadgetApiEncoderSuper
 
+
 _type_mapping: List[Tuple[Type[Gadget], Type[GadgetApiEncoderSuper]]] = [
-    (DenonRemoteControlGadget, TvEncoder)
+    (DenonRemoteControlGadget, TvEncoder),
+    (RemoteLampRGB, LampRgbEncoder)
 ]
 
 
