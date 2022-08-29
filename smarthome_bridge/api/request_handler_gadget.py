@@ -1,6 +1,8 @@
 from typing import Callable
 
 from jsonschema.exceptions import ValidationError
+
+from gadget_publishers.gadget_publisher import GadgetPublisher
 from gadgets.gadget_update_container import GadgetUpdateContainer
 from network.request import Request
 from smarthome_bridge.api.request_handler import RequestHandler
@@ -10,22 +12,16 @@ from smarthome_bridge.api_encoders.gadget_api_encoder import GadgetEncodeError, 
 from smarthome_bridge.gadget_update_appliers.gadget_update_applier import GadgetUpdateApplier
 from smarthome_bridge.gadget_update_appliers.gadget_update_applier_super import UpdateApplyError
 from smarthome_bridge.network_manager import NetworkManager
-from smarthome_bridge.status_supplier_interfaces.gadget_status_receiver import GadgetStatusReceiver
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
 from system.api_definitions import ApiURIs
 
-# TODO: Make RequestHandlerGadget full GadgetPublisher
-from test_helpers.dummy_gadget_update_applier import DummyGadgetUpdateApplier
 
-
-class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
-    _gadget_manager: GadgetStatusSupplier
+class RequestHandlerGadget(RequestHandler, GadgetPublisher):
     _update_applier: GadgetUpdateApplier
 
     def __init__(self, network: NetworkManager, gadget_manager: GadgetStatusSupplier):
         super().__init__(network)
-        self._gadget_manager = gadget_manager
-        self._gadget_manager.subscribe(self)
+        self._status_supplier = gadget_manager
         self._update_applier = GadgetUpdateApplier()
 
     def handle_request(self, req: Request) -> None:
@@ -40,7 +36,7 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
 
     def receive_gadget_update(self, update_container: GadgetUpdateContainer):
         self._logger.info(f"Broadcasting gadget update information for '{update_container.origin}'")
-        source_gadget = self._gadget_manager.get_gadget(update_container.origin)
+        source_gadget = self._status_supplier.get_gadget(update_container.origin)
         gadget_data = GadgetApiEncoder.encode_gadget_update(update_container, source_gadget)
         self._network.send_broadcast(ApiURIs.update_gadget.uri,
                                      gadget_data,
@@ -53,8 +49,8 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
         pass  # TODO: notify connected clients that a gadget was deleted
 
     def _handle_info_gadgets(self, req: Request):
-        resp_data = GadgetApiEncoder.encode_all_gadgets_info(self._gadget_manager.remote_gadgets,
-                                                             self._gadget_manager.local_gadgets)
+        resp_data = GadgetApiEncoder.encode_all_gadgets_info(self._status_supplier.remote_gadgets,
+                                                             self._status_supplier.local_gadgets)
         req.respond(resp_data)
 
     def _handle_add_local_gadget(self, req: Request):
@@ -75,7 +71,7 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
                 f"Creating a gadget of class '{req.get_payload()['type']}' is not implemented")
             return
 
-        self._gadget_manager.add_gadget(created_gadget)
+        self._status_supplier.add_gadget(created_gadget)
 
     def _handle_gadget_update(self, req: Request):
         """
@@ -93,7 +89,7 @@ class RequestHandlerGadget(RequestHandler, GadgetStatusReceiver):
             return
 
         payload = req.get_payload()
-        gadget = self._gadget_manager.get_gadget(payload["id"])
+        gadget = self._status_supplier.get_gadget(payload["id"])
 
         if gadget is None:
             ResponseCreator.respond_with_error(req, "GagdetDoesNeeExist", "Sadly, no gadget with the given id exists")

@@ -46,6 +46,8 @@ class Bridge(BridgeStatusSupplier):
             ClientConfigManager(os.path.join(data_directory, "configs"))
         ))
 
+        self._gadget_manager.add_gadget_publisher(self._api.request_handler_gadget)
+
         try:
             repo_manager = RepositoryManager(os.getcwd(), None)
             g_branch = repo_manager.get_branch()
