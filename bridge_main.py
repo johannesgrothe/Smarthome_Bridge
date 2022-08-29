@@ -48,6 +48,10 @@ def parse_args():
                         help='Whether serial connector should be active',
                         action="store_true")
 
+    parser.add_argument('--default_user',
+                        help='creates a default user for bridge setup',
+                        action='store_true')
+
     parser.add_argument('--static_user_name',
                         help='Sets the username for the default user',
                         type=str,
@@ -125,10 +129,10 @@ def main():
         mqtt_credentials = MqttCredentialsContainer(mqtt_ip, mqtt_port,
                                                     params["mqtt_user"], params["mqtt_pw"])
 
-    # DEFAULT USER
-    user_data = None
+    # STATIC USER
+    static_user_data = None
     if args.static_user_password:
-        user_data = (args.static_user_name, args.static_user_password)
+        static_user_data = (args.static_user_name, args.static_user_password)
 
     # HOMEKIT
     homekit_active = params["homekit_active"]
@@ -147,7 +151,8 @@ def main():
                     api_port=params["rest_port"],
                     socket_port=params["socket_port"],
                     serial_active=serial_active,
-                    static_user_data=user_data,
+                    default_user=args.default_user,
+                    static_user_data=static_user_data,
                     homekit_active=homekit_active,
                     add_dummy_data=args.dummy_data)
 
