@@ -24,6 +24,7 @@ def test_bridge_launcher(launcher: BridgeLauncher):
                              api_port=BRIDGE_API_PORT,
                              socket_port=BRIDGE_SOCKET_PORT,
                              serial_active=True,
+                             default_user=False,
                              static_user_data=(BRIDGE_DEFAULT_USER_NAME, BRIDGE_DEFAULT_USER_PW),
                              homekit_active=False,
                              add_dummy_data=True)
