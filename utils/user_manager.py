@@ -4,6 +4,9 @@ import json
 
 import os
 
+DEFAULT_USER = 'default_user'
+DEFAULT_PASSWORD = 'default!234'
+
 
 class UserAlreadyExistsException(Exception):
     def __init__(self, username: str):
@@ -15,14 +18,13 @@ class UserDoesNotExistException(Exception):
         super().__init__(f"No user with username: {username} found")
 
 
-class NoPersistentUsersException(Exception):
-    def __init__(self):
-        super().__init__("Congratz, you somehow managed to brick the with open statement.")
-
-
 class DeletionNotPossibleException(Exception):
     def __init__(self, username):
         super().__init__(f"User {username}, could not be deleted.")
+
+
+class UserCreationNotPossibleException(Exception):
+    pass
 
 
 def _create_user_dict(password: str, access_level: ApiAccessLevel, persistent: bool = False) -> dict:
@@ -49,6 +51,21 @@ class UserManager(ILogging):
         self._persistent_user_path = os.path.join(data_directory, "persistent_users.json")
         self._users = self._load_persistent_users()
 
+    def create_default_user(self):
+        """
+        Adds a default user for setting up the bridge
+        """
+        if len(self._users) == 0:
+            self._logger.info('No persistent user found, creating default setup user')
+            self.add_user(DEFAULT_USER, DEFAULT_PASSWORD, ApiAccessLevel.admin, False)
+
+    def _delete_default_user(self):
+        """
+        Removes the default user
+        """
+        if DEFAULT_USER in self._users:
+            del self._users[DEFAULT_USER]
+
     def add_user(self, username: str, password: str, access_level: ApiAccessLevel, persistent_user: bool):
         """
         Adds a user (and credentials) to the system
@@ -60,12 +77,19 @@ class UserManager(ILogging):
         :raises UserAlreadyExistsException: if user already exists
         """
         # TODO: add hashing of password
-        if persistent_user and self.check_if_user_exists(username):
+        if self.check_if_user_exists(username):
             raise UserAlreadyExistsException(username)
+        if persistent_user:
+            if username == DEFAULT_USER:
+                raise UserCreationNotPossibleException('failed to create user, username is reserved for setup user')
+            if access_level == ApiAccessLevel.admin:
+                self._delete_default_user()
 
         user = _create_user_dict(password, access_level, persistent_user)
+
         self._users[username] = user
-        self.save_persistent_users()
+        if persistent_user:
+            self.save_persistent_users()
 
         p = "Persistent" if persistent_user else "Non persistent"
         self._logger.info(f"{p} user '{username}' added successfully, with access level {str(access_level)}")

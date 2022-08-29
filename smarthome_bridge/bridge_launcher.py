@@ -56,6 +56,7 @@ class BridgeLauncher:
                api_port: Optional[int],
                socket_port: Optional[int],
                serial_active: bool,
+               default_user: bool,
                static_user_data: Optional[Tuple[str, str]],
                homekit_active: bool,
                add_dummy_data: bool = False,
@@ -94,6 +95,9 @@ class BridgeLauncher:
             config_file = os.path.join(data_directory, "homekit_server_settings.json")
             hk_publisher = GadgetPublisherHomekit(config_file)
             bridge.gadgets.add_gadget_publisher(hk_publisher)
+
+        if default_user:
+            bridge.api.auth_manager.users.create_default_user()
 
         if static_user_data is not None:
             u_name, u_passwd = static_user_data
