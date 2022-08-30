@@ -53,6 +53,10 @@ class DenonRemoteControlGadget(TV, ILocalGadget):
     def __del__(self):
         self._threads.__del__()
 
+    @property
+    def address(self) -> str:
+        return self._address
+
     def _apply_updates(self):
         try:
             with self._update_lock:

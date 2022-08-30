@@ -1,6 +1,5 @@
 import logging
 import os
-import threading
 from datetime import datetime
 from typing import Optional
 
@@ -33,7 +32,7 @@ class Bridge(BridgeStatusSupplier):
         self._logger.info("Starting bridge")
         self._network_manager = NetworkManager()
         self._client_manager = ClientManager()
-        self._gadget_manager = GadgetManager()
+        self._gadget_manager = GadgetManager(data_directory)
 
         self._api = ApiManager(ApiManagerSetupContainer(
             self._network_manager,

@@ -1,12 +1,17 @@
 import datetime
+import json
+import os
 import threading
 import time
 from typing import Optional
 
 from gadgets.gadget import Gadget
 from gadgets.gadget_update_container import GadgetUpdateContainer
+from gadgets.local.i_local_gadget import ILocalGadget
 from lib.logging_interface import ILogging
 from gadget_publishers.gadget_publisher import GadgetPublisher
+from smarthome_bridge.local_gadget_deserializer import LocalGadgetDeserializer
+from smarthome_bridge.local_gadget_serializer import LocalGadgetSerializer
 
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from smarthome_bridge.status_supplier_interfaces.gadget_status_supplier import GadgetStatusSupplier
@@ -14,6 +19,7 @@ from utils.thread_manager import ThreadManager
 
 DEFAULT_PUBLISH_DELAY: float = 0.5
 DEFAULT_PUBLISH_TASK_INTERVAL: float = 0.1
+DATA_FILE = "persistent_gadget_data.json"
 
 
 class GadgetDoesntExistError(Exception):
@@ -25,6 +31,8 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
     _publish_delay: float
     _task_interval: float
 
+    _data_file: str
+
     _gadgets: list[Gadget]
     _gadget_lock: threading.Lock
 
@@ -33,16 +41,21 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
 
     _threads: ThreadManager
 
-    def __init__(self, publish_delay: int = DEFAULT_PUBLISH_DELAY, task_interval: int = DEFAULT_PUBLISH_TASK_INTERVAL):
+    def __init__(self, data_directory: str, publish_delay: int = DEFAULT_PUBLISH_DELAY,
+                 task_interval: int = DEFAULT_PUBLISH_TASK_INTERVAL):
         super().__init__()
         self._publish_delay = publish_delay
         self._task_interval = task_interval
+
+        self._data_file = os.path.join(data_directory, DATA_FILE)
 
         self._gadgets = []
         self._gadget_lock = threading.Lock()
 
         self._publishers = []
         self._publisher_lock = threading.Lock()
+
+        self._load_persistent_data()
 
         self._threads = ThreadManager()
         self._threads.add_thread(f"{self.__class__.__name__}UpdateApplier", self._update_applier_thread)
@@ -58,6 +71,26 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
             while self._gadgets:
                 gadget = self._gadgets.pop()
                 gadget.__del__()
+
+    def _load_persistent_data(self):
+        self._logger.info("Loading data...")
+        try:
+            with open(self._data_file, "r") as file_p:
+                data = json.load(file_p)
+        except FileNotFoundError:
+            return
+        for gadget_data in data["gadgets"]:
+            gadget = LocalGadgetDeserializer.deserialize(gadget_data)
+            self.add_gadget(gadget)
+
+    def save_persistent_data(self):
+        self._logger.info("Saving data...")
+        data = []
+        for gadget in self.local_gadgets:
+            data.append(LocalGadgetSerializer.serialize(gadget))
+        save_data = {"gadgets": data}
+        with open(self._data_file, "w") as file_p:
+            json.dump(save_data, file_p)
 
     def _update_applier_thread(self):
         with self._gadget_lock:
@@ -93,6 +126,8 @@ class GadgetManager(ILogging, GadgetStatusSupplier, GadgetPublisherStatusSupplie
         with self._publisher_lock:
             for publisher in self._publishers:
                 publisher.add_gadget(gadget.id)
+        if isinstance(gadget, ILocalGadget):
+            self.save_persistent_data()
 
     def _get_gadgets(self) -> list[Gadget]:
         with self._gadget_lock:
