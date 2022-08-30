@@ -84,7 +84,8 @@ class ApiManager(Subscriber, ILogging, IValidator):
         self._gadget_sync_connection = None
         self._auth_manager = setup.auth
 
-        self._bridge_request_handler = RequestHandlerBridge(self._network, setup.bridge, setup.updater)
+        self._bridge_request_handler = RequestHandlerBridge(self._network, setup.bridge, setup.updater,
+                                                            self.auth_manager.users)
         self._client_request_handler = RequestHandlerClient(self._network, setup.clients, setup.gadgets)
         self._gadget_request_handler = RequestHandlerGadget(self._network, setup.gadgets)
         self._configs_request_handler = RequestHandlerConfigs(self._network, setup.configs)
