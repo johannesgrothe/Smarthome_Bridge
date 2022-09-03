@@ -11,23 +11,27 @@ from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import B
 from system.api_definitions import ApiURIs
 from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager, UpdateNotSuccessfulException, \
     NoUpdateAvailableException, UpdateNotPossibleException
+from utils.user_manager import UserManager, UserAlreadyExistsException, UserCreationNotPossibleException
 
 
 class RequestHandlerBridge(RequestHandler):
     _status_supplier: BridgeStatusSupplier
     _updater: Optional[BridgeUpdateManager]
+    _user_manager: UserManager
 
     def __init__(self, network: NetworkManager, status_supplier: BridgeStatusSupplier,
-                 update_manager: Optional[BridgeUpdateManager]):
+                 update_manager: Optional[BridgeUpdateManager], user_manager: UserManager):
         super().__init__(network)
         self._status_supplier = status_supplier
         self._updater = update_manager
+        self._user_manager = user_manager
 
     def handle_request(self, req: Request) -> None:
         switcher = {
             ApiURIs.info_bridge.uri: self._handle_info_bridge,
             ApiURIs.bridge_update_check.uri: self._handle_check_bridge_for_update,
             ApiURIs.bridge_update_execute.uri: self._handle_bridge_update,
+            ApiURIs.bridge_add_user.uri: self._handle_bridge_add_user,
             ApiURIs.test_echo.uri: self._handle_echo
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), None)
@@ -92,6 +96,37 @@ class RequestHandlerBridge(RequestHandler):
             self._updater.reboot()
         except UpdateNotSuccessfulException:
             ResponseCreator.respond_with_error(req, "UpdateNotSuccessfulException", "Update failed for some reason")
+
+    def _handle_bridge_add_user(self, req: Request):
+        """
+        Adds a user to the Bridge
+
+        :param req: Request containing user info
+        :return:
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_bridge_add_user")
+        except ValidationError:
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at {ApiURIs.bridge_add_user.uri}")
+            return
+
+        if not self._user_manager:
+            ResponseCreator.respond_with_error(req, "UserCreationNotPossibleException", "no user manager configured")
+            return
+
+        user_info = req.get_payload()
+
+        try:
+            self._user_manager.add_user(user_info['username'], user_info['password'], user_info['access_level'],
+                                        user_info['persistent'])
+            ResponseCreator.respond_with_success(req, f"User: {user_info['username']} was successfully added")
+        except UserAlreadyExistsException:
+            ResponseCreator.respond_with_error(req, "UserAlreadyExistsException",
+                                               f"user: {user_info['username']} already exists")
+        except UserCreationNotPossibleException:
+            ResponseCreator.respond_with_error(req, "UserCreationNotPossibleException",
+                                               f"adding the user: {user_info['username']} was not possible")
 
     def _handle_echo(self, req: Request):
         """

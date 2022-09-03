@@ -27,7 +27,7 @@ class UserCreationNotPossibleException(Exception):
     pass
 
 
-def _create_user_dict(password: str, access_level: ApiAccessLevel, persistent: bool = False) -> dict:
+def _create_user_dict(password: str, access_level: int, persistent: bool = False) -> dict:
     """
     Returns a usable dict consisting of user data and credentials
 
@@ -37,7 +37,7 @@ def _create_user_dict(password: str, access_level: ApiAccessLevel, persistent: b
     """
     return {
         "password": password,
-        "access_level": access_level.value,
+        "access_level": access_level,
         "persistent": persistent
     }
 
@@ -66,7 +66,7 @@ class UserManager(ILogging):
         if DEFAULT_USER in self._users:
             del self._users[DEFAULT_USER]
 
-    def add_user(self, username: str, password: str, access_level: ApiAccessLevel, persistent_user: bool):
+    def add_user(self, username: str, password: str, access_level: int, persistent_user: bool):
         """
         Adds a user (and credentials) to the system
         :param access_level: ApiAccessLevel of user
