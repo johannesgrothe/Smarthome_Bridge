@@ -8,10 +8,11 @@ from smarthome_bridge.api.response_creator import ResponseCreator
 from smarthome_bridge.api_encoders.bridge_encoder import BridgeEncoder
 from smarthome_bridge.network_manager import NetworkManager
 from smarthome_bridge.status_supplier_interfaces.bridge_status_supplier import BridgeStatusSupplier
-from system.api_definitions import ApiURIs
+from system.api_definitions import ApiURIs, ApiAccessLevel
 from smarthome_bridge.update.bridge_update_manager import BridgeUpdateManager, UpdateNotSuccessfulException, \
     NoUpdateAvailableException, UpdateNotPossibleException
-from utils.user_manager import UserManager, UserAlreadyExistsException, UserCreationNotPossibleException
+from utils.user_manager import UserManager, UserAlreadyExistsException, UserCreationNotPossibleException, \
+    UserDoesNotExistException, DeletionNotPossibleException
 
 
 class RequestHandlerBridge(RequestHandler):
@@ -32,6 +33,7 @@ class RequestHandlerBridge(RequestHandler):
             ApiURIs.bridge_update_check.uri: self._handle_check_bridge_for_update,
             ApiURIs.bridge_update_execute.uri: self._handle_bridge_update,
             ApiURIs.bridge_add_user.uri: self._handle_bridge_add_user,
+            ApiURIs.bridge_delete_user.uri: self._handle_bridge_delete_user,
             ApiURIs.test_echo.uri: self._handle_echo
         }
         handler: Callable[[Request], None] = switcher.get(req.get_path(), None)
@@ -112,7 +114,7 @@ class RequestHandlerBridge(RequestHandler):
             return
 
         if not self._user_manager:
-            ResponseCreator.respond_with_error(req, "UserCreationNotPossibleException", "no user manager configured")
+            ResponseCreator.respond_with_error(req, "UserManagerError", "no user manager configured")
             return
 
         user_info = req.get_payload()
@@ -127,6 +129,46 @@ class RequestHandlerBridge(RequestHandler):
         except UserCreationNotPossibleException:
             ResponseCreator.respond_with_error(req, "UserCreationNotPossibleException",
                                                f"adding the user: {user_info['username']} was not possible")
+
+    def _handle_bridge_delete_user(self, req: Request):
+        """
+        Deletes a user from the Bridge
+
+        :param req: Request containing the username
+        :return:
+        """
+        try:
+            self._validator.validate(req.get_payload(), "api_bridge_delete_user")
+        except ValidationError:
+            ResponseCreator.respond_with_error(req, "ValidationError",
+                                               f"Request validation error at {ApiURIs.bridge_delete_user.uri}")
+            return
+
+        if not self._user_manager:
+            ResponseCreator.respond_with_error(req, "UserManagerError", "no user manager configured")
+            return
+
+        user_info = req.get_payload()
+        is_user_himself = user_info['username'] == user_info['user_to_delete']
+        is_admin = user_info['access_level'] == ApiAccessLevel.admin.value
+
+        try:
+            if not is_user_himself:
+                if is_admin:
+                    self._user_manager.delete_user(user_info['username'])
+                    ResponseCreator.respond_with_success(req, f"User: {user_info['username']} was successfully deleted")
+                    return
+                ResponseCreator.respond_with_error(req, "DeletionNotPossibleException",
+                                                   "user either not himself nor an admin")
+                return
+            self._user_manager.delete_user(user_info['username'])
+            ResponseCreator.respond_with_success(req, f"User: {user_info['username']} was successfully deleted")
+        except UserDoesNotExistException:
+            ResponseCreator.respond_with_error(req, "UserDoesNotExistException",
+                                               f"no user with username: {user_info['user_to_delete']} exists")
+        except DeletionNotPossibleException:
+            ResponseCreator.respond_with_error(req, "DeletionNotPossibleException",
+                                               f"user: {user_info['user_to_delete']} could not be deleted")
 
     def _handle_echo(self, req: Request):
         """
