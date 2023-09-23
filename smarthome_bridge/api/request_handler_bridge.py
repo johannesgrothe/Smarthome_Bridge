@@ -149,19 +149,18 @@ class RequestHandlerBridge(RequestHandler):
             return
 
         user_info = req.get_payload()
-        is_user_himself = user_info['username'] == user_info['user_to_delete']
-        is_admin = user_info['access_level'] == ApiAccessLevel.admin.value
+        is_admin = self._user_manager.get_access_level(user_info['username']) == ApiAccessLevel.admin.value
 
         try:
-            if not is_user_himself:
+            if not user_info['username'] == user_info['user_to_delete']:
                 if is_admin:
-                    self._user_manager.delete_user(user_info['username'])
+                    self._user_manager.delete_user(user_info['user_to_delete'])
                     ResponseCreator.respond_with_success(req, f"User: {user_info['username']} was successfully deleted")
                     return
                 ResponseCreator.respond_with_error(req, "DeletionNotPossibleException",
                                                    "user either not himself nor an admin")
                 return
-            self._user_manager.delete_user(user_info['username'])
+            self._user_manager.delete_user(user_info['user_to_delete'])
             ResponseCreator.respond_with_success(req, f"User: {user_info['username']} was successfully deleted")
         except UserDoesNotExistException:
             ResponseCreator.respond_with_error(req, "UserDoesNotExistException",

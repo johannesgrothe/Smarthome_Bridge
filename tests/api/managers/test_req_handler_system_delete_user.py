@@ -100,6 +100,7 @@ test_deletion_broken_payload_user_to_delete = {
     "user_to_delete": "u"
 }
 
+
 # END Region broken payloads
 
 
@@ -121,9 +122,17 @@ def test_req_handler_delete_user_validation_error(f_req_tester, f_api_manager: A
                                        test_deletion_broken_payload_access_level)
 
 
-def test_req_handler_delete_user_user_does_not_exist(f_req_tester, f_api_manager: ApiManager):
-    f_req_tester.request_execute_error(ApiURIs.bridge_delete_user.uri, "UserDoesNotExistException",
+def test_req_handler_delete_user_no_user_manager(f_req_tester, f_api_manager: ApiManager):
+    f_api_manager.request_handler_bridge._user_manager = None
+    f_req_tester.request_execute_error(ApiURIs.bridge_delete_user.uri, "UserManagerError",
                                        test_deletion_payload_regular)
+
+
+def test_req_handler_delete_user_user_does_not_exist(f_req_tester, f_api_manager: ApiManager):
+    f_req_tester.request_execute(ApiURIs.bridge_add_user.uri,
+                                 add_admin_user_for_deletion_test_payload)
+    f_req_tester.request_execute_error(ApiURIs.bridge_delete_user.uri, "UserDoesNotExistException",
+                                       test_deletion_payload_admin)
 
 
 def test_req_handler_delete_user_deletion_not_possible(f_req_tester, f_api_manager: ApiManager):
