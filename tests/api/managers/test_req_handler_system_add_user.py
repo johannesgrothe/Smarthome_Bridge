@@ -37,7 +37,7 @@ def test_req_handler_system_add_user_already_exists(f_req_tester, f_api_manager:
 
 def test_req_handler_system_add_user_no_user_manager(f_req_tester, f_api_manager: ApiManager):
     f_api_manager.request_handler_bridge._user_manager = None
-    f_req_tester.request_execute_error(ApiURIs.bridge_add_user.uri, "UserCreationNotPossibleException", test_payload)
+    f_req_tester.request_execute_error(ApiURIs.bridge_add_user.uri, "UserManagerError", test_payload)
 
 
 def test_req_handler_system_add_user_username_is_default(f_req_tester, f_api_manager: ApiManager):
