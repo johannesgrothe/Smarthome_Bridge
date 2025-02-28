@@ -4,7 +4,9 @@ from network.request import NoClientResponseException
 
 from system.api_definitions import ApiURIs
 from smarthome_bridge.network_manager import NetworkManager
-from utils.json_validator import Validator
+
+from toolkit.client_eol_config import ClientEolConfig
+from toolkit.client_system_config import ClientSystemConfig
 
 
 class ClientRebootError(Exception):
@@ -33,13 +35,11 @@ class ClientController(ILogging):
 
     _client_id: str
     _network: NetworkManager
-    _validator: Validator
 
     def __init__(self, client_id: str, network: NetworkManager):
         super().__init__()
         self._client_id = client_id
         self._network = network
-        self._validator = Validator()
 
     def reboot_client(self):
         """Reboots the client to make changes take effect.
@@ -71,7 +71,7 @@ class ClientController(ILogging):
         if not res.get_ack():
             raise ConfigEraseError(self._client_id)
 
-    def write_system_config(self, system_config: dict):
+    def write_system_config(self, system_config: ClientSystemConfig):
         """
         Writes a system config to the client
 
@@ -81,48 +81,27 @@ class ClientController(ILogging):
         :raises ConfigWriteError: If writing the config fails for any reason
         :raises ValidationError: If passed config was faulty
         """
-        self._validator.validate(system_config, "client_system_config")
         res = self._network.send_request(ApiURIs.client_system_config_write.uri,
                                          self._client_id,
-                                         system_config)
+                                         system_config.to_dict())
         if not res:
             raise NoClientResponseException
         if not res.get_ack():
             raise ConfigWriteError(self._client_id)
 
-    def write_event_config(self, event_config: dict):
+    def write_eol_config(self, system_config: ClientEolConfig):
         """
         Writes a system config to the client
 
-        :param event_config: Config to write
+        :param system_config: Config to write
         :return: None
         :raises NoClientResponseException: If client does not respond
         :raises ConfigWriteError: If writing the config fails for any reason
         :raises ValidationError: If passed config was faulty
         """
-        self._validator.validate(event_config, "client_event_config")
-        res = self._network.send_request(ApiURIs.client_event_config_write.uri,
+        res = self._network.send_request(ApiURIs.client_system_config_write.uri,
                                          self._client_id,
-                                         event_config)
-        if not res:
-            raise NoClientResponseException
-        if not res.get_ack():
-            raise ConfigWriteError(self._client_id)
-
-    def write_gadget_config(self, gadget_config: dict):
-        """
-        Writes a system config to the client
-
-        :param gadget_config: Config to write
-        :return: None
-        :raises NoClientResponseException: If client does not respond
-        :raises ConfigWriteError: If writing the config fails for any reason
-        :raises ValidationError: If passed config was faulty
-        """
-        self._validator.validate(gadget_config, "client_gadget_config")
-        res = self._network.send_request(ApiURIs.client_gadget_config_write.uri,
-                                         self._client_id,
-                                         gadget_config)
+                                         system_config.to_dict())
         if not res:
             raise NoClientResponseException
         if not res.get_ack():

@@ -27,5 +27,4 @@ class DirectSerialConnectionToolkit(DirectConnectionToolkit):
         pass
 
     def _scan_for_clients(self) -> [str]:
-        time.sleep(7)
         return ClientDetector(self._network).detect_clients(6)

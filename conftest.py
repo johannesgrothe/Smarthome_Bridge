@@ -6,7 +6,6 @@ from network.auth_container import CredentialsAuthContainer
 from smarthome_bridge.api.api_manager import ApiManager, ApiManagerSetupContainer
 from smarthome_bridge.bridge_information_container import BridgeInformationContainer
 from smarthome_bridge.client import Client, ClientSoftwareInformationContainer
-from smarthome_bridge.gadget_manager import GadgetManager
 from smarthome_bridge.status_supplier_interfaces.gadget_publisher_status_supplier import GadgetPublisherStatusSupplier
 from system.api_definitions import ApiAccessLevel
 from system.utils.software_version import SoftwareVersion
@@ -21,10 +20,8 @@ from test_helpers.network_fixtures import *
 
 from network.mqtt_credentials_container import MqttCredentialsContainer
 from tests.api.managers.api_test_templates import ReqTester
-from tests.bridge.gadget_publishers.test_gadget_publisher_homekit import DummyClient
-from tests.bridge.gadgets.test_gadget import DummyGadget
 from utils.auth_manager import AuthManager
-from utils.client_config_manager import ClientConfigManager, ConfigAlreadyExistsException
+from toolkit.client_config_manager import ClientConfigManager, ConfigAlreadyExistsException
 from utils.json_validator import Validator
 from utils.user_manager import UserManager
 

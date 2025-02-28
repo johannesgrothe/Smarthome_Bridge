@@ -9,7 +9,7 @@ import logging
 import random
 from typing import Optional
 
-from system.gadget_definitions import CharacteristicIdentifier, GadgetIdentifier
+from system.gadget_definitions import RemoteGadgetIdentifier
 from toolkit.direct_connection_toolkit import DirectConnectionToolkit
 from toolkit.direct_mqtt_connection_toolkit import DirectMqttConnectionToolkit
 from toolkit.direct_serial_connection_toolkit import DirectSerialConnectionToolkit

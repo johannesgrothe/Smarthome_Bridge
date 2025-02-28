@@ -50,6 +50,7 @@ class SerialServerClient(NetworkServerClient):
         if not bytes_written == len(out_data):
             self._logger.error(f"Problem sending request: only {bytes_written} of {len(out_data)} bytes written.")
 
+    # noinspection t
     def _decode_line(self, line) -> Optional[Request]:
         """Decodes a line and extracts a request if there is any"""
 
@@ -71,7 +72,7 @@ class SerialServerClient(NetworkServerClient):
 
                 try:
                     self._validator.validate(json_body, REQ_VALIDATION_SCHEME_NAME)
-                except ValidationError:
+                except ValidationError as err:
                     self._logger.warning("Could not decode Request, Schema Validation failed.")
                     return None
 

@@ -44,3 +44,4 @@ temp
 /test_reports/
 .env
 bridge_data
+/.venv/
